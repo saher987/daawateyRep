@@ -8,6 +8,7 @@ other header — that would let a client impersonate anyone.
 """
 
 import logging
+import os
 from dataclasses import dataclass
 
 import firebase_admin
@@ -18,10 +19,17 @@ from firebase_admin import auth as firebase_auth
 logger = logging.getLogger(__name__)
 
 # Uses Application Default Credentials: the attached service account on
-# Cloud Run, or `gcloud auth application-default login` for local dev.
-# No service account key file is committed to this repo.
+# Cloud Run (which also exposes the project via the metadata server), or
+# `gcloud auth application-default login` for local dev. No service account
+# key file is committed to this repo.
+#
+# User-login ADC (the local dev case) doesn't carry a project id the way a
+# service account credential does, so it must be passed explicitly here via
+# GOOGLE_CLOUD_PROJECT — otherwise verify_id_token() fails with "A project
+# ID is required to access the auth service."
 if not firebase_admin._apps:
-    firebase_admin.initialize_app()
+    _project_id = os.environ.get("GOOGLE_CLOUD_PROJECT") or os.environ.get("GCLOUD_PROJECT")
+    firebase_admin.initialize_app(options={"projectId": _project_id} if _project_id else None)
 
 _bearer_scheme = HTTPBearer(auto_error=False)
 

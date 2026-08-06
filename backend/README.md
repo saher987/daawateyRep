@@ -32,11 +32,21 @@ and the verified `uid`/`email` with a real Firebase ID token attached.
 ### Local credentials
 
 The Admin SDK needs Application Default Credentials to verify tokens against
-a specific Firebase/GCP project. One-time setup:
+a specific Firebase/GCP project. One-time login:
 
 ```bash
 gcloud auth application-default login
-gcloud config set project daawatey-staging   # or run: export GOOGLE_CLOUD_PROJECT=daawatey-staging
+```
+
+**`GOOGLE_CLOUD_PROJECT` must also be set every time you run the server** —
+user-login ADC (unlike a service account) doesn't carry a project id on its
+own, so `gcloud config set project` alone isn't enough; without this env var
+`verify_id_token()` fails with "A project ID is required to access the auth
+service.":
+
+```bash
+export GOOGLE_CLOUD_PROJECT=daawatey-staging
+uvicorn app.main:app --reload
 ```
 
 No service account key file is ever committed to this repo. On Cloud Run,
