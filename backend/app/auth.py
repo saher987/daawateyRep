@@ -7,12 +7,15 @@ or role supplied by the client in the request body, query params, or any
 other header — that would let a client impersonate anyone.
 """
 
+import logging
 from dataclasses import dataclass
 
 import firebase_admin
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from firebase_admin import auth as firebase_auth
+
+logger = logging.getLogger(__name__)
 
 # Uses Application Default Credentials: the attached service account on
 # Cloud Run, or `gcloud auth application-default login` for local dev.
@@ -41,6 +44,9 @@ def get_current_user(
     try:
         decoded = firebase_auth.verify_id_token(credentials.credentials)
     except Exception as exc:
+        # Log the real reason server-side; the client only ever gets a
+        # generic 401 — never leak verification internals to the caller.
+        logger.warning("Firebase ID token verification failed: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
