@@ -4,14 +4,15 @@ Rebuild of the Base44 app on Google Cloud, driven from scratch.
 
 ## Status
 
-✅ Milestone 1 done: Firebase login works end-to-end (Google + email/password), verified by the backend.
-🚧 Milestone 2 in progress: GitHub Actions → Cloud Run deploy via Workload Identity Federation.
+✅ Milestone 1 done: Firebase login works end-to-end (Google + email/password), live in both staging and prod.
+✅ Milestone 2 done: GitHub Actions → Cloud Run deploy via Workload Identity Federation, both environments live.
+🚧 Android app in progress: Capacitor + native Google sign-in wired up, first local build pending on a dev machine with Android Studio.
 
 ## Repo layout
 
-- `/frontend` — React + Vite SPA (will later be wrapped with Capacitor for iOS/Android)
+- `/frontend` — React + Vite SPA, wrapped with Capacitor (`frontend/android/`) for the Android app; iOS later
 - `/backend` — Python + FastAPI, deployed as a container on Cloud Run
-- `/migrations` — relational DB schema/migration scripts (added once we pick Firestore vs. Cloud SQL). Never auto-applied on deploy — run manually against Cloud SQL by you.
+- `/migrations` — relational DB schema/migration scripts (Postgres/Cloud SQL — schema design pending). Never auto-applied on deploy — run manually against Cloud SQL by you.
 - `/.github/workflows/deploy.yml` — manual-trigger deploy to Cloud Run (staging/prod)
 - `ARCHITECTURE.md` — environments, mobile/Capacitor auth plan, DB tradeoffs
 - `DEPLOYMENT.md` — GitHub Actions/Cloud Run setup and required secrets
