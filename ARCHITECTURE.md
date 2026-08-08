@@ -31,14 +31,13 @@ token's claims — a client can never assert its own user id.
 [FastAPI] --verify_id_token()--> [Firebase Admin SDK] --> uid/email (trusted)
 ```
 
-## Mobile (Capacitor) — planned, not yet built
+## Mobile (Capacitor) — Android in progress, iOS not yet built
 
-The web app will eventually be wrapped with Capacitor for iOS/Android. Two
-Firebase-in-WKWebView failure modes are known in advance from prior
-experience, so the plan below is recorded now rather than rediscovered later.
-None of this is built yet — `@capacitor/core` is a dependency today only so
-the platform-detection branch in `frontend/src/lib/firebase.ts` already
-exists.
+The web app is wrapped with Capacitor. Android platform is scaffolded
+(`frontend/android/`) and native Google sign-in is wired up; iOS and Apple
+Sign-In are deferred until an Apple Developer account is in hand. Two
+Firebase-in-WKWebView/native-WebView failure modes were known in advance from
+prior experience and are baked in below rather than rediscovered.
 
 ### 1. Auth initialization must branch on platform
 
@@ -55,16 +54,19 @@ export const auth = Capacitor.isNativePlatform()
 
 ### 2. Social sign-in needs the native picker, bridged into the web SDK
 
-`signInWithPopup` doesn't work in a WebView. When the native shell is added:
-use `@capacitor-firebase/authentication` to run the system Google/Apple
-picker, then bridge its result into the web SDK with `signInWithCredential`
-so `auth.currentUser` / `getIdToken()` behave identically to web:
+`signInWithPopup` doesn't work in a WebView. Implemented in
+`frontend/src/pages/Login.tsx`: `@capacitor-firebase/authentication` runs the
+system Google picker on native, then its result is bridged into the web SDK
+with `signInWithCredential` so `auth.currentUser` / `getIdToken()` behave
+identically to web. `skipNativeAuth: true` is passed so the native
+Android/iOS Firebase SDK is never also signed in — the web/JS SDK stays the
+single source of truth for auth state everywhere in this app:
 
 ```ts
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication'
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth'
 
-const result = await FirebaseAuthentication.signInWithGoogle()
+const result = await FirebaseAuthentication.signInWithGoogle({ skipNativeAuth: true })
 const credential = GoogleAuthProvider.credential(result.credential?.idToken)
 await signInWithCredential(auth, credential)
 ```

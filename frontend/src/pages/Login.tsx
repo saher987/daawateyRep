@@ -1,10 +1,13 @@
 import { useState, type FormEvent } from 'react'
 import {
   GoogleAuthProvider,
+  signInWithCredential,
   signInWithPopup,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
 } from 'firebase/auth'
+import { Capacitor } from '@capacitor/core'
+import { FirebaseAuthentication } from '@capacitor-firebase/authentication'
 import { auth } from '../lib/firebase'
 
 // Email/password is meant for test builds only — simulators and device farms
@@ -24,7 +27,19 @@ export function Login() {
     setError(null)
     setBusy(true)
     try {
-      await signInWithPopup(auth, new GoogleAuthProvider())
+      if (Capacitor.isNativePlatform()) {
+        // signInWithPopup doesn't work in a WebView — run the system Google
+        // picker via the native plugin instead, then bridge its ID token
+        // into the web SDK so auth.currentUser/getIdToken() behave exactly
+        // like on web. skipNativeAuth avoids also signing into the native
+        // Android/iOS Firebase SDK, which would be a second, divergent
+        // source of truth alongside the JS SDK we use everywhere else.
+        const result = await FirebaseAuthentication.signInWithGoogle({ skipNativeAuth: true })
+        const credential = GoogleAuthProvider.credential(result.credential?.idToken)
+        await signInWithCredential(auth, credential)
+      } else {
+        await signInWithPopup(auth, new GoogleAuthProvider())
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Google sign-in failed')
     } finally {
