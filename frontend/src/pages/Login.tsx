@@ -16,6 +16,28 @@ import { auth } from '../lib/firebase'
 // native builds exist.
 const allowEmailAuth = import.meta.env.VITE_ALLOW_EMAIL_AUTH !== 'false'
 
+// Temporary, verbose diagnostic formatter — surfaces every field an error
+// might carry (native plugin errors often attach a `code` alongside
+// `message`, and sometimes other fields), since the on-device console isn't
+// otherwise reachable without a debugger attached.
+function describeError(err: unknown): string {
+  if (err instanceof Error) {
+    const extra: Record<string, unknown> = {}
+    for (const key of Object.keys(err)) {
+      if (key !== 'message' && key !== 'name' && key !== 'stack') {
+        extra[key] = (err as unknown as Record<string, unknown>)[key]
+      }
+    }
+    const extraStr = Object.keys(extra).length > 0 ? ` | extra: ${JSON.stringify(extra)}` : ''
+    return `${err.name}: ${err.message}${extraStr}`
+  }
+  try {
+    return `Non-Error thrown: ${JSON.stringify(err)}`
+  } catch {
+    return `Non-Error thrown: ${String(err)}`
+  }
+}
+
 export function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -41,7 +63,7 @@ export function Login() {
         await signInWithPopup(auth, new GoogleAuthProvider())
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Google sign-in failed')
+      setError(describeError(err))
     } finally {
       setBusy(false)
     }
@@ -58,7 +80,7 @@ export function Login() {
         await signInWithEmailAndPassword(auth, email, password)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sign-in failed')
+      setError(describeError(err))
     } finally {
       setBusy(false)
     }
@@ -67,7 +89,11 @@ export function Login() {
   return (
     <div>
       <h1>Sign in</h1>
-      {error && <p role="alert">{error}</p>}
+      {error && (
+        <p role="alert" style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
+          {error}
+        </p>
+      )}
 
       <button type="button" onClick={handleGoogleSignIn} disabled={busy}>
         Sign in with Google
