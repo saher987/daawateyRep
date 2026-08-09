@@ -7,7 +7,10 @@ android {
         applicationId "com.daawatey.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
+        // Play Store rejects an upload whose versionCode isn't strictly
+        // higher than the last one. CI passes the GitHub Actions run number
+        // via -PandroidVersionCode; local builds fall back to 1.
+        versionCode project.hasProperty('androidVersionCode') ? (project.androidVersionCode as Integer) : 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
@@ -31,6 +34,21 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        // Release (upload) keystore is a real secret — never committed. CI
+        // decodes it from a GitHub secret to RELEASE_KEYSTORE_PATH and passes
+        // the rest via env vars. Falls back to the debug config locally so
+        // `./gradlew assembleDebug`/opening the project doesn't break for
+        // anyone who hasn't set these up — only an actual release build
+        // needs them.
+        release {
+            def releaseKeystorePath = System.getenv('RELEASE_KEYSTORE_PATH')
+            if (releaseKeystorePath) {
+                storeFile file(releaseKeystorePath)
+                storePassword System.getenv('RELEASE_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('RELEASE_KEY_ALIAS')
+                keyPassword System.getenv('RELEASE_KEY_PASSWORD')
+            }
+        }
     }
     buildTypes {
         debug {
@@ -39,6 +57,7 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig System.getenv('RELEASE_KEYSTORE_PATH') ? signingConfigs.release : signingConfigs.debug
         }
     }
 }

@@ -71,3 +71,33 @@ page, transfer the `.apk` to an Android phone, and tap to install it (you'll
 need to allow "install from unknown sources" once). Email/password sign-in
 works immediately; Google sign-in works too, since this build uses the same
 registered SHA-1 as everything else.
+
+### Release build (Play Store)
+
+Separate workflow, separate signing key, separate Firebase app registration
+(`daawatey-prod`, not staging) — this is the real production build.
+
+**One-time setup**, once per machine/person doing this:
+1. A release (upload) keystore — generate once, back up forever, never
+   commit. See the note this was handed off with for the exact commands if
+   you need to regenerate.
+2. Register that keystore's SHA-1/SHA-256 with the Android app under
+   `daawatey-prod` in Firebase Console.
+3. GitHub secrets on the `prod` environment:
+   - `GOOGLE_SERVICES_JSON_BASE64` — base64 of `daawatey-prod`'s
+     `google-services.json` (same process as staging's, different project)
+   - `ANDROID_RELEASE_KEYSTORE_BASE64` — `base64 -w0 release.keystore`
+   - `ANDROID_RELEASE_KEYSTORE_PASSWORD`, `ANDROID_RELEASE_KEY_ALIAS`,
+     `ANDROID_RELEASE_KEY_PASSWORD`
+
+**Building**: Actions → **Build Android Release (AAB)** → Run workflow.
+Downloads as `daawatey-release-aab` — this `.aab` file (not `.apk`) is what
+gets uploaded to Play Console.
+
+**After the first Play Console upload**: Google Play App Signing re-signs
+the app with its own certificate before it reaches users — a *different*
+certificate than your upload key. Play Console shows you that certificate's
+SHA-1 once you've uploaded; **register that one in Firebase too**, or Google
+Sign-In will fail specifically on the version real users download from Play,
+even though it works on your directly-built APK/AAB. (This is almost
+certainly what broke Google Sign-In on the Play-distributed Base44 build.)
