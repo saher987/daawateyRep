@@ -16,7 +16,26 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Shared debug keystore (checked into this repo at app/debug.keystore) so
+    // every debug build — local Android Studio or CI — signs with the same
+    // key and gets the same SHA-1. Without this, each machine/CI run would
+    // get its own auto-generated debug keystore with a different SHA-1,
+    // breaking Google Sign-In (which is registered against one specific
+    // SHA-1 in Firebase) on a per-build-environment basis. A debug keystore
+    // can't sign a Play Store release and uses Android's well-known default
+    // debug password, so committing it is standard practice, not a secret.
+    signingConfigs {
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
     buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
