@@ -51,9 +51,14 @@ jobs:
           region: ${{ env.REGION }}
           project_id: ${{ secrets.GCP_PROJECT_ID }}
           image: ${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/backend:${{ github.sha }}
-          flags: --allow-unauthenticated --service-account=${{ secrets.RUNTIME_SA_EMAIL }}
-          env_vars: |
-            ALLOWED_ORIGINS=${{ secrets.ALLOWED_ORIGINS }}
+          # ALLOWED_ORIGINS is comma-separated (multiple allowed origins) and
+          # must go through `flags`, not `env_vars`: gcloud's --set-env-vars
+          # treats commas as the separator *between* variables, so a value
+          # containing commas gets silently truncated at the first one via
+          # the structured env_vars input. The `^##^` prefix tells gcloud to
+          # use "##" as that separator instead, so commas inside the value
+          # stay literal. See: gcloud topic escaping.
+          flags: --allow-unauthenticated --service-account=${{ secrets.RUNTIME_SA_EMAIL }} --set-env-vars=^##^ALLOWED_ORIGINS=${{ secrets.ALLOWED_ORIGINS }}
 
       - name: Build and push frontend image
         # VITE_ALLOW_EMAIL_AUTH is always true here: email/password is a
