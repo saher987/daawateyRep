@@ -7,7 +7,11 @@ import {
 } from 'firebase/auth'
 import { Capacitor } from '@capacitor/core'
 
-const firebaseConfig = {
+// Exported so the on-screen diagnostics panel can report which project/app a
+// given build is actually pointed at — none of this is secret (it all ships
+// in the JS bundle), and it's the fastest way to tell a stale build from a
+// current one on a device you can't attach a debugger to.
+export const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,

@@ -38,13 +38,15 @@ function App() {
   return (
     <main>
       <h1>daawatey</h1>
-      <p>Signed in as {user.email ?? user.uid}</p>
+      <p style={{ fontSize: '1.5rem', fontWeight: 600 }}>
+        Welcome, {user.email ?? user.uid}!
+      </p>
 
       <button type="button" onClick={handleVerify}>
         Call /api/me
       </button>
       {me && (
-        <p>
+        <p style={{ fontSize: '1.75rem', fontWeight: 700, wordBreak: 'break-word' }}>
           Backend verified: uid=<code>{me.uid}</code> email=<code>{me.email}</code>
         </p>
       )}
