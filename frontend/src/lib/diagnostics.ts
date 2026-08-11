@@ -22,6 +22,11 @@ function maskMiddle(value: string | undefined, keepStart = 8, keepEnd = 4): stri
 
 export function collectDiagnostics(): Record<string, string> {
   return {
+    // Stamped in at build time by CI (run number + commit). This is the only
+    // reliable way to tell, on-device, whether you're looking at the build you
+    // just made or a stale install — the rest of these values often look
+    // identical across builds even when native config changed underneath.
+    buildId: import.meta.env.VITE_BUILD_ID || '(local build)',
     platform: Capacitor.getPlatform(),
     isNative: String(Capacitor.isNativePlatform()),
     authPluginAvailable: String(Capacitor.isPluginAvailable('FirebaseAuthentication')),

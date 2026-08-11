@@ -77,6 +77,7 @@ jobs:
             --build-arg VITE_FIREBASE_APP_ID="${{ secrets.VITE_FIREBASE_APP_ID }}" \
             --build-arg VITE_API_BASE_URL="${{ steps.deploy-backend.outputs.url }}" \
             --build-arg VITE_ALLOW_EMAIL_AUTH="true" \
+            --build-arg VITE_BUILD_ID="${{ github.run_number }}-${{ github.sha }}" \
             -t "$IMAGE" \
             frontend
           docker push "$IMAGE"
