@@ -2,7 +2,9 @@
 
 Covers Flow A (host creates and sends invitations), Flow D (event owner
 manages their event), and the public half of Flow B (guest opens the
-invitation link and RSVPs) — see BUSINESS_LOGIC.md and spec §7.
+invitation link and RSVPs) — see BUSINESS_LOGIC.md and the original
+createInvitationRecipient/getInvitationByToken/submitRsvp functions this
+was ported from.
 """
 
 from datetime import datetime, timezone
@@ -25,7 +27,7 @@ def _is_owner_or_manager(event: models.Event, user: models.User) -> bool:
 def _require_event_access(event: models.Event, user: models.User) -> None:
     """admin/manager: full access to every event. Everyone else: only if
     they're listed as an owner or manager on this specific event — the
-    per-row rule from spec §1's role table."""
+    per-row rule from the original Event entity's implicit RLS."""
     if user.role in (models.Role.admin, models.Role.manager):
         return
     if _is_owner_or_manager(event, user):
@@ -59,7 +61,7 @@ def list_events(
     _: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
     db: Session = Depends(get_db),
 ) -> list[models.Event]:
-    """Admin/manager see every event (spec §1)."""
+    """Admin/manager see every event."""
     return list(db.query(models.Event).order_by(models.Event.created_at.desc()).all())
 
 
@@ -127,7 +129,7 @@ def event_stats(
     user: models.User = Depends(get_app_user),
     db: Session = Depends(get_db),
 ) -> schemas.EventStats:
-    """Flow D step 2: live RSVP stats (total/accepted/declined/pending)."""
+    """Flow D step 2: live RSVP stats (total/accepted/declined/maybe/pending)."""
     event = _get_event_or_404(db, event_id)
     _require_event_access(event, user)
     rows = (
@@ -141,8 +143,24 @@ def event_stats(
         total=sum(counts.values()),
         accepted=counts.get(models.RsvpStatus.accepted.value, 0),
         declined=counts.get(models.RsvpStatus.declined.value, 0),
+        maybe=counts.get(models.RsvpStatus.maybe.value, 0),
         pending=counts.get(models.RsvpStatus.pending.value, 0),
     )
+
+
+def _resolve_display_name(
+    external_full_name: str | None,
+    nickname: str | None,
+    first_name: str | None,
+    last_name: str | None,
+) -> str | None:
+    """Same fallback chain the original used everywhere it needed a
+    recipient's display name: external_full_name first, else assembled
+    from nickname/first/last."""
+    if external_full_name:
+        return external_full_name
+    parts = [p for p in (nickname, first_name, last_name) if p]
+    return " ".join(parts) if parts else None
 
 
 @router.post(
@@ -157,17 +175,52 @@ def add_recipient(
     db: Session = Depends(get_db),
 ) -> models.InvitationRecipient:
     """Flow A step 4 / createInvitationRecipient: add an invitee, who gets a
-    unique personal_token (assigned by the model's column default)."""
+    unique personal_token (assigned by the model's column default). Rejects
+    a duplicate phone or email already invited to this event, same as the
+    original."""
     event = _get_event_or_404(db, event_id)
     _require_event_access(event, user)
+
+    if not body.phone and not body.email:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="phone or email is required")
+
+    duplicate_query = db.query(models.InvitationRecipient).filter(
+        models.InvitationRecipient.event_id == event_id
+    )
+    if body.phone:
+        duplicate_query = duplicate_query.filter(models.InvitationRecipient.phone == body.phone)
+    else:
+        duplicate_query = duplicate_query.filter(models.InvitationRecipient.email == body.email)
+    if duplicate_query.first() is not None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail="A recipient with this phone/email is already invited to this event",
+        )
+
+    linked_user_id = body.user_id
+    if not linked_user_id and body.phone:
+        matched = db.query(models.User).filter(models.User.phone == body.phone).first()
+        if matched is not None:
+            linked_user_id = matched.id
+
     recipient = models.InvitationRecipient(
         event_id=event_id,
         event_creator_id=event.created_by_uid,
-        **body.model_dump(),
+        user_id=linked_user_id,
+        external_full_name=body.external_full_name,
+        nickname=body.nickname,
+        first_name=body.first_name,
+        last_name=body.last_name,
+        phone=body.phone,
+        email=body.email,
+        guests_count=body.guests_count,
+        group_label=body.group_label,
     )
     db.add(recipient)
     db.commit()
     db.refresh(recipient)
+    # TODO(Phase 6): send the invitation SMS (Pulseem) / email (Resend) here,
+    # same as the original — not wired up yet.
     return recipient
 
 
@@ -177,8 +230,8 @@ def list_recipients(
     user: models.User = Depends(get_app_user),
     db: Session = Depends(get_db),
 ) -> list[models.InvitationRecipient]:
-    """getEventRecipients (spec §5): the guest list behind Flow D's
-    search/filter/export — same per-event access rule as everything else."""
+    """getEventRecipients: the guest list behind Flow D's search/filter/
+    export — same per-event access rule as everything else."""
     event = _get_event_or_404(db, event_id)
     _require_event_access(event, user)
     return list(
@@ -194,18 +247,26 @@ def list_recipients(
 
 def _to_public_invitation(recipient: models.InvitationRecipient) -> schemas.PublicInvitationOut:
     event = recipient.event
-    venue = event.venue
     return schemas.PublicInvitationOut(
+        recipient_id=recipient.id,
         event_title=event.title,
-        event_type=event.type,
+        event_type=event.event_type.value,
         event_date=event.date,
-        venue_name=venue.name if venue else None,
-        venue_address=venue.address if venue else None,
-        venue_map_url=venue.map_url if venue else None,
+        venue_name=event.venue_name,
+        venue_city=event.venue_city,
+        venue_address=event.venue_address,
+        venue_map_url=event.venue_map_url,
         cover_image_url=event.cover_image_url,
         invitation_image_url=event.invitation_image_url,
-        greeting=event.greeting,
-        recipient_first_name=recipient.first_name,
+        invitation_greeting=event.invitation_greeting,
+        invitation_greeting_he=event.invitation_greeting_he,
+        theme_color=event.theme_color,
+        display_name=_resolve_display_name(
+            recipient.external_full_name,
+            recipient.nickname,
+            recipient.first_name,
+            recipient.last_name,
+        ),
         rsvp_status=recipient.rsvp_status,
         rsvp_guests_count=recipient.rsvp_guests_count,
     )
@@ -224,15 +285,20 @@ def _get_recipient_by_token_or_404(db: Session, token: str) -> models.Invitation
 
 @router.get("/invitations/{token}", response_model=schemas.PublicInvitationOut)
 def get_invitation_by_token(token: str, db: Session = Depends(get_db)) -> schemas.PublicInvitationOut:
-    """getInvitationByToken (spec §5): the public /i/:token page. Marks the
-    recipient as opened, exactly like Flow B step 2 — but returns only the
-    fields a guest is meant to see, never the full row."""
+    """getInvitationByToken: the public /i/:token page. Tracks opens exactly
+    like the original — first_opened_at set once, last_opened_at + open_count
+    updated every time, status advances pending/sent → opened — but returns
+    only the fields a guest is meant to see, never the full row."""
     recipient = _get_recipient_by_token_or_404(db, token)
-    if recipient.opened_at is None:
-        recipient.opened_at = datetime.now(timezone.utc)
-        recipient.status = "opened"
-        db.commit()
-        db.refresh(recipient)
+    now = datetime.now(timezone.utc)
+    if recipient.first_opened_at is None:
+        recipient.first_opened_at = now
+    recipient.last_opened_at = now
+    recipient.open_count += 1
+    if recipient.status in (models.RecipientStatus.pending, models.RecipientStatus.sent):
+        recipient.status = models.RecipientStatus.opened
+    db.commit()
+    db.refresh(recipient)
     return _to_public_invitation(recipient)
 
 
@@ -240,13 +306,20 @@ def get_invitation_by_token(token: str, db: Session = Depends(get_db)) -> schema
 def submit_rsvp(
     token: str, body: schemas.RsvpSubmit, db: Session = Depends(get_db)
 ) -> schemas.PublicInvitationOut:
-    """submitRsvp (spec §5, Flow B step 4). Base44 let a guest change their
-    answer once — that limit is UI-enforced there and stays UI-enforced
-    here; the API itself just records whatever the frontend submits."""
+    """submitRsvp: same server-side rule the original enforced — guest count
+    is only ever recorded for an 'accepted' RSVP (defaulting to 1), zeroed
+    out for declined/maybe regardless of what the client sends, since a
+    'how many are coming' number is meaningless otherwise."""
     recipient = _get_recipient_by_token_or_404(db, token)
     recipient.rsvp_status = body.rsvp_status
-    recipient.rsvp_guests_count = body.rsvp_guests_count
-    recipient.rsvp_message = body.rsvp_message
+    recipient.rsvp_guests_count = (
+        (body.guests_count or 1) if body.rsvp_status == models.RsvpStatus.accepted else 0
+    )
+    recipient.rsvp_message = body.message
+    recipient.rsvp_date = datetime.now(timezone.utc)
+    recipient.status = models.RecipientStatus.responded
     db.commit()
     db.refresh(recipient)
+    # TODO(Phase 6): notify the event's owners/managers on decline, same as
+    # the original's notifyEventUpdate-adjacent logic — not wired up yet.
     return _to_public_invitation(recipient)

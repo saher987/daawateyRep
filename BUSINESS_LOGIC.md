@@ -8,9 +8,13 @@ staging is not touched by this phase. Web first, Android second (the
 Android shell already works and gets the new pages for free once the web
 app has them, via Capacitor sync).
 
-Source: the uploaded Base44 spec (`DAAWATEYMD_1.odt`) — full extracted text
-is not committed here since it's the user's own document, but every decision
-below traces back to a specific section of it.
+Source: originally the uploaded Base44 spec (`DAAWATEYMD_1.odt`); **superseded
+by the actual Base44 app source** (`github.com/saher987/zaffaf`) once it
+became available — the schema below is taken directly from
+`base44/entities/*.jsonc` and the backend functions from
+`base44/functions/*/entry.ts` in that repo, not guessed from prose. The
+frontend port (pages, components, routing, i18n) is also being done directly
+from that repo's `src/`, not rebuilt from scratch — see "Frontend port" below.
 
 ## Database decision — resolved: Postgres (Cloud SQL)
 
@@ -58,19 +62,35 @@ Base44's `User` entity was built-in to the platform (roles, invite-by-email,
   to `/profile` exactly like Base44 did, just driven by our own field instead
   of a Base44 built-in check.
 
-## Schema (all entities from spec §4)
+## Schema (all entities, matching `base44/entities/*.jsonc` field-for-field)
 
 | Table | Notes |
 |---|---|
-| `users` | `firebase_uid` (unique), `email`, `role`, `first_name`, `last_name`, `town`, `phone`, `preferred_language`, timestamps |
-| `pending_invites` | `email`, `role`, `invited_by_uid`, `consumed_at` |
-| `events` | `title`, `type`, `date`, `venue_id` (FK, nullable), `couple_names`, `host`, `cover_image_url`, `invitation_image_url`, `greeting`, `status` (draft/active/completed/cancelled), `owner_emails[]`, `manager_emails[]` |
-| `invitation_recipients` | `event_id` FK, `event_creator_id`, `user_id` FK nullable, name parts, `phone`, `email`, `personal_token` (unique), `status`, `opened_at`, `rsvp_status`, `rsvp_guests_count`, `rsvp_message` |
+| `users` | `firebase_uid` (unique), `email`, `role`, `first_name`, `last_name`, `nickname`, `town`, `phone`, `preferred_language`, `last_login`, `photo_url`, timestamps |
+| `pending_invites` | `email`, `role`, `invited_by_uid`, `consumed_at` — **no Base44 equivalent**, this app's own replacement for `inviteUser` |
+| `events` | `title`/`title_ar`, `event_type` enum, `date`, inline `venue_name`/`venue_city`/`venue_address`/`venue_map_url` **plus** optional `venue_id` FK, `description`/`description_ar`, `invitation_greeting`/`invitation_greeting_he`, `cover_image_url`, `invitation_image_url`, `groom_name`, `bride_name`, `host_name`, `host_phone`, `status`, `max_guests`, `theme_color`, `owner_email` (legacy singular, display only), `owner_emails[]`, `manager_emails[]` |
+| `invitation_recipients` | `event_id` FK, `event_creator_id`, `user_id` FK nullable, `external_full_name`, `nickname`, name parts, `phone`, `email`, `personal_token` (unique), `status` enum, `first_opened_at`/`last_opened_at`/`open_count`, `phone_verified`/`verified_phone`, `rsvp_status` enum (incl. `maybe`), `rsvp_guests_count`, `rsvp_message`, `rsvp_date`, `guests_count`, `group_label`, `notes` |
 | `venues` | `name`, `city`, `address`, `max_guests`, `map_url`, `phone`, `image_url`, `notes`, `owner_emails[]` |
 | `planned_weddings` | `owner_name`, `phone`, `date`, `city` |
-| `event_requests` | `title`, `details`, `requester_name`, `requester_phone`, `requester_email`, `status` (pending/approved/rejected) |
-| `notifications` | `type`, `title`, `message`, `target_user_email`, `is_read` |
-| `otp_verifications` | `phone`, `code`, `expires_at`, `is_used` |
+| `event_requests` | `title`, `details`, `requester_name`, `requester_phone`, `requester_email`, `requester_uid` (addition), `status` enum (incl. `in_review`), `admin_notes` |
+| `notifications` | `event_id` FK, `recipient_id` FK, `type` enum, `title`, `message`, `target_user_email`, `is_read` |
+| `otp_verifications` | `phone`, `otp_code`, `expires_at`, `is_used` |
+
+### Deliberate deviations from the original schema
+
+- **Dropped as dead legacy columns** on `invitation_recipients`: `full_name`,
+  `invitation_token`, `invitation_status`, `sent_date`, `opened_date`. The
+  original's own entity file marks these "Legacy" — each was already
+  superseded by a newer parallel field (`external_full_name`,
+  `personal_token`, `status`, `first_opened_at`/`last_opened_at`). No reason
+  to carry Base44's own migration debt into a fresh app.
+- **OTP is actually sent via SMS here.** The original's `sendOtp` function
+  never sent an SMS at all — it generated the code, stored it, and returned
+  it directly in the API response (`otp_preview`) with a comment saying
+  "for demo/MVP". That's a real security gap (anyone who can call the
+  endpoint gets the code without ever touching the phone), not something to
+  preserve. This app sends it through the same Pulseem integration already
+  used for invitation SMS (Phase 6).
 
 ## API surface — phased
 
@@ -113,6 +133,20 @@ once the API underneath it is stable.
 Enforced via a `require_role(*roles)` FastAPI dependency, and per-row checks
 (`owner_emails`/`manager_emails` membership) inside route handlers where the
 table above says "own only".
+
+## Frontend port
+
+`zaffaf/src` is a full, working React app (Tailwind + Radix/shadcn UI
+primitives + react-router-dom + @tanstack/react-query + react-hook-form +
+zod + lucide-react + a 986-line `i18n.jsx` with Arabic/Hebrew/English and
+RTL support) — 24 pages, ~50 UI components. Porting it directly rather than
+rebuilding from scratch: adopt the same dependency stack into `frontend/`,
+port `AuthContext` to wrap Firebase Auth + this backend's `/api/me` instead
+of `base44.auth.me()`, and port pages in order matching backend readiness
+(events/invitees/RSVP first since that backend exists; venues/event
+requests/notifications/OTP once their backend lands too). Every
+`base44.entities.X.create/filter/update` and `base44.functions.Y()` call in
+a ported page becomes a `fetch` against this backend's REST API.
 
 ## Infra you need to provision (prod only)
 

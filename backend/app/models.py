@@ -1,17 +1,22 @@
 """SQLAlchemy models — the source of truth for the Postgres schema.
 
-See BUSINESS_LOGIC.md for the reasoning behind each table and how they map
-onto the original Base44 entities. Alembic migrations (run manually,
-never on deploy — see /migrations) are derived from these models.
+Field names/enums are taken directly from the original Base44 app's entity
+definitions (`base44/entities/*.jsonc` in the `zaffaf` source repo), not
+guessed from the prose spec — see BUSINESS_LOGIC.md for the reasoning and
+the few deliberate deviations (dropped legacy columns, the pending_invites
+addition). Alembic migrations (run manually, never on deploy — see
+/migrations) are derived from these.
 """
 
 import enum
 import uuid
+from datetime import date as date_type
 from datetime import datetime
 
 from sqlalchemy import (
     ARRAY,
     Boolean,
+    Date,
     DateTime,
     ForeignKey,
     Integer,
@@ -40,6 +45,15 @@ class Role(str, enum.Enum):
     user = "user"
 
 
+class EventType(str, enum.Enum):
+    wedding = "wedding"
+    engagement = "engagement"
+    birthday = "birthday"
+    graduation = "graduation"
+    corporate = "corporate"
+    other = "other"
+
+
 class EventStatus(str, enum.Enum):
     draft = "draft"
     active = "active"
@@ -47,16 +61,33 @@ class EventStatus(str, enum.Enum):
     cancelled = "cancelled"
 
 
+class RecipientStatus(str, enum.Enum):
+    pending = "pending"
+    sent = "sent"
+    opened = "opened"
+    responded = "responded"
+    declined = "declined"
+
+
 class RsvpStatus(str, enum.Enum):
     pending = "pending"
     accepted = "accepted"
     declined = "declined"
+    maybe = "maybe"
 
 
 class EventRequestStatus(str, enum.Enum):
     pending = "pending"
+    in_review = "in_review"
     approved = "approved"
     rejected = "rejected"
+
+
+class NotificationType(str, enum.Enum):
+    rsvp_received = "rsvp_received"
+    invitation_opened = "invitation_opened"
+    event_reminder = "event_reminder"
+    event_update = "event_update"
 
 
 class User(Base):
@@ -80,9 +111,12 @@ class User(Base):
     )
     first_name: Mapped[str | None] = mapped_column(String, nullable=True)
     last_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    nickname: Mapped[str | None] = mapped_column(String, nullable=True)
     town: Mapped[str | None] = mapped_column(String, nullable=True)
     phone: Mapped[str | None] = mapped_column(String, nullable=True)
     preferred_language: Mapped[str] = mapped_column(String, nullable=False, default="ar")
+    last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    photo_url: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow
     )
@@ -92,13 +126,14 @@ class User(Base):
 
     @property
     def profile_complete(self) -> bool:
-        """Mirrors Base44's AppLayout check (spec §2, Flow G): first_name,
+        """Mirrors the original AppLayout check (spec §2, Flow G): first_name,
         last_name, town, and phone must all be filled in."""
         return bool(self.first_name and self.last_name and self.town and self.phone)
 
 
 class PendingInvite(Base):
-    """Replaces Base44's base44.users.inviteUser(email, role) (spec §1).
+    """Replaces Base44's base44.users.inviteUser(email, role) (spec §1) —
+    this table has no Base44 equivalent, it's this app's own mechanism.
 
     An admin/manager creates one of these ahead of time; when that email
     signs in via Firebase for the first time, app.auth.get_app_user consumes
@@ -121,8 +156,7 @@ class PendingInvite(Base):
 
 
 class Venue(Base):
-    """spec §4: a hall. owner_emails[] drives the venue_owner role's
-    visibility (spec §1, Flow E)."""
+    """A hall — matches the original Venue entity field-for-field."""
 
     __tablename__ = "venues"
 
@@ -149,24 +183,45 @@ class Venue(Base):
 
 
 class Event(Base):
-    """spec §4/Flow A: an event/invitation. owner_emails[]/manager_emails[]
-    drive Flow D ("My Event") visibility."""
+    """An event/invitation. Matches the original Event entity: bilingual
+    fields (`_ar`/`_he` suffixes), inline venue fields *plus* an optional
+    `venue_id` reference (a venue doesn't have to exist as its own row),
+    wedding-specific `groom_name`/`bride_name` kept generic across all
+    event_types exactly as the original did."""
 
     __tablename__ = "events"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
     title: Mapped[str] = mapped_column(String, nullable=False)
-    type: Mapped[str | None] = mapped_column(String, nullable=True)
-    date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    title_ar: Mapped[str | None] = mapped_column(String, nullable=True)
+    event_type: Mapped[EventType] = mapped_column(
+        SqlEnum(EventType, name="event_type"), nullable=False, default=EventType.wedding
+    )
+    date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    venue_name: Mapped[str] = mapped_column(String, nullable=False)
+    venue_city: Mapped[str | None] = mapped_column(String, nullable=True)
+    venue_address: Mapped[str | None] = mapped_column(String, nullable=True)
+    venue_map_url: Mapped[str | None] = mapped_column(String, nullable=True)
     venue_id: Mapped[str | None] = mapped_column(ForeignKey("venues.id"), nullable=True)
-    couple_names: Mapped[str | None] = mapped_column(String, nullable=True)
-    host: Mapped[str | None] = mapped_column(String, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    description_ar: Mapped[str | None] = mapped_column(Text, nullable=True)
+    invitation_greeting: Mapped[str | None] = mapped_column(Text, nullable=True)
+    invitation_greeting_he: Mapped[str | None] = mapped_column(Text, nullable=True)
     cover_image_url: Mapped[str | None] = mapped_column(String, nullable=True)
     invitation_image_url: Mapped[str | None] = mapped_column(String, nullable=True)
-    greeting: Mapped[str | None] = mapped_column(Text, nullable=True)
+    groom_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    bride_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    host_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    host_phone: Mapped[str | None] = mapped_column(String, nullable=True)
     status: Mapped[EventStatus] = mapped_column(
         SqlEnum(EventStatus, name="event_status"), nullable=False, default=EventStatus.draft
     )
+    max_guests: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    theme_color: Mapped[str] = mapped_column(String, nullable=False, default="#B8860B")
+    # owner_email is the original's legacy singular field, kept only for
+    # display/back-compat — owner_emails is what every permission check
+    # actually reads.
+    owner_email: Mapped[str | None] = mapped_column(String, nullable=True)
     owner_emails: Mapped[list[str]] = mapped_column(
         ARRAY(String), nullable=False, default=list
     )
@@ -188,8 +243,12 @@ class Event(Base):
 
 
 class InvitationRecipient(Base):
-    """spec §4/Flow B: one invitee per event. personal_token is what
-    /i/:token (getInvitationByToken) looks up."""
+    """One invitee per event. Matches the original InvitationRecipient
+    entity, minus the fields it marked "Legacy" (full_name, invitation_token,
+    invitation_status, sent_date, opened_date) — each was already superseded
+    by a newer parallel field there (external_full_name, personal_token,
+    status, first_opened_at/last_opened_at); no reason to carry that
+    migration debt into a fresh app. See BUSINESS_LOGIC.md."""
 
     __tablename__ = "invitation_recipients"
     __table_args__ = (
@@ -200,18 +259,32 @@ class InvitationRecipient(Base):
     event_id: Mapped[str] = mapped_column(ForeignKey("events.id"), nullable=False, index=True)
     event_creator_id: Mapped[str] = mapped_column(String, nullable=False)
     user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    external_full_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    nickname: Mapped[str | None] = mapped_column(String, nullable=True)
     first_name: Mapped[str | None] = mapped_column(String, nullable=True)
     last_name: Mapped[str | None] = mapped_column(String, nullable=True)
     phone: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     email: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     personal_token: Mapped[str] = mapped_column(String, nullable=False, default=_token)
-    status: Mapped[str] = mapped_column(String, nullable=False, default="pending")
-    opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[RecipientStatus] = mapped_column(
+        SqlEnum(RecipientStatus, name="recipient_status"),
+        nullable=False,
+        default=RecipientStatus.pending,
+    )
+    first_opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    open_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    phone_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    verified_phone: Mapped[str | None] = mapped_column(String, nullable=True)
     rsvp_status: Mapped[RsvpStatus] = mapped_column(
         SqlEnum(RsvpStatus, name="rsvp_status"), nullable=False, default=RsvpStatus.pending
     )
     rsvp_guests_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     rsvp_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rsvp_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    guests_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    group_label: Mapped[str | None] = mapped_column(String, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow
     )
@@ -223,15 +296,14 @@ class InvitationRecipient(Base):
 
 
 class PlannedWedding(Base):
-    """spec §4/Flow E: a future-wedding lead, surfaced to venue owners
-    filtered by city."""
+    """A future-wedding lead, surfaced to venue owners filtered by city."""
 
     __tablename__ = "planned_weddings"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
-    owner_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    owner_name: Mapped[str] = mapped_column(String, nullable=False)
     phone: Mapped[str | None] = mapped_column(String, nullable=True)
-    date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    date: Mapped[date_type] = mapped_column(Date, nullable=False)
     city: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow
@@ -239,23 +311,26 @@ class PlannedWedding(Base):
 
 
 class EventRequest(Base):
-    """spec §4/Flow C: a regular user's request for an event to be created
-    on their behalf."""
+    """A regular user's request for an event to be created on their behalf."""
 
     __tablename__ = "event_requests"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
     title: Mapped[str] = mapped_column(String, nullable=False)
-    details: Mapped[str | None] = mapped_column(Text, nullable=True)
+    details: Mapped[str] = mapped_column(Text, nullable=False)
     requester_name: Mapped[str | None] = mapped_column(String, nullable=True)
     requester_phone: Mapped[str | None] = mapped_column(String, nullable=True)
     requester_email: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Not part of the original entity — a harmless addition that lets a
+    # request be tied back to the Firebase account that filed it, when
+    # there is one (guests can also file requests unauthenticated).
     requester_uid: Mapped[str | None] = mapped_column(String, nullable=True)
     status: Mapped[EventRequestStatus] = mapped_column(
         SqlEnum(EventRequestStatus, name="event_request_status"),
         nullable=False,
         default=EventRequestStatus.pending,
     )
+    admin_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow
     )
@@ -265,31 +340,41 @@ class EventRequest(Base):
 
 
 class Notification(Base):
-    """spec §4/Flow F: in-app notification targeted by email, polled every
-    30s by AppLayout in Base44 — same polling model here."""
+    """In-app notification targeted by email, polled every 30s by AppLayout
+    in the original — same polling model here."""
 
     __tablename__ = "notifications"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
-    type: Mapped[str | None] = mapped_column(String, nullable=True)
+    event_id: Mapped[str | None] = mapped_column(ForeignKey("events.id"), nullable=True)
+    recipient_id: Mapped[str | None] = mapped_column(
+        ForeignKey("invitation_recipients.id"), nullable=True
+    )
+    type: Mapped[NotificationType] = mapped_column(
+        SqlEnum(NotificationType, name="notification_type"), nullable=False
+    )
     title: Mapped[str] = mapped_column(String, nullable=False)
-    message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    target_user_email: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
     is_read: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    target_user_email: Mapped[str] = mapped_column(String, nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow
     )
 
 
 class OtpVerification(Base):
-    """spec §2/§4/Flow G: 6-digit OTP codes for guest phone verification,
-    10-minute expiry, single-use."""
+    """6-digit OTP codes for guest phone verification, 10-minute expiry,
+    single-use. See BUSINESS_LOGIC.md for a real gap this fixes: the
+    original never actually sent this via SMS — it returned the code
+    directly in the API response (`otp_preview`), which is a dead end for
+    real security. This app sends it via the same Pulseem integration used
+    for invitations instead."""
 
     __tablename__ = "otp_verifications"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
     phone: Mapped[str] = mapped_column(String, nullable=False, index=True)
-    code: Mapped[str] = mapped_column(String, nullable=False)
+    otp_code: Mapped[str] = mapped_column(String, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     is_used: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(
