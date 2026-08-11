@@ -335,3 +335,26 @@ class VenueOut(BaseModel):
     image_url: str | None
     notes: str | None
     owner_emails: list[str]
+
+
+class OtpSendRequest(BaseModel):
+    phone: str
+
+
+class OtpSendResponse(BaseModel):
+    success: bool
+    # Only ever populated when OTP_DEBUG_ECHO=true — see BUSINESS_LOGIC.md
+    # for why the original's always-on otp_preview was a real security gap,
+    # not something worth preserving as default behavior.
+    otp_preview: str | None = None
+
+
+class OtpVerifyRequest(BaseModel):
+    phone: str
+    otp_code: str
+    recipient_id: str
+
+
+class OtpVerifyResponse(BaseModel):
+    success: bool
+    is_new_user: bool

@@ -342,15 +342,11 @@ def get_invitation_by_token(token: str, db: Session = Depends(get_db)) -> schema
     return _to_public_invitation(recipient)
 
 
-@router.post("/invitations/{token}/rsvp", response_model=schemas.PublicInvitationOut)
-def submit_rsvp(
-    token: str, body: schemas.RsvpSubmit, db: Session = Depends(get_db)
-) -> schemas.PublicInvitationOut:
+def _apply_rsvp(recipient: models.InvitationRecipient, body: schemas.RsvpSubmit) -> None:
     """submitRsvp: same server-side rule the original enforced — guest count
     is only ever recorded for an 'accepted' RSVP (defaulting to 1), zeroed
     out for declined/maybe regardless of what the client sends, since a
     'how many are coming' number is meaningless otherwise."""
-    recipient = _get_recipient_by_token_or_404(db, token)
     recipient.rsvp_status = body.rsvp_status
     recipient.rsvp_guests_count = (
         (body.guests_count or 1) if body.rsvp_status == models.RsvpStatus.accepted else 0
@@ -358,8 +354,35 @@ def submit_rsvp(
     recipient.rsvp_message = body.message
     recipient.rsvp_date = datetime.now(timezone.utc)
     recipient.status = models.RecipientStatus.responded
-    db.commit()
-    db.refresh(recipient)
     # TODO(Phase 6): notify the event's owners/managers on decline, same as
     # the original's notifyEventUpdate-adjacent logic — not wired up yet.
+
+
+@router.post("/invitations/{token}/rsvp", response_model=schemas.PublicInvitationOut)
+def submit_rsvp(
+    token: str, body: schemas.RsvpSubmit, db: Session = Depends(get_db)
+) -> schemas.PublicInvitationOut:
+    recipient = _get_recipient_by_token_or_404(db, token)
+    _apply_rsvp(recipient, body)
+    db.commit()
+    db.refresh(recipient)
+    return _to_public_invitation(recipient)
+
+
+@router.post("/invitation-recipients/{recipient_id}/rsvp", response_model=schemas.PublicInvitationOut)
+def submit_rsvp_by_recipient_id(
+    recipient_id: str, body: schemas.RsvpSubmit, db: Session = Depends(get_db)
+) -> schemas.PublicInvitationOut:
+    """Same as above, keyed by recipient id instead of token — this is the
+    one the actual ported frontend calls (the original's submitRsvp takes a
+    recipientId, sourced from getInvitationByToken's response, not the
+    token itself). No auth: a recipient id is a random UUID, as
+    unguessable as the personal_token, so this is no less safe than the
+    token-keyed route above."""
+    recipient = db.get(models.InvitationRecipient, recipient_id)
+    if recipient is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Invitation not found")
+    _apply_rsvp(recipient, body)
+    db.commit()
+    db.refresh(recipient)
     return _to_public_invitation(recipient)
