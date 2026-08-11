@@ -132,6 +132,11 @@ const eventsApi = {
 }
 
 const invitationRecipientsApi = {
+  async list(_sort, limit) {
+    // Cross-event (Invitees.jsx / Dashboard.jsx) — distinct from filter()
+    // below, which is always "my own invitations".
+    return request('/api/recipients', { params: { limit } })
+  },
   async filter(query) {
     // Every current call site queries the *signed-in user's own*
     // invitations (by their own phone/email/user_id) — /api/my-invitations
@@ -177,11 +182,43 @@ const usersApi = {
   async list(_sort, limit) {
     return request('/api/users', { params: { limit } })
   },
+  async update(id, data) {
+    return request(`/api/users/${id}`, { method: 'PUT', body: data })
+  },
+}
+
+// A separate namespace from `entities.User`, matching Base44's own split —
+// inviteUser is an account-provisioning action, not an entity CRUD call.
+const usersNamespaceApi = {
+  async inviteUser(email, role, phone) {
+    return request('/api/invites', { method: 'POST', body: { email, role, phone } })
+  },
 }
 
 const eventRequestsApi = {
+  async list() {
+    return request('/api/event-requests')
+  },
   async create(data) {
     return request('/api/event-requests', { method: 'POST', body: data })
+  },
+  async update(id, data) {
+    return request(`/api/event-requests/${id}`, { method: 'PUT', body: data })
+  },
+}
+
+const plannedWeddingsApi = {
+  async list() {
+    return request('/api/planned-weddings')
+  },
+  async create(data) {
+    return request('/api/planned-weddings', { method: 'POST', body: data })
+  },
+  async update(id, data) {
+    return request(`/api/planned-weddings/${id}`, { method: 'PUT', body: data })
+  },
+  async delete(id) {
+    return request(`/api/planned-weddings/${id}`, { method: 'DELETE' })
   },
 }
 
@@ -329,6 +366,7 @@ const integrationsApi = {
 
 export const base44 = {
   auth: authApi,
+  users: usersNamespaceApi,
   entities: {
     Event: eventsApi,
     InvitationRecipient: invitationRecipientsApi,
@@ -336,6 +374,7 @@ export const base44 = {
     User: usersApi,
     EventRequest: eventRequestsApi,
     Notification: notificationsApi,
+    PlannedWedding: plannedWeddingsApi,
   },
   functions: functionsApi,
   integrations: integrationsApi,

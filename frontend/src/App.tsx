@@ -18,6 +18,11 @@ const EventDetails = lazy(() => import('./pages/EventDetails'))
 const Notifications = lazy(() => import('./pages/Notifications'))
 const Profile = lazy(() => import('./pages/Profile'))
 const InvitationPage = lazy(() => import('./pages/InvitationPage'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Users = lazy(() => import('./pages/Users'))
+const EventRequests = lazy(() => import('./pages/EventRequests'))
+const PlannedWeddings = lazy(() => import('./pages/PlannedWeddings'))
+const Invitees = lazy(() => import('./pages/Invitees'))
 
 const PageSpinner = () => (
   <div className="fixed inset-0 flex items-center justify-center bg-background">
@@ -25,13 +30,12 @@ const PageSpinner = () => (
   </div>
 )
 
-// Routes NOT yet wired up here — their backend exists in part but the
-// pages/nav aren't ported yet: /dashboard, /users, /venues,
-// /venue-schedule, /my-venues(/:id), /event-requests, /planned-weddings,
-// /invitees (a cross-event admin view — needs a new "list all recipients"
-// endpoint, not built yet). AppLayout's nav still links to some of these
-// for admin/manager accounts; following one lands on PageNotFound until
-// it's built, which is honest rather than hiding a real gap.
+// Routes still NOT wired up here — their backend doesn't exist yet:
+// /venues, /venue-schedule, /my-venues(/:id) (Flow E's venue-owner side —
+// GET/POST /api/venues exists but not the owner-scoped
+// calendar/schedule views). AppLayout's nav still links to these for
+// venue_owner accounts; following one lands on PageNotFound until it's
+// built, which is honest rather than hiding a real gap.
 function App() {
   return (
     <AuthProvider>
@@ -56,6 +60,46 @@ function App() {
                     element={
                       <Suspense fallback={<PageSpinner />}>
                         <MyInvitations />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="/dashboard"
+                    element={
+                      <Suspense fallback={<PageSpinner />}>
+                        <Dashboard />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="/users"
+                    element={
+                      <Suspense fallback={<PageSpinner />}>
+                        <Users />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="/event-requests"
+                    element={
+                      <Suspense fallback={<PageSpinner />}>
+                        <EventRequests />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="/planned-weddings"
+                    element={
+                      <Suspense fallback={<PageSpinner />}>
+                        <PlannedWeddings />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="/invitees"
+                    element={
+                      <Suspense fallback={<PageSpinner />}>
+                        <Invitees />
                       </Suspense>
                     }
                   />
