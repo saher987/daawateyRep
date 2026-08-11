@@ -52,3 +52,30 @@ uvicorn app.main:app --reload
 No service account key file is ever committed to this repo. On Cloud Run,
 the service's attached service account is used automatically (set up in
 Milestone 2) — no local setup needed there.
+
+## Database
+
+Business logic (events, invitees, venues, etc. — see `../BUSINESS_LOGIC.md`)
+is backed by Postgres. Every route that touches the database needs
+`DATABASE_URL` set, or it fails with a clear `RuntimeError` rather than a
+confusing lower-level error:
+
+```bash
+export DATABASE_URL="postgresql+psycopg://USER:PASSWORD@127.0.0.1:5432/daawatey"
+```
+
+For local dev, the simplest option is a local Postgres (`apt install
+postgresql`, or Docker). Against Cloud SQL, run the Cloud SQL Auth Proxy and
+point `DATABASE_URL` at `127.0.0.1:<proxy port>` — see `../BUSINESS_LOGIC.md`
+for the exact provisioning commands once you're setting up `daawatey-prod`'s
+instance.
+
+Schema changes go through Alembic migrations in `/migrations` — **run
+manually, never automatically on deploy**:
+
+```bash
+cd ../migrations
+alembic upgrade head
+```
+
+See `/migrations/README.md`.
