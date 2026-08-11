@@ -97,7 +97,30 @@ gets uploaded to Play Console.
 **After the first Play Console upload**: Google Play App Signing re-signs
 the app with its own certificate before it reaches users — a *different*
 certificate than your upload key. Play Console shows you that certificate's
-SHA-1 once you've uploaded; **register that one in Firebase too**, or Google
-Sign-In will fail specifically on the version real users download from Play,
-even though it works on your directly-built APK/AAB. (This is almost
-certainly what broke Google Sign-In on the Play-distributed Base44 build.)
+SHA-1 (Release → Setup → App integrity → "App signing key certificate",
+**Classical key**); **register that one in Firebase too**, or Google Sign-In
+fails specifically on the version real users download from Play, even though
+it works fine on a directly-built APK.
+
+This is confirmed behaviour, not a theory — we hit it, and it presents as
+`No credentials available` in the app with
+`[28444] Developer console is not set up correctly` in logcat. **Two SHA-1s
+must be registered in Firebase at all times**: the upload key *and* Play's
+App Signing key.
+
+Watch out for one trap: re-downloading `google-services.json` is how you can
+tell whether both are actually registered. The file lists one `oauth_client`
+entry per registered Android certificate — if you only see one, a fingerprint
+is missing from Firebase and Play-distributed builds will fail.
+
+### Isolating a Play-only sign-in failure
+
+The release workflow produces a sideloadable APK (`daawatey-release-apk-sideload`)
+signed with the **upload** key alongside the AAB. Installing that directly
+(uninstall the Play copy first — Android refuses to install over a
+differently-signed app) removes Play's re-signing from the equation:
+
+- sign-in works sideloaded but fails via Play → Play's App Signing SHA-1 isn't
+  registered in Firebase
+- fails both ways → the Firebase/GCP project config is at fault, not the
+  certificate
