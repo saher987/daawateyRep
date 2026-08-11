@@ -24,6 +24,29 @@ jobs:
       - name: Write google-services.json
         run: echo "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" | base64 -d > frontend/android/app/google-services.json
 
+      # Prints which certificates the config actually carries, so the build log
+      # itself proves whether the secret was updated — nothing here is secret
+      # (cert fingerprints and client ids are public identifiers). Google
+      # validates the installed app's real signature against the certificates
+      # registered server-side, so a certificate missing here is a strong hint
+      # that it's also missing from Firebase.
+      - name: Show google-services.json contents (non-secret identifiers)
+        run: |
+          python3 - << 'PY'
+          import json
+          d = json.load(open('frontend/android/app/google-services.json'))
+          c = d['client'][0]
+          print('project_id :', d['project_info']['project_id'])
+          print('package    :', c['client_info']['android_client_info']['package_name'])
+          android = [x for x in c['oauth_client'] if x.get('client_type') == 1]
+          web = [x for x in c['oauth_client'] if x.get('client_type') == 3]
+          print(f'android certificates registered ({len(android)}):')
+          for x in android:
+              print('  -', x['android_info']['certificate_hash'])
+          print('web client (becomes default_web_client_id):',
+                web[0]['client_id'] if web else 'MISSING - native sign-in cannot work')
+          PY
+
       - name: Write release keystore
         run: echo "${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}" | base64 -d > "${{ runner.temp }}/release.keystore"
 

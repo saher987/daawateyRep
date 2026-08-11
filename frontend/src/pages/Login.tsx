@@ -64,8 +64,40 @@ export function Login() {
         // like on web. skipNativeAuth avoids also signing into the native
         // Android/iOS Firebase SDK, which would be a second, divergent
         // source of truth alongside the JS SDK we use everywhere else.
-        step = 'native: FirebaseAuthentication.signInWithGoogle'
-        const result = await FirebaseAuthentication.signInWithGoogle({ skipNativeAuth: true })
+        // Two native paths exist, and they validate differently:
+        //
+        // 1. Credential Manager (the plugin's default) — the modern API. When
+        //    it rejects an app it throws NoCredentialException, whose message
+        //    is just "No credentials available"; the real reason (e.g.
+        //    "[28444] Developer console is not set up correctly") is written
+        //    only to the system log, so it never reaches JS.
+        // 2. The legacy GoogleSignIn picker (`useCredentialManager: false`) —
+        //    older, but throws ApiException, whose message *includes* a
+        //    numeric status code that does reach JS (e.g. 10 = DEVELOPER_ERROR,
+        //    12500 = sign-in failed).
+        //
+        // So fall back to (2) when (1) fails: it sometimes succeeds where
+        // Credential Manager doesn't, and when it doesn't it at least yields
+        // an error we can actually act on without attaching a debugger.
+        step = 'native: signInWithGoogle (Credential Manager)'
+        let result
+        try {
+          result = await FirebaseAuthentication.signInWithGoogle({ skipNativeAuth: true })
+        } catch (credentialManagerError) {
+          step = 'native: signInWithGoogle (legacy picker fallback)'
+          try {
+            result = await FirebaseAuthentication.signInWithGoogle({
+              skipNativeAuth: true,
+              useCredentialManager: false,
+            })
+          } catch (legacyPickerError) {
+            throw new Error(
+              `both native paths failed.\n` +
+                `- Credential Manager: ${describeError(credentialManagerError)}\n` +
+                `- Legacy picker: ${describeError(legacyPickerError)}`,
+            )
+          }
+        }
 
         step = 'native: read idToken from plugin result'
         const idToken = result.credential?.idToken

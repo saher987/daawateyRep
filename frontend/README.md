@@ -94,24 +94,61 @@ Separate workflow, separate signing key, separate Firebase app registration
 Downloads as `daawatey-release-aab` — this `.aab` file (not `.apk`) is what
 gets uploaded to Play Console.
 
-**After the first Play Console upload**: Google Play App Signing re-signs
-the app with its own certificate before it reaches users — a *different*
-certificate than your upload key. Play Console shows you that certificate's
-SHA-1 (Release → Setup → App integrity → "App signing key certificate",
-**Classical key**); **register that one in Firebase too**, or Google Sign-In
-fails specifically on the version real users download from Play, even though
-it works fine on a directly-built APK.
+**After the first Play Console upload**: Google Play App Signing re-signs the
+app with its own certificate before it reaches users — a *different*
+certificate than your upload key. That certificate's SHA-1 must also be
+registered in Firebase, or Google Sign-In fails specifically on the build
+real users download from Play, while working fine on a directly-built APK.
 
-This is confirmed behaviour, not a theory — we hit it, and it presents as
-`No credentials available` in the app with
-`[28444] Developer console is not set up correctly` in logcat. **Two SHA-1s
-must be registered in Firebase at all times**: the upload key *and* Play's
-App Signing key.
+### Do not trust the fingerprints shown in Play Console
 
-Watch out for one trap: re-downloading `google-services.json` is how you can
-tell whether both are actually registered. The file lists one `oauth_client`
-entry per registered Android certificate — if you only see one, a fingerprint
-is missing from Firebase and Play-distributed builds will fail.
+This cost us most of a day, so it's worth stating precisely. Apps enrolled in
+Play's **"Quantum-ready (beta)"** signing have **three** signing
+certificates, and the console's App signing page shows a fingerprint for the
+wrong one:
+
+| Certificate (from "Download certificates") | Role |
+|---|---|
+| `deployment_cert.der` | **signs what Play actually delivers to devices** |
+| `hybrid_classical_cert.der` | what the console displays under "Classical key" |
+| `hybrid_pqc_cert.der` | post-quantum key, for when Play rotates to it |
+
+Copying the SHA-1 the console displays gets you the *hybrid classical*
+certificate, not the deployment one — and the console shows no fingerprint
+for `deployment_cert` anywhere. The result is a correct-looking registration
+that still fails, with no indication anything is missing.
+
+**Get fingerprints from the certificate files, not the console UI**:
+
+```bash
+# Play Console → Test and release → Setup → App signing → "Download certificates"
+openssl x509 -inform DER -in deployment_cert.der -noout -fingerprint -sha1
+openssl x509 -inform DER -in deployment_cert.der -noout -fingerprint -sha256
+```
+
+Register **all** of them in Firebase (extras are harmless), plus the upload
+key so sideloaded builds keep working. For this app that's four certificates.
+
+### Verifying the registration actually took
+
+Re-download `google-services.json`: it contains one `oauth_client` entry per
+registered Android certificate. Count them — if a certificate is missing from
+that list, it's missing from Firebase, and builds signed with it will fail.
+The release workflow prints this list on every run
+(`.github/workflows/android-release-build.yml`).
+
+### Symptoms, for future reference
+
+- In the app: `No credentials available` — generic, carries no detail to JS
+  (the plugin only ever surfaces this string)
+- In logcat (filter on `Auth`, *not* the package name — the useful lines come
+  from `com.google.android.gms.persistent` and don't mention the app):
+  `This android application is not registered to use OAuth2.0` and
+  `colz: [28444]` / `Developer console is not set up correctly`
+
+Note the certificate check is **server-side**, so fixing a fingerprint in
+Firebase takes effect on an already-installed build — no rebuild needed to
+test whether a registration fixed it.
 
 ### Isolating a Play-only sign-in failure
 

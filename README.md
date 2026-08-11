@@ -6,7 +6,7 @@ Rebuild of the Base44 app on Google Cloud, driven from scratch.
 
 ✅ Milestone 1 done: Firebase login works end-to-end (Google + email/password), live in both staging and prod.
 ✅ Milestone 2 done: GitHub Actions → Cloud Run deploy via Workload Identity Federation, both environments live.
-🚧 Android app in progress: Capacitor + native Google sign-in wired up, first local build pending on a dev machine with Android Studio.
+✅ Android app working: Capacitor build distributed via Play internal testing, native Google sign-in verified on a Play-installed build.
 
 ## Repo layout
 
