@@ -50,17 +50,37 @@ jobs:
         working-directory: frontend
         run: npx cap sync android
 
-      - name: Build signed release AAB
+      # The AAB goes to Play (which re-signs it with Play's own App Signing
+      # key). The APK is signed with our upload key and is directly
+      # installable — useful for isolating "is this broken because of Play's
+      # signing certificate, or because of the project config?", since
+      # sideloading the APK takes Play's re-signing out of the picture.
+      - name: Build signed release AAB + APK
         working-directory: frontend/android
         env:
           RELEASE_KEYSTORE_PATH: ${{ runner.temp }}/release.keystore
           RELEASE_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEYSTORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
-        run: ./gradlew bundleRelease -PandroidVersionCode=${{ github.run_number }}
+        run: ./gradlew bundleRelease assembleRelease -PandroidVersionCode=${{ github.run_number }}
+
+      - name: Report which certificate signed the APK
+        working-directory: frontend/android
+        run: |
+          APK=app/build/outputs/apk/release/app-release.apk
+          # $ANDROID_HOME/build-tools/*/apksigner is provided by setup-android.
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort | tail -1)
+          echo "Certificate actually embedded in the sideloadable APK:"
+          "$APKSIGNER" verify --print-certs "$APK" | grep -i "SHA-1\|SHA-256" || true
 
       - uses: actions/upload-artifact@v4
         with:
           name: daawatey-release-aab
           path: frontend/android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 30
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: daawatey-release-apk-sideload
+          path: frontend/android/app/build/outputs/apk/release/app-release.apk
           retention-days: 30
