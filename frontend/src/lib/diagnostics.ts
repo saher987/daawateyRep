@@ -13,6 +13,22 @@ import { firebaseConfig } from './firebase'
  * (`signInWithPopup`) involves one.
  */
 
+/**
+ * Short, human-readable build marker shown next to "Welcome" in the UI.
+ *
+ * CI sets VITE_BUILD_ID to "<run number>-<commit sha>"; this trims the sha to
+ * keep it glanceable. The run number increments on every workflow run, so this
+ * changes on every build without anyone having to remember to bump it — the
+ * point is being able to confirm at a glance that a device is running the
+ * build you just made, rather than a stale install.
+ */
+export const BUILD_LABEL = (() => {
+  const raw = import.meta.env.VITE_BUILD_ID
+  if (!raw) return 'local'
+  const [run, sha] = raw.split('-', 2)
+  return sha ? `${run} (${sha.slice(0, 7)})` : run
+})()
+
 /** Shows enough of a value to identify it, without dumping the whole string. */
 function maskMiddle(value: string | undefined, keepStart = 8, keepEnd = 4): string {
   if (!value) return '(unset)'
