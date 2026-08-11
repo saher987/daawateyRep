@@ -105,7 +105,12 @@ def get_app_user(
     # letting this dependency crash for that edge case.
     email = current.email or f"{current.uid}@no-email.invalid"
 
-    user = models.User(firebase_uid=current.uid, email=email, role=role)
+    user = models.User(
+        firebase_uid=current.uid,
+        email=email,
+        role=role,
+        phone=invite.phone if invite is not None else None,
+    )
     db.add(user)
     if invite is not None:
         invite.consumed_at = datetime.now(timezone.utc)

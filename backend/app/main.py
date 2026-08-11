@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.auth import get_app_user
 from app.db import get_db
-from app.routers import event_requests, events, notifications, otp, users, venues
+from app.routers import event_requests, events, notifications, otp, planned_weddings, users, venues
 
 app = FastAPI(title="daawatey backend")
 app.include_router(events.router)
@@ -18,6 +18,7 @@ app.include_router(event_requests.router)
 app.include_router(users.router)
 app.include_router(venues.router)
 app.include_router(otp.router)
+app.include_router(planned_weddings.router)
 
 _allowed_origins = os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
 

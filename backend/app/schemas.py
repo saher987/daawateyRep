@@ -6,6 +6,7 @@ client should never be able to set fields like `id`, `role`, or
 the explicit, reviewed list of what's actually accepted/returned.
 """
 
+from datetime import date as date_type
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
@@ -37,20 +38,48 @@ class MeResponse(BaseModel):
 
 
 class UserOut(BaseModel):
-    """A minimal, non-sensitive projection — used for the owner/invitee
-    lookup-by-phone-or-email pickers in CreateEvent/AddInviteeDialog.
-    Deliberately excludes role, town, preferred_language: those aren't
-    this endpoint's business, and role in particular shouldn't be
-    discoverable by browsing user search results."""
+    """GET /api/users is admin/manager-only either way, so this is the full
+    picture (role included) — it backs both the owner/invitee lookup
+    pickers in CreateEvent/AddInviteeDialog *and* the Users management
+    page, which needs role/town/last_login to actually manage anyone."""
 
     model_config = ConfigDict(from_attributes=True)
 
     id: str
     email: str
+    role: Role
     first_name: str | None
     last_name: str | None
     nickname: str | None
     phone: str | None
+    town: str | None
+    preferred_language: str
+    last_login: datetime | None
+
+
+class UserAdminUpdate(BaseModel):
+    """PUT /api/users/{id} — admin-only (spec §1: only admin can "invite
+    users with any role, change roles"; manager's own bullet list doesn't
+    include user management at all)."""
+
+    first_name: str | None = None
+    last_name: str | None = None
+    nickname: str | None = None
+    phone: str | None = None
+    town: str | None = None
+    role: Role | None = None
+
+
+class InviteCreate(BaseModel):
+    """POST /api/invites — replaces base44.users.inviteUser(email, role).
+    `phone` is optional and this app's own addition: Users.jsx's invite
+    form collects it, but there's no User row to put it on yet (unlike
+    Base44, which provisioned the account immediately) — it's held on the
+    invite and copied over when the invitee actually signs in."""
+
+    email: str
+    role: Role
+    phone: str | None = None
 
 
 class ProfileUpdate(BaseModel):
@@ -365,3 +394,27 @@ class OtpVerifyRequest(BaseModel):
 class OtpVerifyResponse(BaseModel):
     success: bool
     is_new_user: bool
+
+
+class PlannedWeddingCreate(BaseModel):
+    owner_name: str
+    phone: str | None = None
+    date: date_type
+    city: str | None = None
+
+
+class PlannedWeddingUpdate(BaseModel):
+    owner_name: str | None = None
+    phone: str | None = None
+    date: date_type | None = None
+    city: str | None = None
+
+
+class PlannedWeddingOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    owner_name: str
+    phone: str | None
+    date: date_type
+    city: str | None

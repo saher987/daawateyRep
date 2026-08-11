@@ -146,6 +146,12 @@ class PendingInvite(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
     email: Mapped[str] = mapped_column(String, nullable=False, index=True)
     role: Mapped[Role] = mapped_column(SqlEnum(Role, name="role"), nullable=False)
+    # Optional: lets an admin pre-fill the invited person's phone (Users.jsx
+    # collects it in the invite form) even though — unlike Base44, which
+    # provisions the account immediately — there's no User row to put it on
+    # until they actually sign in via Firebase. Copied onto the new row by
+    # get_app_user when the invite is consumed.
+    phone: Mapped[str | None] = mapped_column(String, nullable=True)
     invited_by_uid: Mapped[str] = mapped_column(String, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow

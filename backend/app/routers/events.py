@@ -76,6 +76,23 @@ def list_my_events(
     return [e for e in events if _is_owner_or_manager(e, user)]
 
 
+@router.get("/recipients", response_model=list[schemas.RecipientOut])
+def list_all_recipients(
+    limit: int = 500,
+    _: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
+    db: Session = Depends(get_db),
+) -> list[models.InvitationRecipient]:
+    """Cross-event guest list (Invitees.jsx) + Dashboard.jsx's recent-
+    activity feed. Unlike GET /api/events/{id}/recipients, this isn't
+    scoped to one event — admin/manager only, same as GET /api/events."""
+    return list(
+        db.query(models.InvitationRecipient)
+        .order_by(models.InvitationRecipient.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+
 @router.get("/my-invitations", response_model=list[schemas.MyInvitationOut])
 def list_my_invitations(
     user: models.User = Depends(get_app_user),
