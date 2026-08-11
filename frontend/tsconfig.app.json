@@ -15,6 +15,17 @@
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+
+    /* Pages/components ported from the original app (github.com/saher987/
+       zaffaf) are plain .jsx, not rewritten to .tsx as part of the port —
+       that would be a second, much larger project on its own. allowJs lets
+       them sit alongside this project's .ts/.tsx files; checkJs stays off
+       so tsc doesn't type-check untyped JS it was never written against. */
+    "allowJs": true,
+    "checkJs": false,
 
     /* Linting */
     "noUnusedLocals": true,
