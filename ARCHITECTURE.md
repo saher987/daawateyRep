@@ -101,18 +101,13 @@ Simulators and device farms can't run a real Google/Apple picker. The
 email/password path in `Login.tsx` stays available for test builds, gated by
 `VITE_ALLOW_EMAIL_AUTH` — prod builds (web or native) must never set this.
 
-## Database — deferred
+## Database — resolved: Cloud SQL (Postgres)
 
-Not decided yet. `/migrations` exists as an empty placeholder so the eventual
-layout doesn't require restructuring. When we get here:
+Decided once the actual entities (Base44 parity rebuild) made the shape of
+the data clear: relational, with real foreign keys, array columns
+(`owner_emails[]`), and aggregate/transactional queries that fit SQL much
+better than Firestore. See `BUSINESS_LOGIC.md` for the full schema and
+reasoning. Migration scripts live in `/migrations` (Alembic), written to be
+run manually against Cloud SQL by you — never auto-applied on deploy.
 
-- **Firestore**: no separate migration story, scales effortlessly, but
-  querying/joins are more limited and schema is implicit.
-- **Cloud SQL (Postgres)**: real relational queries/joins/transactions, but
-  needs connection management from Cloud Run (Cloud SQL Auth Proxy or
-  private IP) and manual migrations. If chosen, migration scripts go in
-  `/migrations`, written to be run manually against Cloud SQL by you —
-  never auto-applied on deploy.
-
-Revisit after Milestone 1 (login) and Milestone 2 (CI/CD) are done, once the
-app's actual data/query shape is clearer.
+Scoped to `daawatey-prod` only for now; staging doesn't get a database yet.
