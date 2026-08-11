@@ -10,7 +10,15 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
-from app.models import EventStatus, EventType, RecipientStatus, Role, RsvpStatus
+from app.models import (
+    EventRequestStatus,
+    EventStatus,
+    EventType,
+    NotificationType,
+    RecipientStatus,
+    Role,
+    RsvpStatus,
+)
 
 
 class MeResponse(BaseModel):
@@ -19,6 +27,7 @@ class MeResponse(BaseModel):
     role: Role
     first_name: str | None
     last_name: str | None
+    nickname: str | None = None
     town: str | None
     phone: str | None
     preferred_language: str
@@ -26,13 +35,19 @@ class MeResponse(BaseModel):
 
 
 class ProfileUpdate(BaseModel):
-    """Flow G step 3: base44.auth.updateMe's replacement. All four fields
-    are required together since profile_complete needs all of them."""
+    """Flow G step 3: base44.auth.updateMe's replacement. Every field is
+    optional and only what's sent gets updated (PATCH semantics) — the
+    original's updateMe is called both with the full profile-completion
+    form (all four name/contact fields at once) and with a single field on
+    its own (e.g. the language switcher's `updateMe({preferred_language})`),
+    so an all-or-nothing update would break the second case. The Profile
+    page's own form is what actually requires all four together, as a
+    client-side concern."""
 
-    first_name: str
-    last_name: str
-    town: str
-    phone: str
+    first_name: str | None = None
+    last_name: str | None = None
+    town: str | None = None
+    phone: str | None = None
     preferred_language: str | None = None
 
 
@@ -194,3 +209,69 @@ class RsvpSubmit(BaseModel):
     rsvp_status: RsvpStatus
     guests_count: int | None = None
     message: str | None = None
+
+
+class MyInvitationRecipientOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    personal_token: str
+    rsvp_status: RsvpStatus
+    rsvp_guests_count: int | None
+    open_count: int
+    first_opened_at: datetime | None
+
+
+class MyInvitationEventOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    title: str
+    venue_name: str
+    date: datetime
+    cover_image_url: str | None
+
+
+class MyInvitationOut(BaseModel):
+    recipient: MyInvitationRecipientOut
+    event: MyInvitationEventOut
+
+
+class NotificationOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    type: NotificationType
+    title: str
+    message: str
+    is_read: bool
+    event_id: str | None
+    recipient_id: str | None
+    created_at: datetime
+
+
+class EventRequestCreate(BaseModel):
+    title: str
+    details: str
+    requester_name: str | None = None
+    requester_phone: str | None = None
+    requester_email: str | None = None
+
+
+class EventRequestUpdate(BaseModel):
+    status: EventRequestStatus | None = None
+    admin_notes: str | None = None
+
+
+class EventRequestOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    title: str
+    details: str
+    requester_name: str | None
+    requester_phone: str | None
+    requester_email: str | None
+    status: EventRequestStatus
+    admin_notes: str | None
+    created_at: datetime

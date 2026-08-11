@@ -10,7 +10,7 @@ was ported from.
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app import models, schemas
@@ -74,6 +74,33 @@ def list_my_events(
     listed as an owner or manager."""
     events = db.query(models.Event).order_by(models.Event.created_at.desc()).all()
     return [e for e in events if _is_owner_or_manager(e, user)]
+
+
+@router.get("/my-invitations", response_model=list[schemas.MyInvitationOut])
+def list_my_invitations(
+    user: models.User = Depends(get_app_user),
+    db: Session = Depends(get_db),
+) -> list[schemas.MyInvitationOut]:
+    """The "/" home route (MyInvitations page): every invitation addressed
+    to the signed-in guest, matched by phone, email, or a linked user_id —
+    the same match the original InvitationRecipient entity's read RLS used.
+    Deliberately returns a denormalized event subset rather than the full
+    Event row, since a guest recipient isn't necessarily an owner/manager
+    of that event and shouldn't need to be to see their own invitation."""
+    conditions = [models.InvitationRecipient.user_id == user.id]
+    if user.phone:
+        conditions.append(models.InvitationRecipient.phone == user.phone)
+    if user.email:
+        conditions.append(models.InvitationRecipient.email == user.email)
+    recipients = db.query(models.InvitationRecipient).filter(or_(*conditions)).all()
+    return [
+        schemas.MyInvitationOut(
+            recipient=schemas.MyInvitationRecipientOut.model_validate(r),
+            event=schemas.MyInvitationEventOut.model_validate(r.event),
+        )
+        for r in recipients
+        if r.event is not None
+    ]
 
 
 @router.get("/events/{event_id}", response_model=schemas.EventOut)
