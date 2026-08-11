@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { onAuthStateChanged, signOut, type User } from 'firebase/auth'
 import { auth } from './lib/firebase'
 import { fetchMe, type Me } from './lib/api'
+import { BUILD_LABEL } from './lib/diagnostics'
 import { Login } from './pages/Login'
 
 function App() {
@@ -37,7 +38,12 @@ function App() {
 
   return (
     <main>
-      <h1>daawatey</h1>
+      <h1>
+        daawatey{' '}
+        <span style={{ fontSize: '0.45em', fontWeight: 400, opacity: 0.65 }}>
+          build {BUILD_LABEL}
+        </span>
+      </h1>
       <p style={{ fontSize: '1.5rem', fontWeight: 600 }}>
         Welcome, {user.email ?? user.uid}!
       </p>

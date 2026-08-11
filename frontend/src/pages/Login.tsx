@@ -9,7 +9,7 @@ import {
 import { Capacitor } from '@capacitor/core'
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication'
 import { auth } from '../lib/firebase'
-import { formatDiagnostics } from '../lib/diagnostics'
+import { BUILD_LABEL, formatDiagnostics } from '../lib/diagnostics'
 
 // Computed once at module load — these facts don't change at runtime.
 const diagnostics = formatDiagnostics()
@@ -109,7 +109,12 @@ export function Login() {
 
   return (
     <div>
-      <h1>Welcome</h1>
+      <h1>
+        Welcome{' '}
+        <span style={{ fontSize: '0.45em', fontWeight: 400, opacity: 0.65 }}>
+          build {BUILD_LABEL}
+        </span>
+      </h1>
       <p style={{ fontSize: '1.1rem' }}>Sign in to continue</p>
       {error && (
         <p role="alert" style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
