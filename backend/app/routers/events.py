@@ -300,6 +300,9 @@ def _to_public_invitation(recipient: models.InvitationRecipient) -> schemas.Publ
         invitation_image_url=event.invitation_image_url,
         invitation_greeting=event.invitation_greeting,
         invitation_greeting_he=event.invitation_greeting_he,
+        description=event.description,
+        groom_name=event.groom_name,
+        bride_name=event.bride_name,
         theme_color=event.theme_color,
         display_name=_resolve_display_name(
             recipient.external_full_name,
@@ -309,6 +312,7 @@ def _to_public_invitation(recipient: models.InvitationRecipient) -> schemas.Publ
         ),
         rsvp_status=recipient.rsvp_status,
         rsvp_guests_count=recipient.rsvp_guests_count,
+        invited_guests_count=recipient.guests_count,
     )
 
 

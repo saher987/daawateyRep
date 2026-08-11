@@ -220,10 +220,17 @@ class PublicInvitationOut(BaseModel):
     invitation_image_url: str | None
     invitation_greeting: str | None
     invitation_greeting_he: str | None
+    description: str | None
+    groom_name: str | None
+    bride_name: str | None
     theme_color: str
     display_name: str | None
     rsvp_status: RsvpStatus
     rsvp_guests_count: int | None
+    # The *invited* count (how many the host expects), distinct from
+    # rsvp_guests_count (how many the guest actually confirmed) — the
+    # frontend uses this as the RSVP form's default.
+    invited_guests_count: int
 
 
 class RsvpSubmit(BaseModel):
