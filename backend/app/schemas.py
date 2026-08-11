@@ -22,6 +22,7 @@ from app.models import (
 
 
 class MeResponse(BaseModel):
+    id: str
     uid: str
     email: str | None
     role: Role
@@ -31,7 +32,25 @@ class MeResponse(BaseModel):
     town: str | None
     phone: str | None
     preferred_language: str
+    photo_url: str | None = None
     profile_complete: bool
+
+
+class UserOut(BaseModel):
+    """A minimal, non-sensitive projection — used for the owner/invitee
+    lookup-by-phone-or-email pickers in CreateEvent/AddInviteeDialog.
+    Deliberately excludes role, town, preferred_language: those aren't
+    this endpoint's business, and role in particular shouldn't be
+    discoverable by browsing user search results."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    email: str
+    first_name: str | None
+    last_name: str | None
+    nickname: str | None
+    phone: str | None
 
 
 class ProfileUpdate(BaseModel):
@@ -46,9 +65,11 @@ class ProfileUpdate(BaseModel):
 
     first_name: str | None = None
     last_name: str | None = None
+    nickname: str | None = None
     town: str | None = None
     phone: str | None = None
     preferred_language: str | None = None
+    photo_url: str | None = None
 
 
 class EventCreate(BaseModel):
@@ -275,3 +296,42 @@ class EventRequestOut(BaseModel):
     status: EventRequestStatus
     admin_notes: str | None
     created_at: datetime
+
+
+class VenueCreate(BaseModel):
+    name: str
+    city: str | None = None
+    address: str | None = None
+    max_guests: int | None = None
+    map_url: str | None = None
+    phone: str | None = None
+    image_url: str | None = None
+    notes: str | None = None
+    owner_emails: list[str] = []
+
+
+class VenueUpdate(BaseModel):
+    name: str | None = None
+    city: str | None = None
+    address: str | None = None
+    max_guests: int | None = None
+    map_url: str | None = None
+    phone: str | None = None
+    image_url: str | None = None
+    notes: str | None = None
+    owner_emails: list[str] | None = None
+
+
+class VenueOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    name: str
+    city: str | None
+    address: str | None
+    max_guests: int | None
+    map_url: str | None
+    phone: str | None
+    image_url: str | None
+    notes: str | None
+    owner_emails: list[str]

@@ -132,6 +132,19 @@ def update_event(
     return event
 
 
+@router.delete("/events/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_event(
+    event_id: str,
+    _: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
+    db: Session = Depends(get_db),
+) -> None:
+    """spec §1: admin and manager can both delete events (unlike venues/
+    planned-weddings, which are admin-only-delete)."""
+    event = _get_event_or_404(db, event_id)
+    db.delete(event)
+    db.commit()
+
+
 @router.post("/events/{event_id}/activate", response_model=schemas.EventOut)
 def activate_event(
     event_id: str,
