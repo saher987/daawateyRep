@@ -170,6 +170,18 @@ const venuesApi = {
   async list() {
     return request('/api/venues')
   },
+  async get(id) {
+    return request(`/api/venues/${id}`)
+  },
+  async create(data) {
+    return request('/api/venues', { method: 'POST', body: data })
+  },
+  async update(id, data) {
+    return request(`/api/venues/${id}`, { method: 'PUT', body: data })
+  },
+  async delete(id) {
+    return request(`/api/venues/${id}`, { method: 'DELETE' })
+  },
 }
 
 const usersApi = {
