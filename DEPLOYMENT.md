@@ -55,6 +55,35 @@ For the very first run on each environment:
 3. Update the `ALLOWED_ORIGINS` secret to that real URL.
 4. Re-run the workflow (or just redeploy the backend) so CORS picks it up.
 
+### Native (Capacitor) origins must be included too
+
+The Android/iOS app runs in a WebView whose origin is **not** the frontend's
+Cloud Run URL — it's `https://localhost` (Android) or `capacitor://localhost`
+(iOS). Those are separate origins as far as CORS is concerned, so they have to
+be listed explicitly or every API call from the native app fails. The browser
+reports this to JS only as a generic "Failed to fetch", which makes it easy to
+misread as a network problem.
+
+So `ALLOWED_ORIGINS` should be, on **both** environments:
+
+```
+https://<frontend-cloud-run-url>,https://localhost,capacitor://localhost
+```
+
+The login screen's "Build diagnostics" panel prints the actual
+`webViewOrigin` at runtime — check that value against this list first when API
+calls fail on a device.
+
+Verify what actually landed on the service after deploying (the value is
+comma-separated, and `--set-env-vars` is comma-delimited too — see the
+escaping note in `deploy.yml`):
+
+```bash
+gcloud run services describe daawatey-backend --region=us-central1 \
+  --project=daawatey-staging \
+  --format="value(spec.template.spec.containers[0].env)"
+```
+
 ## Running a deploy
 
 Repo → **Actions** tab → **Deploy** workflow → **Run workflow** → choose
