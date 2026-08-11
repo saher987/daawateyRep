@@ -31,13 +31,18 @@ token's claims — a client can never assert its own user id.
 [FastAPI] --verify_id_token()--> [Firebase Admin SDK] --> uid/email (trusted)
 ```
 
-## Mobile (Capacitor) — Android in progress, iOS not yet built
+## Mobile (Capacitor) — Android working, iOS not yet built
 
-The web app is wrapped with Capacitor. Android platform is scaffolded
-(`frontend/android/`) and native Google sign-in is wired up; iOS and Apple
-Sign-In are deferred until an Apple Developer account is in hand. Two
-Firebase-in-WKWebView/native-WebView failure modes were known in advance from
-prior experience and are baked in below rather than rediscovered.
+The web app is wrapped with Capacitor. The Android app is built and
+distributed via Play internal testing, with native Google sign-in verified
+end-to-end on a Play-installed build. iOS and Apple Sign-In are deferred
+until an Apple Developer account is in hand.
+
+Two Firebase-in-WebView failure modes were known in advance from prior
+experience and are baked in below. A third — Play App Signing certificates —
+was hit during the first Play release and is documented in
+`frontend/README.md`; it was the cause of the Google Sign-In failure on the
+previous Base44 Play build, and is *not* a Base44-specific problem.
 
 ### 1. Auth initialization must branch on platform
 
