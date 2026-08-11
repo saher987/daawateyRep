@@ -39,6 +39,20 @@ path uses that project number, service account emails use
 `@daawatey-prod.iam.gserviceaccount.com`, Firebase values from the prod web
 app config).
 
+### 4. Database secrets (`prod` only, once Cloud SQL is provisioned)
+
+Not needed until you've run the Cloud SQL setup in `BUSINESS_LOGIC.md`'s
+"Infra you need to provision" section. Once that's done, add to `prod`:
+
+| Secret | Value |
+|---|---|
+| `DATABASE_URL` | `postgresql+psycopg://daawatey_app:<PASSWORD>@/daawatey?host=/cloudsql/<CONNECTION_NAME>` |
+| `CLOUDSQL_CONNECTION_NAME` | the instance connection name, `PROJECT:REGION:INSTANCE` |
+
+Leaving both unset (e.g. on `staging`, which has no database yet) is a
+deliberate no-op — `deploy.yml` only adds the Cloud SQL connection and
+`DATABASE_URL` env var when `DATABASE_URL` is actually set.
+
 ## Bootstrapping `ALLOWED_ORIGINS` (first deploy only)
 
 The backend needs to know the frontend's origin for CORS, but the frontend's

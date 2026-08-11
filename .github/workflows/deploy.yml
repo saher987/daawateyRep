@@ -43,6 +43,20 @@ jobs:
           docker build -t "$IMAGE" backend
           docker push "$IMAGE"
 
+      # DATABASE_URL/CLOUDSQL_CONNECTION_NAME only exist once an environment
+      # actually has a Cloud SQL instance provisioned (see BUSINESS_LOGIC.md)
+      # — staging doesn't yet, so this is a deliberate no-op there: an empty
+      # secret means the `if` below adds nothing and the backend runs
+      # exactly as it did before this branch.
+      - name: Compute backend deploy flags
+        id: backend-flags
+        run: |
+          FLAGS="--allow-unauthenticated --service-account=${{ secrets.RUNTIME_SA_EMAIL }} --set-env-vars=^##^ALLOWED_ORIGINS=${{ secrets.ALLOWED_ORIGINS }}"
+          if [ -n "${{ secrets.DATABASE_URL }}" ]; then
+            FLAGS="$FLAGS##DATABASE_URL=${{ secrets.DATABASE_URL }} --add-cloudsql-instances=${{ secrets.CLOUDSQL_CONNECTION_NAME }}"
+          fi
+          echo "flags=$FLAGS" >> "$GITHUB_OUTPUT"
+
       - name: Deploy backend to Cloud Run
         id: deploy-backend
         uses: google-github-actions/deploy-cloudrun@v2
@@ -58,7 +72,7 @@ jobs:
           # the structured env_vars input. The `^##^` prefix tells gcloud to
           # use "##" as that separator instead, so commas inside the value
           # stay literal. See: gcloud topic escaping.
-          flags: --allow-unauthenticated --service-account=${{ secrets.RUNTIME_SA_EMAIL }} --set-env-vars=^##^ALLOWED_ORIGINS=${{ secrets.ALLOWED_ORIGINS }}
+          flags: ${{ steps.backend-flags.outputs.flags }}
 
       - name: Build and push frontend image
         # VITE_ALLOW_EMAIL_AUTH is always true here: email/password is a
