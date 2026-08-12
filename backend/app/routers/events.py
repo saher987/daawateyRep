@@ -7,6 +7,7 @@ createInvitationRecipient/getInvitationByToken/submitRsvp functions this
 was ported from.
 """
 
+import os
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -16,6 +17,8 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.auth import get_app_user, require_role
 from app.db import get_db
+from app.integrations.pulseem import send_sms
+from app.integrations.resend_email import send_email
 
 router = APIRouter(prefix="/api", tags=["events"])
 
@@ -276,9 +279,50 @@ def add_recipient(
     db.add(recipient)
     db.commit()
     db.refresh(recipient)
-    # TODO(Phase 6): send the invitation SMS (Pulseem) / email (Resend) here,
-    # same as the original — not wired up yet.
+    _send_invitation(event, recipient, invited_by=user)
     return recipient
+
+
+def _send_invitation(
+    event: models.Event, recipient: models.InvitationRecipient, invited_by: models.User
+) -> None:
+    """sendInvitationSms + the email half of createInvitationRecipient:
+    SMS via Pulseem if a phone was given, email via Resend if an email was
+    given — same templates as the original, both degrading to a logged
+    warning (not an error) if their API key isn't configured, since a
+    recipient should still get created either way."""
+    app_url = os.environ.get("APP_URL", "https://daawatey-frontend-t3tobt7bfq-uc.a.run.app")
+    invitation_link = f"{app_url}/i/{recipient.personal_token}"
+
+    invitee_name = _resolve_display_name(
+        recipient.external_full_name, recipient.nickname, recipient.first_name, recipient.last_name
+    ) or (recipient.phone or recipient.email or "")
+    invitor_name = (
+        " ".join(p for p in (invited_by.nickname, invited_by.first_name, invited_by.last_name) if p)
+        or invited_by.email
+        or "المنظم"
+    )
+
+    if recipient.phone:
+        text = (
+            f"لحظرة {invitee_name}، {event.invitation_greeting} {invitation_link}"
+            if event.invitation_greeting
+            else f"لحظرة {invitee_name}، تمت دعوتكم من {invitor_name} لحضور {event.title}. {invitation_link}"
+        )
+        send_sms(recipient.phone, text, reference=recipient.id)
+
+    if recipient.email:
+        body_text = event.invitation_greeting or f"تمت دعوتكم من {invitor_name} لحضور {event.title}."
+        html = (
+            f'<div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; '
+            f'margin: 0 auto; padding: 20px;">'
+            f"<p>لحظرة {invitee_name}، {body_text}</p>"
+            f'<p><a href="{invitation_link}" style="display: inline-block; background: '
+            f'{event.theme_color}; color: white; padding: 12px 24px; text-decoration: none; '
+            f'border-radius: 8px; margin: 16px 0;">عرض الدعوة</a></p>'
+            f'<p style="color: #888; font-size: 12px;">{invitation_link}</p></div>'
+        )
+        send_email(recipient.email, f"دعوة لحضور {event.title}", html)
 
 
 @router.get("/events/{event_id}/recipients", response_model=list[schemas.RecipientOut])
