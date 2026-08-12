@@ -26,9 +26,8 @@ export const app: FirebaseApp = initializeApp(firebaseConfig)
 // getAuth() throws an opaque "Script error." with no stack — Firebase's
 // persistence feature-detection doesn't handle that scheme. Initializing
 // auth explicitly with indexedDBLocalPersistence avoids that path entirely.
-// There's no Capacitor shell yet, but Capacitor.isNativePlatform() is a safe
-// no-op (always false) until one exists, so this branch is dead code on web
-// today and just works once a native shell is added — no rewrite needed.
+// Capacitor.isNativePlatform() is false on web (this branch is dead code
+// there) and true inside the Android shell (frontend/android).
 export const auth: Auth = Capacitor.isNativePlatform()
   ? initializeAuth(app, { persistence: indexedDBLocalPersistence })
   : getAuth(app)
