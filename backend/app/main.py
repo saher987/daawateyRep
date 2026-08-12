@@ -47,9 +47,20 @@ def _me_response(user: models.User) -> schemas.MeResponse:
     )
 
 
-@app.get("/healthz")
+@app.get("/api/healthz")
 def healthz() -> dict[str, str]:
-    """Liveness check used by Cloud Run and local dev."""
+    """Liveness check used by Cloud Run and local dev.
+
+    Deliberately NOT at bare /healthz: that path is silently intercepted
+    before it reaches the container on Cloud Run (confirmed empirically —
+    every other route works fine, /healthz alone 404s with zero corresponding
+    log entry, on a freshly deployed, otherwise-healthy revision). Cloud
+    Run's own startup/liveness probe here uses a plain TCP check on $PORT,
+    not this endpoint, so nothing on the platform side depends on this
+    exact path — it only matters for humans/uptime-checks hitting it
+    directly, so /api/healthz (proven to route correctly, same prefix as
+    everything else) is the safe choice.
+    """
     return {"status": "ok"}
 
 

@@ -22,7 +22,7 @@ from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
 # Deferred, not eager: importing app.db must not fail just because
-# DATABASE_URL isn't set yet (e.g. /healthz doesn't need a database, and
+# DATABASE_URL isn't set yet (e.g. /api/healthz doesn't need a database, and
 # Alembic sets this env var itself before importing).
 engine = create_engine(DATABASE_URL, pool_pre_ping=True) if DATABASE_URL else None
 SessionLocal = (

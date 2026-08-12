@@ -11,7 +11,7 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-Then `curl localhost:8000/healthz` → `{"status": "ok"}`.
+Then `curl localhost:8000/api/healthz` → `{"status": "ok"}`.
 
 ## Docker
 
