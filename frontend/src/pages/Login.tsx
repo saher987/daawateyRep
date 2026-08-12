@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   GoogleAuthProvider,
   signInWithCredential,
@@ -9,6 +10,7 @@ import {
 import { Capacitor } from '@capacitor/core'
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication'
 import { auth } from '../lib/firebase'
+import { useAuth } from '../lib/AuthContext'
 import { BUILD_LABEL, formatDiagnostics } from '../lib/diagnostics'
 
 // Computed once at module load — these facts don't change at runtime.
@@ -43,11 +45,28 @@ function describeError(err: unknown): string {
 }
 
 export function Login() {
+  const navigate = useNavigate()
+  const { isAuthenticated, isLoadingAuth } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+
+  // The Google/email flows below only ever *complete Firebase's* sign-in —
+  // AuthContext's onAuthStateChanged listener picks that up asynchronously,
+  // resolves /api/me, and flips isAuthenticated. Nothing else here ever
+  // navigates anywhere, so without this effect a successful sign-in just
+  // leaves the user looking at this same form forever (the original app's
+  // email-login path did a hard `window.location.href` redirect; that
+  // doesn't exist in this port at all). Matches the original's actual
+  // behavior of always landing on "/" — including for admins, who reach
+  // /dashboard by clicking the nav item, not via a special login redirect.
+  useEffect(() => {
+    if (!isLoadingAuth && isAuthenticated) {
+      navigate('/', { replace: true })
+    }
+  }, [isAuthenticated, isLoadingAuth, navigate])
 
   async function handleGoogleSignIn() {
     setError(null)
