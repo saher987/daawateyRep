@@ -117,6 +117,19 @@ const eventsApi = {
       // /api/my-events already covers all of them server-side in one call.
       return request('/api/my-events')
     }
+    if (
+      'status' in query &&
+      query.status &&
+      typeof query.status === 'object' &&
+      '$in' in query.status
+    ) {
+      // VenueSchedule.jsx / MyVenueDetail.jsx's "every active/draft event"
+      // query, always followed by the caller's own venue-ownership filter —
+      // /api/venue-events already applies that scoping server-side (see
+      // its docstring), so it covers this shape regardless of exactly which
+      // statuses were asked for.
+      return request('/api/venue-events')
+    }
     console.warn('base44Client shim: unhandled Event.filter() query', query)
     return []
   },

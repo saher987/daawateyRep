@@ -24,6 +24,9 @@ const EventRequests = lazy(() => import('./pages/EventRequests'))
 const PlannedWeddings = lazy(() => import('./pages/PlannedWeddings'))
 const Invitees = lazy(() => import('./pages/Invitees'))
 const Venues = lazy(() => import('./pages/Venues'))
+const VenueSchedule = lazy(() => import('./pages/VenueSchedule'))
+const MyVenues = lazy(() => import('./pages/MyVenues'))
+const MyVenueDetail = lazy(() => import('./pages/MyVenueDetail'))
 
 const PageSpinner = () => (
   <div className="fixed inset-0 flex items-center justify-center bg-background">
@@ -31,13 +34,6 @@ const PageSpinner = () => (
   </div>
 )
 
-// Routes still NOT wired up here — their backend doesn't exist yet:
-// /venue-schedule, /my-venues(/:id) (Flow E's venue-*owner*-side calendar
-// views — need a venue-scoped events endpoint plus a calendar component,
-// neither built yet). /venues (admin/manager venue management) IS wired
-// below. AppLayout's nav still links to the schedule/my-venues routes for
-// venue_owner accounts; following one lands on PageNotFound until it's
-// built, which is honest rather than hiding a real gap.
 function App() {
   return (
     <AuthProvider>
@@ -150,6 +146,30 @@ function App() {
                     element={
                       <Suspense fallback={<PageSpinner />}>
                         <EventDetails />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="/venue-schedule"
+                    element={
+                      <Suspense fallback={<PageSpinner />}>
+                        <VenueSchedule />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="/my-venues"
+                    element={
+                      <Suspense fallback={<PageSpinner />}>
+                        <MyVenues />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="/my-venues/:id"
+                    element={
+                      <Suspense fallback={<PageSpinner />}>
+                        <MyVenueDetail />
                       </Suspense>
                     }
                   />

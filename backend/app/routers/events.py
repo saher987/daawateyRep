@@ -79,6 +79,43 @@ def list_my_events(
     return [e for e in events if _is_owner_or_manager(e, user)]
 
 
+@router.get("/venue-events", response_model=list[schemas.EventOut])
+def list_venue_events(
+    user: models.User = Depends(get_app_user),
+    db: Session = Depends(get_db),
+) -> list[models.Event]:
+    """Flow E: powers the venue calendar (VenueSchedule.jsx for admin/
+    venue_owner, VenueMonthCalendar on MyVenueDetail.jsx) — every active/
+    draft event, scoped to the venues the caller can see. admin/manager get
+    everything, same as the original's unrestricted query; venue_owner gets
+    only events at venues where they're listed in owner_emails, enforced
+    here server-side (the original relied on Base44's per-row RLS for this
+    — VenueSchedule.jsx's client-side `.filter(...)` by owner_emails was
+    always a redundant belt-and-suspenders check against data Base44 had
+    already scoped, not the actual enforcement).
+
+    Matches events to a venue_owner's venues by *either* venue_id or the
+    denormalized venue_name text, exactly like the ported pages do — an
+    event doesn't have to reference a real Venue row (inline venue text is
+    still valid), so venue_name is the only link for those."""
+    if user.role not in (models.Role.admin, models.Role.manager, models.Role.venue_owner):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Not authorized")
+
+    query = db.query(models.Event).filter(
+        models.Event.status.in_([models.EventStatus.active, models.EventStatus.draft])
+    )
+    if user.role == models.Role.venue_owner:
+        my_venues = db.query(models.Venue).filter(models.Venue.owner_emails.any(user.email)).all()
+        if not my_venues:
+            return []
+        venue_ids = [v.id for v in my_venues]
+        venue_names = [v.name for v in my_venues]
+        query = query.filter(
+            or_(models.Event.venue_id.in_(venue_ids), models.Event.venue_name.in_(venue_names))
+        )
+    return list(query.order_by(models.Event.date).all())
+
+
 @router.get("/recipients", response_model=list[schemas.RecipientOut])
 def list_all_recipients(
     limit: int = 500,

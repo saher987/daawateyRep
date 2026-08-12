@@ -15,10 +15,25 @@ router = APIRouter(prefix="/api", tags=["venues"])
 
 @router.get("/venues", response_model=list[schemas.VenueOut])
 def list_venues(
-    _: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
+    user: models.User = Depends(get_app_user),
     db: Session = Depends(get_db),
 ) -> list[models.Venue]:
-    return list(db.query(models.Venue).order_by(models.Venue.name).all())
+    """admin/manager see every venue (CreateEvent's picker needs the full
+    list). venue_owner sees only venues they're listed on — needed for
+    MyVenues.jsx/VenueSchedule.jsx's venue selector — enforced here
+    server-side rather than trusting those pages' own client-side
+    `.filter(...) by owner_emails` (kept in the ported pages too, but only
+    as a redundant check, not the real boundary). Anyone else: 403."""
+    if user.role in (models.Role.admin, models.Role.manager):
+        return list(db.query(models.Venue).order_by(models.Venue.name).all())
+    if user.role == models.Role.venue_owner:
+        return list(
+            db.query(models.Venue)
+            .filter(models.Venue.owner_emails.any(user.email))
+            .order_by(models.Venue.name)
+            .all()
+        )
+    raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Not authorized")
 
 
 @router.post("/venues", response_model=schemas.VenueOut, status_code=status.HTTP_201_CREATED)
