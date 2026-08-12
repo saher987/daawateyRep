@@ -38,6 +38,25 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true)
   const hasRecordedLogin = useRef(false)
 
+  // Shared by the initial auth-state listener below and checkAppState (the
+  // original's name for "go re-fetch who I am" — kept as-is because
+  // Profile.jsx calls it by that name after saving, expecting exactly this:
+  // without it, a profile save updates the backend but this component's
+  // `user` stays stale until the next full sign-in, which is what caused
+  // AppLayout's profile-completeness redirect to loop forever even after
+  // the required fields were actually saved.
+  const refreshUser = async () => {
+    try {
+      const me = await base44.auth.me()
+      setUser(me)
+      setIsAuthenticated(true)
+    } catch (error) {
+      console.error('Fetching /api/me failed:', error)
+      setUser(null)
+      setIsAuthenticated(false)
+    }
+  }
+
   useEffect(() => {
     return onAuthStateChanged(auth, async (nextFirebaseUser) => {
       setFirebaseUser(nextFirebaseUser)
@@ -50,17 +69,8 @@ export const AuthProvider = ({ children }) => {
         return
       }
 
-      try {
-        const me = await base44.auth.me()
-        setUser(me)
-        setIsAuthenticated(true)
-      } catch (error) {
-        console.error('Fetching /api/me failed:', error)
-        setUser(null)
-        setIsAuthenticated(false)
-      } finally {
-        setIsLoadingAuth(false)
-      }
+      await refreshUser()
+      setIsLoadingAuth(false)
     })
   }, [])
 
@@ -84,6 +94,7 @@ export const AuthProvider = ({ children }) => {
         appPublicSettings: null,
         logout,
         navigateToLogin,
+        checkAppState: refreshUser,
       }}
     >
       {children}
