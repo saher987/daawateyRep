@@ -418,3 +418,10 @@ class PlannedWeddingOut(BaseModel):
     phone: str | None
     date: date_type
     city: str | None
+
+
+class SupportMessageCreate(BaseModel):
+    name: str
+    email: str
+    subject: str
+    message: str

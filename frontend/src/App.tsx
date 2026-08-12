@@ -8,6 +8,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import AppLayout from './components/layout/AppLayout'
 import PageNotFound from './lib/PageNotFound'
 import { Login } from './pages/Login'
+import { Toaster } from './components/ui/toaster'
 
 // Route-level code splitting, same pattern as the original app.
 const MyInvitations = lazy(() => import('./pages/MyInvitations'))
@@ -27,6 +28,9 @@ const Venues = lazy(() => import('./pages/Venues'))
 const VenueSchedule = lazy(() => import('./pages/VenueSchedule'))
 const MyVenues = lazy(() => import('./pages/MyVenues'))
 const MyVenueDetail = lazy(() => import('./pages/MyVenueDetail'))
+const TermsAndConditions = lazy(() => import('./pages/TermsAndConditions'))
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
+const Support = lazy(() => import('./pages/Support'))
 
 const PageSpinner = () => (
   <div className="fixed inset-0 flex items-center justify-center bg-background">
@@ -47,6 +51,30 @@ function App() {
                 element={
                   <Suspense fallback={<PageSpinner />}>
                     <InvitationPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/terms"
+                element={
+                  <Suspense fallback={<PageSpinner />}>
+                    <TermsAndConditions />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/privacy"
+                element={
+                  <Suspense fallback={<PageSpinner />}>
+                    <PrivacyPolicy />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/support"
+                element={
+                  <Suspense fallback={<PageSpinner />}>
+                    <Support />
                   </Suspense>
                 }
               />
@@ -195,6 +223,7 @@ function App() {
               <Route path="*" element={<PageNotFound />} />
             </Routes>
           </Router>
+          <Toaster />
         </QueryClientProvider>
       </I18nProvider>
     </AuthProvider>

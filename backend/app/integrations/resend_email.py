@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 _SEND_URL = "https://api.resend.com/emails"
 
 
-def send_email(to: str, subject: str, html: str) -> bool:
+def send_email(to: str, subject: str, html: str, reply_to: str | None = None) -> bool:
     api_key = os.environ.get("RESEND_API_KEY")
     if not api_key:
         logger.warning("RESEND_API_KEY not set — email to %s not sent: %s", to, subject)
@@ -31,11 +31,16 @@ def send_email(to: str, subject: str, html: str) -> bool:
     # The display name is fixed here instead, in code, where a space is safe.
     from_email = os.environ.get("RESEND_FROM_EMAIL", "noreply@daawatey.com")
     from_address = f"Daawatey <{from_email}>"
+    payload = {"from": from_address, "to": to, "subject": subject, "html": html}
+    if reply_to:
+        # Support.jsx: replying to the notification email should go straight
+        # to the visitor who submitted the form, not to our own From address.
+        payload["reply_to"] = reply_to
     try:
         response = httpx.post(
             _SEND_URL,
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-            json={"from": from_address, "to": to, "subject": subject, "html": html},
+            json=payload,
             timeout=10,
         )
         logger.info("Resend response for %s: %s %s", to, response.status_code, response.text)

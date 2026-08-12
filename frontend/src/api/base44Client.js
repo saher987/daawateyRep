@@ -343,10 +343,12 @@ const functionHandlers = {
     await request('/api/account', { method: 'DELETE' })
     return { success: true }
   },
-  // Not wired up yet (Phase 6 — needs RESEND_API_KEY provisioned):
-  async sendSupportEmail() {
-    console.warn('base44Client shim: sendSupportEmail is not implemented yet (Phase 6)')
-    return { success: false }
+  async sendSupportEmail({ name, email, subject, message }) {
+    return request('/api/support-messages', {
+      method: 'POST',
+      auth: false,
+      body: { name, email, subject, message },
+    })
   },
   async notifyEventUpdate() {
     console.warn('base44Client shim: notifyEventUpdate is not implemented yet (Phase 6)')
