@@ -58,8 +58,16 @@ jobs:
       # an audit log while debugging this, before this change).
       - name: Compute backend deploy flags
         id: backend-flags
+        # GOOGLE_CLOUD_PROJECT is NOT automatically present on Cloud Run the
+        # way it might be on other GCP compute products — confirmed the hard
+        # way: app/auth.py's firebase_admin.initialize_app() reads it to set
+        # both the Admin SDK's projectId and storageBucket options, silently
+        # fell back to neither being set (verify_id_token() didn't care —
+        # its ADC has project context from the attached service account
+        # regardless — but firebase_admin.storage.bucket() does, and raised
+        # "Storage bucket name not specified" on every real upload attempt).
         run: |
-          FLAGS="--allow-unauthenticated --service-account=${{ secrets.RUNTIME_SA_EMAIL }} --set-env-vars=^##^ALLOWED_ORIGINS=${{ secrets.ALLOWED_ORIGINS }}"
+          FLAGS="--allow-unauthenticated --service-account=${{ secrets.RUNTIME_SA_EMAIL }} --set-env-vars=^##^GOOGLE_CLOUD_PROJECT=${{ secrets.GCP_PROJECT_ID }}##ALLOWED_ORIGINS=${{ secrets.ALLOWED_ORIGINS }}"
           if [ -n "${{ secrets.APP_URL }}" ]; then
             FLAGS="$FLAGS##APP_URL=${{ secrets.APP_URL }}"
           fi
