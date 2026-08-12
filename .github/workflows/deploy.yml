@@ -43,31 +43,31 @@ jobs:
           docker build -t "$IMAGE" backend
           docker push "$IMAGE"
 
-      # DATABASE_URL/CLOUDSQL_CONNECTION_NAME only exist once an environment
-      # actually has a Cloud SQL instance provisioned (see BUSINESS_LOGIC.md)
-      # — staging doesn't yet, so this is a deliberate no-op there: an empty
-      # secret means the `if` below adds nothing and the backend runs
-      # exactly as it did before this branch.
+      # CLOUDSQL_CONNECTION_NAME only exists once an environment actually has
+      # a Cloud SQL instance provisioned (see BUSINESS_LOGIC.md) — staging
+      # doesn't yet, so this whole block is a deliberate no-op there.
+      #
+      # DATABASE_URL/PULSEEM_API_KEY/RESEND_API_KEY are deliberately NOT
+      # GitHub secrets: they live in Google Secret Manager instead, and
+      # --set-secrets passes only the *secret name* (not sensitive) through
+      # this workflow and into the deploy command. The value itself is
+      # injected straight into the container by Cloud Run at startup — it
+      # never appears in the service config, `gcloud run services
+      # describe`, or a deploy's audit log, unlike --set-env-vars (which is
+      # exactly how a database password briefly showed up in plaintext in
+      # an audit log while debugging this, before this change).
       - name: Compute backend deploy flags
         id: backend-flags
         run: |
           FLAGS="--allow-unauthenticated --service-account=${{ secrets.RUNTIME_SA_EMAIL }} --set-env-vars=^##^ALLOWED_ORIGINS=${{ secrets.ALLOWED_ORIGINS }}"
-          if [ -n "${{ secrets.DATABASE_URL }}" ]; then
-            FLAGS="$FLAGS##DATABASE_URL=${{ secrets.DATABASE_URL }} --add-cloudsql-instances=${{ secrets.CLOUDSQL_CONNECTION_NAME }}"
-          fi
-          # Pulseem SMS / Resend email (spec §6) — both integrations degrade
-          # to a logged warning rather than a failed request when their key
-          # is unset, so leaving these blank on an environment that doesn't
-          # need real delivery (e.g. staging) is a safe no-op, same as
-          # DATABASE_URL above.
-          if [ -n "${{ secrets.PULSEEM_API_KEY }}" ]; then
-            FLAGS="$FLAGS##PULSEEM_API_KEY=${{ secrets.PULSEEM_API_KEY }}"
-          fi
-          if [ -n "${{ secrets.RESEND_API_KEY }}" ]; then
-            FLAGS="$FLAGS##RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}##RESEND_FROM_EMAIL=${{ secrets.RESEND_FROM_EMAIL }}"
-          fi
           if [ -n "${{ secrets.APP_URL }}" ]; then
             FLAGS="$FLAGS##APP_URL=${{ secrets.APP_URL }}"
+          fi
+          if [ -n "${{ secrets.RESEND_FROM_EMAIL }}" ]; then
+            FLAGS="$FLAGS##RESEND_FROM_EMAIL=${{ secrets.RESEND_FROM_EMAIL }}"
+          fi
+          if [ -n "${{ secrets.CLOUDSQL_CONNECTION_NAME }}" ]; then
+            FLAGS="$FLAGS --add-cloudsql-instances=${{ secrets.CLOUDSQL_CONNECTION_NAME }} --set-secrets=DATABASE_URL=database-url:latest,PULSEEM_API_KEY=pulseem-api-key:latest,RESEND_API_KEY=resend-api-key:latest"
           fi
           echo "flags=$FLAGS" >> "$GITHUB_OUTPUT"
 

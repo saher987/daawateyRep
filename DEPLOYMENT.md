@@ -39,36 +39,39 @@ path uses that project number, service account emails use
 `@daawatey-prod.iam.gserviceaccount.com`, Firebase values from the prod web
 app config).
 
-### 4. Database secrets (`prod` only, once Cloud SQL is provisioned)
+### 4. Database + invitation-delivery secrets (`prod` only)
 
 Not needed until you've run the Cloud SQL setup in `BUSINESS_LOGIC.md`'s
-"Infra you need to provision" section. Once that's done, add to `prod`:
+"Infra you need to provision" section. **The actual sensitive values —
+the DB password, Pulseem API key, Resend API key — live in Google Secret
+Manager, not as GitHub secrets.** `--set-secrets` passes Cloud Run only
+the *secret name* (not sensitive); the value itself is injected into the
+container by Cloud Run at startup and never appears in the service
+config, `gcloud run services describe`, or a deploy's audit log — unlike
+`--set-env-vars`, which is exactly how the DB password briefly showed up
+in plaintext in an audit log while debugging this before the switch. See
+BUSINESS_LOGIC.md for the `gcloud secrets create` / IAM-grant commands.
+
+Only these go in GitHub, `prod` environment — genuinely just identifiers,
+safe as plain secrets (or even hardcoded, kept as secrets here mainly for
+symmetry with everything else in this table):
 
 | Secret | Value |
 |---|---|
-| `DATABASE_URL` | `postgresql+psycopg://daawatey_app:<PASSWORD>@/daawatey?host=/cloudsql/<CONNECTION_NAME>` |
 | `CLOUDSQL_CONNECTION_NAME` | the instance connection name, `PROJECT:REGION:INSTANCE` |
+| `APP_URL` | the frontend's public URL, e.g. `https://daawatey-frontend-t3tobt7bfq-uc.a.run.app` — used to build the `/i/<token>` invitation link sent in the SMS/email |
+| `RESEND_FROM_EMAIL` | `Daawatey <noreply@daawatey.com>` (or your verified sending address) |
 
-Leaving both unset (e.g. on `staging`, which has no database yet) is a
-deliberate no-op — `deploy.yml` only adds the Cloud SQL connection and
-`DATABASE_URL` env var when `DATABASE_URL` is actually set.
-
-### 5. Invitation delivery secrets (`prod` only — spec §6)
+Leaving these unset (e.g. on `staging`, which has none of this
+provisioned) is a deliberate no-op — `deploy.yml` only adds
+`--add-cloudsql-instances`/`--set-secrets` when `CLOUDSQL_CONNECTION_NAME`
+is actually set. `app/integrations/pulseem.py` and `resend_email.py` also
+independently log a warning and skip sending rather than failing the
+request if their key isn't reachable for any reason.
 
 Reuses the same Pulseem/Resend accounts the Base44 app already had (same
 sender number `0508085672`, same `noreply@daawatey.com` domain) — no new
 third-party accounts needed, just the existing API keys.
-
-| Secret | Value |
-|---|---|
-| `PULSEEM_API_KEY` | Pulseem SMS gateway API key |
-| `RESEND_API_KEY` | Resend email API key |
-| `RESEND_FROM_EMAIL` | `Daawatey <noreply@daawatey.com>` (or your verified sending address) |
-| `APP_URL` | the frontend's public URL, e.g. `https://daawatey-frontend-t3tobt7bfq-uc.a.run.app` — used to build the `/i/<token>` invitation link sent in the SMS/email |
-
-Same no-op-if-unset behavior as the database secrets: `app/integrations/
-pulseem.py` and `resend_email.py` log a warning and skip sending rather
-than failing the request if their key isn't configured.
 
 ## Bootstrapping `ALLOWED_ORIGINS` (first deploy only)
 

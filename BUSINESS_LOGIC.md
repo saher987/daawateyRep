@@ -148,64 +148,130 @@ requests/notifications/OTP once their backend lands too). Every
 `base44.entities.X.create/filter/update` and `base44.functions.Y()` call in
 a ported page becomes a `fetch` against this backend's REST API.
 
-## Infra you need to provision (prod only)
+## Infra provisioned in `daawatey-prod` (done — this is what actually happened)
 
-Not run yet by me — these are for you to run when you're ready to actually
-point `daawatey-prod` at a real database. All commands target
-`daawatey-prod` only, per "let's focus only in the prod project from now."
+All commands below were actually run against `daawatey-prod`, in this
+order, including the real problems hit along the way — kept here so the
+next environment (or a rebuild) doesn't repeat the same debugging.
 
-### 1. Create the Cloud SQL instance + database + user
-
-The smallest/cheapest tier that still works for a real (if early-stage) app.
-Pick a strong password yourself for `DB_PASSWORD` — don't reuse anything.
+### 1. Cloud SQL instance + database + user
 
 ```bash
+export DB_PASSWORD='...'   # pick a strong one, keep it somewhere safe
+
 gcloud sql instances create daawatey-db \
   --project=daawatey-prod \
   --database-version=POSTGRES_16 \
+  --edition=ENTERPRISE \
   --tier=db-f1-micro \
   --region=us-central1 \
   --no-assign-ip \
   --network=default
+```
 
+Two gotchas hit creating this, both one-time project-level setup:
+
+- `--edition=ENTERPRISE` is required — Cloud SQL now defaults new instances
+  to "Enterprise Plus," which doesn't support shared-core tiers like
+  `db-f1-micro` at all.
+- `--no-assign-ip` needs **Private Services Access** configured on the
+  project's VPC first, or instance creation fails with
+  `SERVICE_NETWORKING_NOT_ENABLED`:
+  ```bash
+  gcloud services enable servicenetworking.googleapis.com --project=daawatey-prod
+  gcloud compute addresses create google-managed-services-default \
+    --global --purpose=VPC_PEERING --prefix-length=16 \
+    --network=default --project=daawatey-prod
+  gcloud services vpc-peerings connect \
+    --service=servicenetworking.googleapis.com \
+    --ranges=google-managed-services-default \
+    --network=default --project=daawatey-prod
+  ```
+
+Then the database and app user:
+
+```bash
 gcloud sql databases create daawatey --instance=daawatey-db --project=daawatey-prod
 
 gcloud sql users create daawatey_app \
-  --instance=daawatey-db \
-  --project=daawatey-prod \
-  --password="$DB_PASSWORD"
+  --instance=daawatey-db --project=daawatey-prod --password="$DB_PASSWORD"
 ```
 
-`--no-assign-ip` skips a public IP entirely — only reachable via the Cloud
-SQL Auth Proxy / Cloud Run's built-in connector, which is what step 2 uses.
+**Private IP turned out not to work for this setup** — a private IP is
+only reachable from *inside* the GCP VPC, and neither a developer's laptop
+nor (without a Serverless VPC Access connector, not set up here) Cloud Run
+itself are inside it by default. Rather than add that extra piece of
+networking infra, we added a public IP to the same instance — the Cloud
+SQL Auth Proxy (used by both Cloud Run and local migration access) still
+requires an authenticated GCP identity to connect through it regardless,
+so this isn't the security regression it sounds like:
 
-### 2. Let Cloud Run connect to it
+```bash
+gcloud sql instances patch daawatey-db --project=daawatey-prod --assign-ip
+```
 
-Get the instance connection name (format `PROJECT:REGION:INSTANCE`):
+### 2. Cloud Run → Cloud SQL: the IAM permission that's easy to miss
+
+Get the connection name once assign-ip has finished:
 
 ```bash
 gcloud sql instances describe daawatey-db --project=daawatey-prod \
   --format="value(connectionName)"
+# daawatey-prod:us-central1:daawatey-db
 ```
 
-Then redeploy the backend with `--add-cloudsql-instances` and a
-`DATABASE_URL` pointed at the Unix socket that flag makes available (this
-becomes a new line in `deploy.yml`'s backend deploy step, added once this
-phase's code is ready to actually run against it — not done yet):
+`--add-cloudsql-instances` in `deploy.yml` (see below) lets Cloud Run *ask*
+to connect, but the backend's runtime service account also needs the IAM
+role to actually be allowed to — without this, every DB-touching request
+fails at runtime with `403 NOT_AUTHORIZED ... missing permission
+cloudsql.instances.get`, which surfaces to the browser as a misleading CORS
+error (a 500 with no CORS headers reads as "CORS blocked", not "the server
+crashed"):
 
 ```bash
-gcloud run services update daawatey-backend \
-  --project=daawatey-prod \
-  --region=us-central1 \
-  --add-cloudsql-instances=<CONNECTION_NAME> \
-  --set-env-vars="DATABASE_URL=postgresql+psycopg://daawatey_app:${DB_PASSWORD}@/daawatey?host=/cloudsql/<CONNECTION_NAME>"
+gcloud projects add-iam-policy-binding daawatey-prod \
+  --member="serviceAccount:backend-runtime@daawatey-prod.iam.gserviceaccount.com" \
+  --role="roles/cloudsql.client"
 ```
 
-### 3. Run the migration once, from your machine, via the proxy
+### 3. Secrets: Google Secret Manager, not GitHub
+
+`DATABASE_URL`, `PULSEEM_API_KEY`, and `RESEND_API_KEY` live in Secret
+Manager — `--set-secrets` passes Cloud Run only the *secret name*, and the
+value is injected into the container at startup, never appearing in the
+service config or a deploy's audit log (unlike `--set-env-vars`, which is
+exactly how the DB password once showed up in plaintext in an audit log
+while debugging the IAM issue above).
 
 ```bash
-# Auth Proxy — download once: https://cloud.google.com/sql/docs/postgres/sql-proxy
-./cloud-sql-proxy <CONNECTION_NAME> --port 5432 &
+gcloud services enable secretmanager.googleapis.com --project=daawatey-prod
+
+printf '%s' "postgresql+psycopg://daawatey_app:${DB_PASSWORD}@/daawatey?host=/cloudsql/daawatey-prod:us-central1:daawatey-db" | \
+  gcloud secrets create database-url --project=daawatey-prod --data-file=- --replication-policy=automatic
+
+printf '%s' "$PULSEEM_API_KEY" | \
+  gcloud secrets create pulseem-api-key --project=daawatey-prod --data-file=- --replication-policy=automatic
+
+printf '%s' "$RESEND_API_KEY" | \
+  gcloud secrets create resend-api-key --project=daawatey-prod --data-file=- --replication-policy=automatic
+
+for SECRET in database-url pulseem-api-key resend-api-key; do
+  gcloud secrets add-iam-policy-binding $SECRET \
+    --project=daawatey-prod \
+    --member="serviceAccount:backend-runtime@daawatey-prod.iam.gserviceaccount.com" \
+    --role="roles/secretmanager.secretAccessor"
+done
+```
+
+`deploy.yml`'s backend deploy step references these by name via
+`--set-secrets=DATABASE_URL=database-url:latest,...` — see DEPLOYMENT.md
+for the (non-sensitive) GitHub secrets that gate this.
+
+### 4. Run the migration once, from your machine, via the Auth Proxy
+
+```bash
+# download once: https://cloud.google.com/sql/docs/postgres/sql-proxy
+./cloud-sql-proxy daawatey-prod:us-central1:daawatey-db --port 5432 &
 
 cd migrations
 python3 -m venv .venv && source .venv/bin/activate
@@ -214,10 +280,25 @@ export DATABASE_URL="postgresql+psycopg://daawatey_app:${DB_PASSWORD}@127.0.0.1:
 alembic upgrade head
 ```
 
-### 4. GitHub secret
+If the Auth Proxy itself fails with a credentials error, it needs its own
+one-time login, separate from `gcloud auth login`:
+`gcloud auth application-default login`.
 
-Add `DATABASE_URL` (the Unix-socket form from step 2, not the proxy form
-from step 3) to the `prod` GitHub Environment, then wire it into
-`deploy.yml`'s backend deploy step alongside `--add-cloudsql-instances` —
-this is a follow-up commit once the app is actually ready to be pointed at
-the real instance instead of local dev.
+### 5. To rotate the DB password later
+
+```bash
+gcloud sql users set-password daawatey_app --instance=daawatey-db \
+  --project=daawatey-prod --password="$NEW_PASSWORD"
+printf '%s' "postgresql+psycopg://daawatey_app:${NEW_PASSWORD}@/daawatey?host=/cloudsql/daawatey-prod:us-central1:daawatey-db" | \
+  gcloud secrets versions add database-url --project=daawatey-prod --data-file=-
+```
+
+The IAM permission grant in step 2 took effect immediately with no
+redeploy (confirmed — that's an access check made at connection time, not
+something baked into the container). A **rotated secret value is
+different**: Cloud Run resolves `:latest` once, at each container
+instance's startup, and keeps that value for the instance's life — so
+after `gcloud secrets versions add`, re-run the Deploy workflow (every run
+creates a fresh revision even against an unchanged image) if you need the
+new value live immediately, rather than waiting for natural autoscaling
+churn to eventually replace existing instances.
