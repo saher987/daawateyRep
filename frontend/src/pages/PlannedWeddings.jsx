@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import MobileSelect from "@/components/shared/MobileSelect";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -27,7 +27,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { CITY_KEYS } from "@/lib/cities";
+import { CITY_KEYS, sortCityKeysForDisplay } from "@/lib/cities";
 import moment from "moment";
 
 export default function PlannedWeddings() {
@@ -40,6 +40,7 @@ export default function PlannedWeddings() {
   const [deleteId, setDeleteId] = useState(null);
   const [form, setForm] = useState({ owner_name: "", phone: "", date: "", city: "" });
   const [cityFilter, setCityFilter] = useState("__all__");
+  const sortedCityKeys = sortCityKeysForDisplay(CITY_KEYS, t, user?.preferred_language || "ar");
 
   const isAdmin = user?.role === "admin" || user?.role === "manager";
   const isVenueOwner = user?.role === "venue_owner";
@@ -149,15 +150,19 @@ export default function PlannedWeddings() {
           <MapPin className="w-4 h-4 text-muted-foreground" />
           <span className="text-sm text-muted-foreground">{t.filterByCity}:</span>
         </div>
-        <MobileSelect
-          value={cityFilter}
-          onValueChange={setCityFilter}
-          options={[
-            { value: "__all__", label: t.allCities },
-            ...CITY_KEYS.map((key) => ({ value: key, label: t[key] || key })),
-          ]}
-          placeholder={t.allCities}
-        />
+        <Select value={cityFilter} onValueChange={setCityFilter}>
+          <SelectTrigger className="h-10 rounded-xl w-auto min-w-[10rem]">
+            <SelectValue placeholder={t.allCities}>
+              {cityFilter === "__all__" ? t.allCities : (t[cityFilter] || cityFilter)}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">{t.allCities}</SelectItem>
+            {sortedCityKeys.map((key) => (
+              <SelectItem key={key} value={key}>{t[key] || key}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {isLoading ? (
@@ -251,15 +256,22 @@ export default function PlannedWeddings() {
             </div>
             <div className="space-y-2">
               <Label>{t.weddingCity}</Label>
-              <MobileSelect
+              <Select
                 value={form.city || "__none__"}
                 onValueChange={(v) => setForm({ ...form, city: v === "__none__" ? "" : v })}
-                options={[
-                  { value: "__none__", label: "—" },
-                  ...CITY_KEYS.map((key) => ({ value: key, label: t[key] || key })),
-                ]}
-                placeholder={t.allCities}
-              />
+              >
+                <SelectTrigger className="h-11 rounded-xl">
+                  <SelectValue placeholder={t.allCities}>
+                    {form.city ? (t[form.city] || form.city) : "—"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">—</SelectItem>
+                  {sortedCityKeys.map((key) => (
+                    <SelectItem key={key} value={key}>{t[key] || key}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>

@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Pencil, Trash2, MapPin, Users, Phone, Loader2, ImagePlus, X, UserPlus, UserMinus } from "lucide-react";
 import PageHeader from "@/components/shared/PageHeader";
 import { useToast } from "@/components/ui/use-toast";
-import { CITY_KEYS } from "@/lib/cities";
+import { CITY_KEYS, sortCityKeysForDisplay } from "@/lib/cities";
 import { useT } from "@/lib/i18n";
 
 const emptyForm = { name: "", city: "", address: "", max_guests: "", map_url: "", phone: "", notes: "", image_url: "", owner_emails: [] };
@@ -121,6 +121,7 @@ export default function Venues() {
   const queryClient = useQueryClient();
   const isPrivileged = user?.role === "admin" || user?.role === "manager";
   const t = useT();
+  const sortedCityKeys = sortCityKeysForDisplay(CITY_KEYS, t, user?.preferred_language || "ar");
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingVenue, setEditingVenue] = useState(null);
@@ -305,7 +306,7 @@ export default function Venues() {
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {CITY_KEYS.map(key => (
+                    {sortedCityKeys.map(key => (
                       <SelectItem key={key} value={key}>{t[key] || key}</SelectItem>
                     ))}
                   </SelectContent>

@@ -9,9 +9,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2, Save, Search, CheckCircle, XCircle, UserPlus, X as XIcon } from "lucide-react";
 import { useT } from "@/lib/i18n";
+import { useAuth } from "@/lib/AuthContext";
 import MobileSelect from "@/components/shared/MobileSelect";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBackButton } from "@/hooks/useBackButton";
-import { CITY_KEYS } from "@/lib/cities";
+import { CITY_KEYS, sortCityKeysForDisplay } from "@/lib/cities";
 import { format } from "date-fns";
 
 export default function EditEventDialog({ open, onOpenChange, event }) {
@@ -100,6 +102,8 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
 
   const [notifying, setNotifying] = useState(false);
   const t = useT();
+  const { user } = useAuth();
+  const sortedCityKeys = sortCityKeysForDisplay(CITY_KEYS, t, user?.preferred_language || "ar");
   useBackButton({ isOpen: open, onClose: () => onOpenChange(false) });
 
   const eventTypes = [
@@ -247,12 +251,18 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
 
           <div className="space-y-2">
             <Label>{t.cityLabel}</Label>
-            <MobileSelect
-              value={form.venue_city || ""}
-              onValueChange={v => handleChange("venue_city", v)}
-              options={CITY_KEYS.map(key => ({ value: key, label: t[key] || key }))}
-              placeholder={t.cityPlaceholder}
-            />
+            <Select value={form.venue_city || ""} onValueChange={v => handleChange("venue_city", v)}>
+              <SelectTrigger className="h-11 rounded-xl">
+                <SelectValue placeholder={t.cityPlaceholder}>
+                  {form.venue_city ? (t[form.venue_city] || form.venue_city) : null}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {sortedCityKeys.map(key => (
+                  <SelectItem key={key} value={key}>{t[key] || key}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

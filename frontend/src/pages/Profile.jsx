@@ -14,7 +14,7 @@ import { Link } from "react-router-dom";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
-import { CITY_KEYS } from "@/lib/cities";
+import { CITY_KEYS, sortCityKeysForDisplay } from "@/lib/cities";
 import {
   LogOut, Mail, Shield, Trash2, AlertTriangle, Save, Loader2, Users, Camera
 } from "lucide-react";
@@ -31,6 +31,8 @@ export default function Profile() {
   const navigate = useNavigate();
   const wasIncomplete = user && (!user.first_name || !user.last_name || !user.town || !user.phone);
   const isPrivileged = user?.role === "admin" || user?.role === "manager";
+  const lang = user?.preferred_language || "ar";
+  const sortedCityKeys = sortCityKeysForDisplay(CITY_KEYS, t, lang);
   const [deleting, setDeleting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -234,7 +236,7 @@ export default function Profile() {
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              {CITY_KEYS.map(key => (
+              {sortedCityKeys.map(key => (
                 <SelectItem key={key} value={key}>{t[key] || key}</SelectItem>
               ))}
             </SelectContent>

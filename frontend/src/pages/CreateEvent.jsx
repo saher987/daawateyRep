@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { CITY_KEYS } from "@/lib/cities";
+import { CITY_KEYS, sortCityKeysForDisplay } from "@/lib/cities";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { ArrowRight, Save, Loader2, ImagePlus, X, Wand2 } from "lucide-react";
 import MobileSelect from "@/components/shared/MobileSelect";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PageHeader from "@/components/shared/PageHeader";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/AuthContext";
@@ -24,6 +25,7 @@ export default function CreateEvent() {
   const { user } = useAuth();
   const isPrivileged = user?.role === "admin" || user?.role === "manager";
   const t = useT();
+  const sortedCityKeys = sortCityKeysForDisplay(CITY_KEYS, t, user?.preferred_language || "ar");
 
   const eventTypes = [
     { value: "wedding", label: t.eventTypeWedding },
@@ -341,12 +343,18 @@ export default function CreateEvent() {
           </div>
           <div className="space-y-2">
             <Label>{t.cityLabel}</Label>
-            <MobileSelect
-              value={form.venue_city}
-              onValueChange={v => handleChange("venue_city", v)}
-              options={CITY_KEYS.map(key => ({ value: key, label: t[key] || key }))}
-              placeholder={t.cityPlaceholder}
-            />
+            <Select value={form.venue_city} onValueChange={v => handleChange("venue_city", v)}>
+              <SelectTrigger className="h-12 rounded-xl text-base">
+                <SelectValue placeholder={t.cityPlaceholder}>
+                  {form.venue_city ? (t[form.venue_city] || form.venue_city) : null}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {sortedCityKeys.map(key => (
+                  <SelectItem key={key} value={key}>{t[key] || key}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
             <Label>{t.addressLabel}</Label>

@@ -26,8 +26,13 @@ export default function InviteeRow({ recipient, eventId, canResend = false }) {
   };
 
   const token = recipient.personal_token || recipient.invitation_token;
-  const APP_ORIGIN = "https://daawatey.com";
-  const inviteUrl = token ? `${APP_ORIGIN}/i/${token}` : null;
+  // Was hardcoded to "https://daawatey.com" — the original's custom
+  // domain, which this app doesn't serve from. Every "view invitation"
+  // click opened a token lookup against whatever daawatey.com currently
+  // resolves to instead of this app, which is exactly what "אירוע לא נמצא"
+  // (event not found) was reporting. window.location.origin is always
+  // wherever this page is actually being served from.
+  const inviteUrl = token ? `${window.location.origin}/i/${token}` : null;
   const isLinked = !!recipient.user_id;
   const displayName = [recipient.nickname, recipient.first_name, recipient.last_name].filter(Boolean).join(' ') || recipient.external_full_name || recipient.full_name || "—";
 
@@ -37,13 +42,23 @@ export default function InviteeRow({ recipient, eventId, canResend = false }) {
       queryClient.invalidateQueries({ queryKey: ["event-recipients", eventId] });
       toast({ title: t.venueDeleted });
     },
+    onError: () => {
+      toast({ title: t.addError, description: t.addErrorDesc, variant: "destructive" });
+    },
   });
 
   const sendSmsMutation = useMutation({
     mutationFn: () => base44.functions.invoke("sendInvitationSms", { recipientId: recipient.id }),
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["event-recipients", eventId] });
-      toast({ title: t.savedAndNotified });
+      if (result?.data?.success) {
+        toast({ title: t.savedAndNotified });
+      } else {
+        // The request succeeded but delivery didn't (e.g. SMS/email
+        // provider unreachable) — degrades the same way creation does,
+        // but resending shouldn't claim success when nothing went out.
+        toast({ title: t.addError, description: t.addErrorDesc, variant: "destructive" });
+      }
     },
     onError: () => {
       toast({ title: t.addError, description: t.addErrorDesc, variant: "destructive" });

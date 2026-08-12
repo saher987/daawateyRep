@@ -322,12 +322,19 @@ def add_recipient(
 
 def _send_invitation(
     event: models.Event, recipient: models.InvitationRecipient, invited_by: models.User
-) -> None:
+) -> bool:
     """sendInvitationSms + the email half of createInvitationRecipient:
     SMS via Pulseem if a phone was given, email via Resend if an email was
     given — same templates as the original, both degrading to a logged
     warning (not an error) if their API key isn't configured, since a
-    recipient should still get created either way."""
+    recipient should still get created either way.
+
+    add_recipient (above) fires-and-forgets this — never fails creation
+    just because delivery failed. resend_invitation (below) cares about
+    the return value: resending *is* the whole point of that action, so
+    its caller needs to know whether anything actually went out. Returns
+    True if at least one channel (of whichever the recipient has) sent
+    successfully."""
     app_url = os.environ.get("APP_URL", "https://daawatey-frontend-t3tobt7bfq-uc.a.run.app")
     invitation_link = f"{app_url}/i/{recipient.personal_token}"
 
@@ -340,13 +347,15 @@ def _send_invitation(
         or "المنظم"
     )
 
+    sent = False
+
     if recipient.phone:
         text = (
             f"لحظرة {invitee_name}، {event.invitation_greeting} {invitation_link}"
             if event.invitation_greeting
             else f"لحظرة {invitee_name}، تمت دعوتكم من {invitor_name} لحضور {event.title}. {invitation_link}"
         )
-        send_sms(recipient.phone, text, reference=recipient.id)
+        sent = send_sms(recipient.phone, text, reference=recipient.id) or sent
 
     if recipient.email:
         body_text = event.invitation_greeting or f"تمت دعوتكم من {invitor_name} لحضور {event.title}."
@@ -359,7 +368,51 @@ def _send_invitation(
             f'border-radius: 8px; margin: 16px 0;">عرض الدعوة</a></p>'
             f'<p style="color: #888; font-size: 12px;">{invitation_link}</p></div>'
         )
-        send_email(recipient.email, f"دعوة لحضور {event.title}", html)
+        sent = send_email(recipient.email, f"دعوة لحضور {event.title}", html) or sent
+
+    return sent
+
+
+def _get_recipient_or_404(db: Session, recipient_id: str) -> models.InvitationRecipient:
+    recipient = db.get(models.InvitationRecipient, recipient_id)
+    if recipient is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Recipient not found")
+    return recipient
+
+
+@router.delete("/invitation-recipients/{recipient_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_recipient(
+    recipient_id: str,
+    user: models.User = Depends(get_app_user),
+    db: Session = Depends(get_db),
+) -> None:
+    """InviteeRow.jsx's delete button — previously had no backend endpoint
+    at all (the frontend called InvitationRecipient.delete(), which
+    base44Client.js's shim never mapped anywhere, so it silently
+    TypeError'd). Same access rule as everything else on this event: only
+    an owner/manager of the event this recipient belongs to, or admin/
+    manager generally."""
+    recipient = _get_recipient_or_404(db, recipient_id)
+    _require_event_access(recipient.event, user)
+    db.delete(recipient)
+    db.commit()
+
+
+@router.post("/invitation-recipients/{recipient_id}/resend")
+def resend_invitation(
+    recipient_id: str,
+    user: models.User = Depends(get_app_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """sendInvitationSms in the original: InviteeRow.jsx's per-recipient
+    resend button. Previously an unimplemented base44Client.js stub that
+    always reported success without sending anything — now actually
+    re-sends via the same templates/channels as the initial invite."""
+    recipient = _get_recipient_or_404(db, recipient_id)
+    event = recipient.event
+    _require_event_access(event, user)
+    sent = _send_invitation(event, recipient, invited_by=user)
+    return {"success": sent}
 
 
 @router.get("/events/{event_id}/recipients", response_model=list[schemas.RecipientOut])

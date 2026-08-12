@@ -137,6 +137,18 @@ const eventsApi = {
     return request('/api/events', { method: 'POST', body: data })
   },
   async update(id, data) {
+    if (Object.keys(data).length === 1 && data.status === 'active') {
+      // EventDetails.jsx's "Activate event" button, ported unchanged from
+      // the original: Event.update(id, {status: "active"}) — which worked
+      // there because Base44's generic entity update accepted any field.
+      // Our PUT /api/events/{id} deliberately excludes `status` (see
+      // schemas.EventUpdate): draft->active is a validated transition
+      // with its own endpoint, not an arbitrary overwrite. Without this
+      // special case the PUT silently no-ops (extra fields are just
+      // dropped, not rejected) — the button looked broken with no error
+      // anywhere.
+      return request(`/api/events/${id}/activate`, { method: 'POST' })
+    }
     return request(`/api/events/${id}`, { method: 'PUT', body: data })
   },
   async delete(id) {
@@ -169,6 +181,12 @@ const invitationRecipientsApi = {
     // /api/my-invitations), so this is a deliberate no-op rather than a
     // missing feature. See BUSINESS_LOGIC.md.
     return null
+  },
+  async delete(id) {
+    // InviteeRow.jsx's per-invitee delete button. Previously had no
+    // mapping at all here, so the call TypeError'd — silently, since it
+    // wasn't awaited-and-caught anywhere obvious.
+    return request(`/api/invitation-recipients/${id}`, { method: 'DELETE' })
   },
   subscribe(_callback) {
     // Base44's realtime entity subscriptions have no equivalent here yet —
@@ -354,9 +372,8 @@ const functionHandlers = {
     console.warn('base44Client shim: notifyEventUpdate is not implemented yet (Phase 6)')
     return { success: false }
   },
-  async sendInvitationSms() {
-    console.warn('base44Client shim: sendInvitationSms is not implemented yet (Phase 6)')
-    return { success: false }
+  async sendInvitationSms({ recipientId }) {
+    return request(`/api/invitation-recipients/${recipientId}/resend`, { method: 'POST' })
   },
 }
 
