@@ -55,6 +55,20 @@ jobs:
           if [ -n "${{ secrets.DATABASE_URL }}" ]; then
             FLAGS="$FLAGS##DATABASE_URL=${{ secrets.DATABASE_URL }} --add-cloudsql-instances=${{ secrets.CLOUDSQL_CONNECTION_NAME }}"
           fi
+          # Pulseem SMS / Resend email (spec §6) — both integrations degrade
+          # to a logged warning rather than a failed request when their key
+          # is unset, so leaving these blank on an environment that doesn't
+          # need real delivery (e.g. staging) is a safe no-op, same as
+          # DATABASE_URL above.
+          if [ -n "${{ secrets.PULSEEM_API_KEY }}" ]; then
+            FLAGS="$FLAGS##PULSEEM_API_KEY=${{ secrets.PULSEEM_API_KEY }}"
+          fi
+          if [ -n "${{ secrets.RESEND_API_KEY }}" ]; then
+            FLAGS="$FLAGS##RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}##RESEND_FROM_EMAIL=${{ secrets.RESEND_FROM_EMAIL }}"
+          fi
+          if [ -n "${{ secrets.APP_URL }}" ]; then
+            FLAGS="$FLAGS##APP_URL=${{ secrets.APP_URL }}"
+          fi
           echo "flags=$FLAGS" >> "$GITHUB_OUTPUT"
 
       - name: Deploy backend to Cloud Run

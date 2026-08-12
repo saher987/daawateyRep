@@ -53,6 +53,23 @@ Leaving both unset (e.g. on `staging`, which has no database yet) is a
 deliberate no-op — `deploy.yml` only adds the Cloud SQL connection and
 `DATABASE_URL` env var when `DATABASE_URL` is actually set.
 
+### 5. Invitation delivery secrets (`prod` only — spec §6)
+
+Reuses the same Pulseem/Resend accounts the Base44 app already had (same
+sender number `0508085672`, same `noreply@daawatey.com` domain) — no new
+third-party accounts needed, just the existing API keys.
+
+| Secret | Value |
+|---|---|
+| `PULSEEM_API_KEY` | Pulseem SMS gateway API key |
+| `RESEND_API_KEY` | Resend email API key |
+| `RESEND_FROM_EMAIL` | `Daawatey <noreply@daawatey.com>` (or your verified sending address) |
+| `APP_URL` | the frontend's public URL, e.g. `https://daawatey-frontend-t3tobt7bfq-uc.a.run.app` — used to build the `/i/<token>` invitation link sent in the SMS/email |
+
+Same no-op-if-unset behavior as the database secrets: `app/integrations/
+pulseem.py` and `resend_email.py` log a warning and skip sending rather
+than failing the request if their key isn't configured.
+
 ## Bootstrapping `ALLOWED_ORIGINS` (first deploy only)
 
 The backend needs to know the frontend's origin for CORS, but the frontend's
