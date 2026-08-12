@@ -22,7 +22,15 @@ def send_email(to: str, subject: str, html: str) -> bool:
         logger.warning("RESEND_API_KEY not set — email to %s not sent: %s", to, subject)
         return False
 
-    from_address = os.environ.get("RESEND_FROM_EMAIL", "Daawatey <noreply@daawatey.com>")
+    # RESEND_FROM_EMAIL must be a *bare* address (no "Display Name <...>"
+    # wrapping) — it flows through deploy.yml's `flags:` string for
+    # google-github-actions/deploy-cloudrun, which tokenizes on whitespace
+    # with no quote-awareness. A value containing a space (e.g.
+    # "Daawatey <noreply@daawatey.com>") silently breaks into two gcloud
+    # arguments and fails the deploy with "unrecognized arguments: <...>".
+    # The display name is fixed here instead, in code, where a space is safe.
+    from_email = os.environ.get("RESEND_FROM_EMAIL", "noreply@daawatey.com")
+    from_address = f"Daawatey <{from_email}>"
     try:
         response = httpx.post(
             _SEND_URL,

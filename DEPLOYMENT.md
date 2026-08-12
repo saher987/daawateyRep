@@ -60,7 +60,16 @@ symmetry with everything else in this table):
 |---|---|
 | `CLOUDSQL_CONNECTION_NAME` | the instance connection name, `PROJECT:REGION:INSTANCE` |
 | `APP_URL` | the frontend's public URL, e.g. `https://daawatey-frontend-t3tobt7bfq-uc.a.run.app` — used to build the `/i/<token>` invitation link sent in the SMS/email |
-| `RESEND_FROM_EMAIL` | `Daawatey <noreply@daawatey.com>` (or your verified sending address) |
+| `RESEND_FROM_EMAIL` | `noreply@daawatey.com` (bare address only — see warning below) |
+
+**`RESEND_FROM_EMAIL` must be a bare email address, no `Display Name <...>`
+wrapping and no spaces.** This value rides through `deploy.yml`'s `flags:`
+string for `google-github-actions/deploy-cloudrun`, which tokenizes on
+whitespace with no quote-awareness — a value like `Daawatey
+<noreply@daawatey.com>` silently splits into two arguments and fails the
+whole deploy with `unrecognized arguments: <noreply@daawatey.com>` (this
+happened for real — see git history). The "Daawatey" display name is
+applied in code (`resend_email.py`) instead, where a space is safe.
 
 Leaving these unset (e.g. on `staging`, which has none of this
 provisioned) is a deliberate no-op — `deploy.yml` only adds
