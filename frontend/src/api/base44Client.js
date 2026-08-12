@@ -373,20 +373,35 @@ const functionsApi = {
 const integrationsApi = {
   Core: {
     async UploadFile({ file }) {
-      // No real file storage yet — a Cloud Storage bucket is its own
-      // piece of infra to provision (see BUSINESS_LOGIC.md), not built as
-      // part of this pass. Stand-in: inline the file as a base64 data:
-      // URL, so image upload/preview works end to end today. Fine for a
-      // handful of small images; not something to leave in place once
-      // real uploads matter — data: URLs bloat every row/response that
-      // stores one and are never cleaned up.
-      const file_url = await new Promise((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(reader.result)
-        reader.onerror = () => reject(reader.error)
-        reader.readAsDataURL(file)
+      // Real Cloud Storage upload via POST /api/uploads (multipart) — see
+      // that endpoint's docstring for why it's the project's own Firebase
+      // Storage bucket rather than a separately-provisioned one. Not
+      // routed through request() above: that helper always JSON-encodes
+      // the body and sets Content-Type: application/json, which is wrong
+      // for a file — FormData needs the browser to set its own
+      // multipart/form-data boundary.
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const headers = {}
+      const token = await firebaseAuth.currentUser?.getIdToken()
+      if (token) headers.Authorization = `Bearer ${token}`
+
+      const res = await fetch(`${API_BASE_URL}/api/uploads`, {
+        method: 'POST',
+        headers,
+        body: formData,
       })
-      return { file_url }
+      if (!res.ok) {
+        let detail
+        try {
+          detail = (await res.json()).detail
+        } catch {
+          /* body wasn't JSON */
+        }
+        throw new ApiError(detail || `upload failed: ${res.status}`, res.status)
+      }
+      return res.json()
     },
   },
 }

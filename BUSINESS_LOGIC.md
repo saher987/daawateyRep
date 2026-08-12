@@ -302,3 +302,36 @@ after `gcloud secrets versions add`, re-run the Deploy workflow (every run
 creates a fresh revision even against an unchanged image) if you need the
 new value live immediately, rather than waiting for natural autoscaling
 churn to eventually replace existing instances.
+
+### 6. File uploads (Core.UploadFile): enable Firebase Storage + grant write access
+
+Real image uploads (profile photos, event cover/invitation images, venue
+images, generated invitation-card PNGs — see `app/routers/uploads.py`) use
+the project's own Firebase Storage bucket rather than a separately
+provisioned GCS bucket — same project, same `{project}.firebasestorage.app`
+naming already confirmed for `VITE_FIREBASE_STORAGE_BUCKET`. Two one-time
+steps the app can't do for itself:
+
+1. **Enable Cloud Storage for Firebase** (provisions the default bucket —
+   skip if already done): Firebase Console → `daawatey-prod` → **Build →
+   Storage** → **Get started** → accept the default security rules (the
+   backend uploads via the Admin SDK, which bypasses these rules entirely,
+   so the default "authenticated users only" rules are fine — they only
+   gate *direct* client SDK access, which this app doesn't use).
+
+2. **Grant the backend runtime service account write access to the bucket:**
+   ```bash
+   gcloud storage buckets add-iam-policy-binding \
+     gs://daawatey-prod.firebasestorage.app \
+     --member="serviceAccount:backend-runtime@daawatey-prod.iam.gserviceaccount.com" \
+     --role="roles/storage.objectAdmin"
+   ```
+   (`objectAdmin` rather than `objectCreator`: the endpoint also calls
+   `blob.make_public()` after upload, which needs `storage.objects.setIamPolicy`
+   — `objectCreator` alone would 403 on that call.) This is an IAM grant, so
+   like the `cloudsql.client` grant in step 2 — no redeploy needed, it
+   takes effect immediately.
+
+Without either step, `POST /api/uploads` degrades to a clean `503` rather
+than a raw exception — the frontend shows an upload-failed error instead of
+the backend crashing.

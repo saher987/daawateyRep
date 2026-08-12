@@ -33,9 +33,19 @@ logger = logging.getLogger(__name__)
 # service account credential does, so it must be passed explicitly here via
 # GOOGLE_CLOUD_PROJECT — otherwise verify_id_token() fails with "A project
 # ID is required to access the auth service."
+#
+# storageBucket follows the same `{project}.firebasestorage.app` naming
+# already confirmed for VITE_FIREBASE_STORAGE_BUCKET (see DEPLOYMENT.md) —
+# lets app/routers/uploads.py call firebase_admin.storage.bucket() with no
+# separate bucket-name env var to configure.
 if not firebase_admin._apps:
     _project_id = os.environ.get("GOOGLE_CLOUD_PROJECT") or os.environ.get("GCLOUD_PROJECT")
-    firebase_admin.initialize_app(options={"projectId": _project_id} if _project_id else None)
+    _options = (
+        {"projectId": _project_id, "storageBucket": f"{_project_id}.firebasestorage.app"}
+        if _project_id
+        else None
+    )
+    firebase_admin.initialize_app(options=_options)
 
 _bearer_scheme = HTTPBearer(auto_error=False)
 
