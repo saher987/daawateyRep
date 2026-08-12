@@ -326,12 +326,26 @@ steps the app can't do for itself:
      --member="serviceAccount:backend-runtime@daawatey-prod.iam.gserviceaccount.com" \
      --role="roles/storage.objectAdmin"
    ```
-   (`objectAdmin` rather than `objectCreator`: the endpoint also calls
-   `blob.make_public()` after upload, which needs `storage.objects.setIamPolicy`
-   — `objectCreator` alone would 403 on that call.) This is an IAM grant, so
-   like the `cloudsql.client` grant in step 2 — no redeploy needed, it
-   takes effect immediately.
 
-Without either step, `POST /api/uploads` degrades to a clean `503` rather
-than a raw exception — the frontend shows an upload-failed error instead of
-the backend crashing.
+3. **Grant public read on the bucket:**
+   ```bash
+   gcloud storage buckets add-iam-policy-binding \
+     gs://daawatey-prod.firebasestorage.app \
+     --member="allUsers" \
+     --role="roles/storage.objectViewer"
+   ```
+   Uploaded images (profile photos, event covers, venue photos) need to be
+   publicly viewable — guests looking at a public invitation page aren't
+   signed in. The endpoint originally called `blob.make_public()` for this
+   (a legacy per-object ACL call) instead of a bucket-level IAM grant, and
+   that failed outright: Firebase Storage buckets provisioned via the
+   console's "Get started" flow default to **uniform bucket-level access**,
+   which disables the legacy ACL API entirely — this is what actually
+   caused the first real-world "File storage is not available right now"
+   error, not a missing IAM grant. `blob.public_url` just formats the
+   URL string (no API call), so once this binding exists, the upload
+   endpoint's existing code needs no further change.
+
+Both IAM grants take effect immediately, no redeploy needed. Without step 1
+(bucket doesn't exist) or a transient GCS failure, `POST /api/uploads`
+still degrades to a clean `503` rather than a raw exception.

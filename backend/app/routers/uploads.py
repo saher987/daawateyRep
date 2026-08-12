@@ -58,7 +58,14 @@ async def upload_file(
         bucket = firebase_storage.bucket()
         blob = bucket.blob(blob_name)
         blob.upload_from_string(body, content_type=file.content_type)
-        blob.make_public()
+        # NOT blob.make_public(): that uses the legacy per-object ACL API,
+        # which fails outright on a bucket with uniform bucket-level access
+        # enabled — the default for buckets Firebase Storage provisions via
+        # its "Get started" console flow. Public read is granted once at
+        # the bucket level via IAM instead (see BUSINESS_LOGIC.md §6:
+        # `allUsers` / `roles/storage.objectViewer`); `blob.public_url` just
+        # formats the URL string client-side, no API call, so it's safe to
+        # use unconditionally once that IAM binding exists.
     except Exception:
         # Covers both "bucket doesn't exist yet" (Cloud Storage for Firebase
         # never enabled in the console) and any transient GCS/IAM failure —
