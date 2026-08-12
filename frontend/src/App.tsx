@@ -31,6 +31,9 @@ const MyVenueDetail = lazy(() => import('./pages/MyVenueDetail'))
 const TermsAndConditions = lazy(() => import('./pages/TermsAndConditions'))
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
 const Support = lazy(() => import('./pages/Support'))
+const Register = lazy(() => import('./pages/Register'))
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
+const ResetPassword = lazy(() => import('./pages/ResetPassword'))
 
 const PageSpinner = () => (
   <div className="fixed inset-0 flex items-center justify-center bg-background">
@@ -46,6 +49,30 @@ function App() {
           <Router>
             <Routes>
               <Route path="/login" element={<Login />} />
+              <Route
+                path="/register"
+                element={
+                  <Suspense fallback={<PageSpinner />}>
+                    <Register />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/forgot-password"
+                element={
+                  <Suspense fallback={<PageSpinner />}>
+                    <ForgotPassword />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/reset-password"
+                element={
+                  <Suspense fallback={<PageSpinner />}>
+                    <ResetPassword />
+                  </Suspense>
+                }
+              />
               <Route
                 path="/i/:token"
                 element={

@@ -6,13 +6,12 @@
 // entirely. Every other ported page sidesteps this the same way. No logic
 // changed from the .tsx version, just the type annotations dropped.
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   GoogleAuthProvider,
   signInWithCredential,
   signInWithPopup,
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
 } from 'firebase/auth'
 import { Capacitor } from '@capacitor/core'
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication'
@@ -62,7 +61,6 @@ export function Login() {
   const { isAuthenticated, isLoadingAuth } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [mode, setMode] = useState('signin')
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
   const [googleBusy, setGoogleBusy] = useState(false)
@@ -160,11 +158,7 @@ export function Login() {
     setError(null)
     setBusy(true)
     try {
-      if (mode === 'signup') {
-        await createUserWithEmailAndPassword(auth, email, password)
-      } else {
-        await signInWithEmailAndPassword(auth, email, password)
-      }
+      await signInWithEmailAndPassword(auth, email, password)
     } catch (err) {
       setError(describeError(err))
     } finally {
@@ -179,13 +173,12 @@ export function Login() {
       subtitle="Log in to continue"
       footer={
         allowEmailAuth ? (
-          <button
-            type="button"
-            onClick={() => setMode(mode === 'signup' ? 'signin' : 'signup')}
-            className="text-primary font-medium hover:underline"
-          >
-            {mode === 'signup' ? 'Have an account? Sign in' : "Don't have an account? Sign up"}
-          </button>
+          <>
+            Don't have an account?{' '}
+            <Link to="/register" className="text-primary font-medium hover:underline">
+              Sign up
+            </Link>
+          </>
         ) : undefined
       }
     >
@@ -248,7 +241,12 @@ export function Login() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                <Link to="/forgot-password" className="text-xs text-primary hover:underline">
+                  Forgot password?
+                </Link>
+              </div>
               <div className="relative">
                 <Lock
                   className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
@@ -257,7 +255,7 @@ export function Login() {
                 <Input
                   id="password"
                   type="password"
-                  autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                  autoComplete="current-password"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -271,10 +269,8 @@ export function Login() {
               {busy ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  {mode === 'signup' ? 'Creating account...' : 'Logging in...'}
+                  Logging in...
                 </>
-              ) : mode === 'signup' ? (
-                'Create account'
               ) : (
                 'Log in'
               )}
