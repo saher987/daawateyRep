@@ -1,4 +1,11 @@
-import { useEffect, useState, type FormEvent } from 'react'
+// Was Login.tsx (Milestone 1 scaffolding). Converted to .jsx to match every
+// other page that renders the shared ui/ components: those components
+// (button.jsx, input.jsx, label.jsx, ...) are untyped .jsx themselves, and
+// `tsc -b` only type-checks .tsx/.ts files — from a .tsx file their props
+// resolve to just `RefAttributes<any>`, rejecting id/children/onClick/etc.
+// entirely. Every other ported page sidesteps this the same way. No logic
+// changed from the .tsx version, just the type annotations dropped.
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   GoogleAuthProvider,
@@ -9,9 +16,15 @@ import {
 } from 'firebase/auth'
 import { Capacitor } from '@capacitor/core'
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication'
+import { LogIn, Mail, Lock, Loader2 } from 'lucide-react'
 import { auth } from '../lib/firebase'
 import { useAuth } from '../lib/AuthContext'
 import { BUILD_LABEL, formatDiagnostics } from '../lib/diagnostics'
+import AuthLayout from '../components/AuthLayout'
+import GoogleIcon from '../components/GoogleIcon'
+import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
+import { Label } from '../components/ui/label'
 
 // Computed once at module load — these facts don't change at runtime.
 const diagnostics = formatDiagnostics()
@@ -26,12 +39,12 @@ const allowEmailAuth = import.meta.env.VITE_ALLOW_EMAIL_AUTH !== 'false'
 // might carry (native plugin errors often attach a `code` alongside
 // `message`, and sometimes other fields), since the on-device console isn't
 // otherwise reachable without a debugger attached.
-function describeError(err: unknown): string {
+function describeError(err) {
   if (err instanceof Error) {
-    const extra: Record<string, unknown> = {}
+    const extra = {}
     for (const key of Object.keys(err)) {
       if (key !== 'message' && key !== 'name' && key !== 'stack') {
-        extra[key] = (err as unknown as Record<string, unknown>)[key]
+        extra[key] = err[key]
       }
     }
     const extraStr = Object.keys(extra).length > 0 ? ` | extra: ${JSON.stringify(extra)}` : ''
@@ -49,9 +62,10 @@ export function Login() {
   const { isAuthenticated, isLoadingAuth } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin')
-  const [error, setError] = useState<string | null>(null)
+  const [mode, setMode] = useState('signin')
+  const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [googleBusy, setGoogleBusy] = useState(false)
 
   // The Google/email flows below only ever *complete Firebase's* sign-in —
   // AuthContext's onAuthStateChanged listener picks that up asynchronously,
@@ -70,7 +84,7 @@ export function Login() {
 
   async function handleGoogleSignIn() {
     setError(null)
-    setBusy(true)
+    setGoogleBusy(true)
     // Tracks how far we got, so a failure says which stage broke rather than
     // just "sign-in failed": the native picker and the web-SDK exchange fail
     // for completely different reasons and need different fixes.
@@ -137,11 +151,11 @@ export function Login() {
     } catch (err) {
       setError(`[failed at ${step}]\n${describeError(err)}`)
     } finally {
-      setBusy(false)
+      setGoogleBusy(false)
     }
   }
 
-  async function handleEmailSubmit(e: FormEvent) {
+  async function handleEmailSubmit(e) {
     e.preventDefault()
     setError(null)
     setBusy(true)
@@ -159,76 +173,124 @@ export function Login() {
   }
 
   return (
-    <div>
-      <h1>
-        Welcome{' '}
-        <span style={{ fontSize: '0.45em', fontWeight: 400, opacity: 0.65 }}>
-          build {BUILD_LABEL}
-        </span>
-      </h1>
-      <p style={{ fontSize: '1.1rem' }}>Sign in to continue</p>
-      {error && (
-        <p role="alert" style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
-          {error}
-        </p>
-      )}
-
-      <button type="button" onClick={handleGoogleSignIn} disabled={busy}>
-        Sign in with Google
-      </button>
-
-      {allowEmailAuth && (
-        <>
-          <hr />
-          <form onSubmit={handleEmailSubmit}>
-            <label>
-              Email
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-              />
-            </label>
-            <label>
-              Password
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-              />
-            </label>
-            <button type="submit" disabled={busy}>
-              {mode === 'signup' ? 'Create account' : 'Sign in'}
-            </button>
-          </form>
+    <AuthLayout
+      icon={LogIn}
+      title="Welcome back"
+      subtitle="Log in to continue"
+      footer={
+        allowEmailAuth ? (
           <button
             type="button"
             onClick={() => setMode(mode === 'signup' ? 'signin' : 'signup')}
+            className="text-primary font-medium hover:underline"
           >
             {mode === 'signup' ? 'Have an account? Sign in' : "Don't have an account? Sign up"}
           </button>
+        ) : undefined
+      }
+    >
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full h-12 text-sm font-medium mb-6"
+        onClick={handleGoogleSignIn}
+        disabled={googleBusy || busy}
+      >
+        <GoogleIcon className="w-5 h-5 mr-2" />
+        {googleBusy ? (
+          <>
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            Connecting...
+          </>
+        ) : (
+          'Continue with Google'
+        )}
+      </Button>
+
+      {error && (
+        <div
+          role="alert"
+          className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm whitespace-pre-wrap break-words"
+        >
+          {error}
+        </div>
+      )}
+
+      {allowEmailAuth && (
+        <>
+          <div className="relative mb-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-3 text-muted-foreground">or</span>
+            </div>
+          </div>
+
+          <form onSubmit={handleEmailSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <div className="relative">
+                <Mail
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <Input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-10 h-12"
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Lock
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <Input
+                  id="password"
+                  type="password"
+                  autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pl-10 h-12"
+                  required
+                  minLength={6}
+                />
+              </div>
+            </div>
+            <Button type="submit" className="w-full h-12 font-medium" disabled={busy || googleBusy}>
+              {busy ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  {mode === 'signup' ? 'Creating account...' : 'Logging in...'}
+                </>
+              ) : mode === 'signup' ? (
+                'Create account'
+              ) : (
+                'Log in'
+              )}
+            </Button>
+          </form>
         </>
       )}
 
-      <details style={{ marginTop: '2rem', fontSize: '0.85rem' }}>
-        <summary>Build diagnostics</summary>
-        <pre
-          style={{
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-            padding: '0.5rem',
-            border: '1px solid var(--border)',
-            borderRadius: '4px',
-          }}
-        >
+      <details className="mt-8 text-xs text-muted-foreground">
+        <summary className="cursor-pointer select-none">Build diagnostics</summary>
+        <pre className="mt-2 p-2 border border-border rounded-md whitespace-pre-wrap break-words">
+          build {BUILD_LABEL}
+          {'\n'}
           {diagnostics}
         </pre>
       </details>
-    </div>
+    </AuthLayout>
   )
 }
