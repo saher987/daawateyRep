@@ -1,0 +1,70 @@
+name: Scaffold iOS Project
+
+# One-off, run-once-then-forget: `npx cap add ios` shells out to
+# Xcode/CocoaPods to generate frontend/ios/, which no Linux box (this repo's
+# CI, or the Android/backend dev machine) can do — it needs an actual macOS
+# toolchain. Rather than requiring a real Mac just for this one command,
+# this runs on a macos-latest GitHub-hosted runner and commits the
+# generated project straight back to the branch, the same way `android/`
+# already lives in this repo. Safe to re-run later (e.g. after a Capacitor
+# major-version bump) — `cap add ios` errors harmlessly if frontend/ios
+# already exists, so this only ever adds commits, never silently
+# overwrites hand-made native edits (Info.plist, entitlements, Podfile)
+# made after the initial scaffold.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  scaffold:
+    runs-on: macos-latest
+    # Same staging secrets android-build.yml uses — this only needs a
+    # buildable `dist/` for `cap add ios` to embed, not a real release.
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install CocoaPods
+        run: gem install cocoapods
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build web assets
+        working-directory: frontend
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_API_BASE_URL: https://daawatey-backend-qougz5q6wq-uc.a.run.app
+        run: npm run build
+
+      - name: Add iOS platform
+        working-directory: frontend
+        run: npx cap add ios
+
+      - name: Sync Capacitor iOS project
+        working-directory: frontend
+        run: npx cap sync ios
+
+      - name: Commit generated iOS project
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add frontend/ios
+          if git diff --cached --quiet; then
+            echo "Nothing to commit — frontend/ios already exists and is unchanged."
+          else
+            git commit -m "chore: scaffold iOS Capacitor project (auto-generated via cap add ios)"
+            git push
+          fi
