@@ -49,6 +49,13 @@ jobs:
           VITE_API_BASE_URL: https://daawatey-backend-qougz5q6wq-uc.a.run.app
         run: npm run build
 
+      - name: Install @capacitor/ios
+        working-directory: frontend
+        # cap add ios needs this package present first — it errors with
+        # "Could not find the ios platform" otherwise, same as any other
+        # Capacitor platform package.
+        run: npm install @capacitor/ios@^8
+
       - name: Add iOS platform
         working-directory: frontend
         run: npx cap add ios
@@ -61,7 +68,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add frontend/ios
+          git add frontend/ios frontend/package.json frontend/package-lock.json
           if git diff --cached --quiet; then
             echo "Nothing to commit — frontend/ios already exists and is unchanged."
           else
