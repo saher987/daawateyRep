@@ -368,9 +368,8 @@ const functionHandlers = {
       body: { name, email, subject, message },
     })
   },
-  async notifyEventUpdate() {
-    console.warn('base44Client shim: notifyEventUpdate is not implemented yet (Phase 6)')
-    return { success: false }
+  async notifyEventUpdate({ eventId }) {
+    return request(`/api/events/${eventId}/notify-update`, { method: 'POST' })
   },
   async sendInvitationSms({ recipientId }) {
     return request(`/api/invitation-recipients/${recipientId}/resend`, { method: 'POST' })

@@ -352,9 +352,18 @@ class Notification(Base):
     __tablename__ = "notifications"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
-    event_id: Mapped[str | None] = mapped_column(ForeignKey("events.id"), nullable=True)
+    # ondelete="SET NULL" on both: a notification is a standalone record of
+    # something that happened ("you were invited to X") — it must survive
+    # the event/recipient it references being deleted later (e.g. DELETE
+    # /api/invitation-recipients/{id}), not block the delete with a FK
+    # violation. is_read history is worth keeping even once the pointer
+    # goes stale; the frontend already treats event_id/recipient_id as
+    # optional.
+    event_id: Mapped[str | None] = mapped_column(
+        ForeignKey("events.id", ondelete="SET NULL"), nullable=True
+    )
     recipient_id: Mapped[str | None] = mapped_column(
-        ForeignKey("invitation_recipients.id"), nullable=True
+        ForeignKey("invitation_recipients.id", ondelete="SET NULL"), nullable=True
     )
     type: Mapped[NotificationType] = mapped_column(
         SqlEnum(NotificationType, name="notification_type"), nullable=False

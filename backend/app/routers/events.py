@@ -189,6 +189,67 @@ def update_event(
     return event
 
 
+@router.post("/events/{event_id}/notify-update")
+def notify_event_update(
+    event_id: str,
+    user: models.User = Depends(get_app_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """notifyEventUpdate: EditEventDialog.jsx already computes whether the
+    date/venue/description actually changed and calls this right after a
+    successful save when they did — was an unimplemented base44Client.js
+    stub, so saving an edited event never actually told anyone. Sends the
+    same SMS/email channels the original did to every recipient (whichever
+    they have — phone, email, or both), plus a real in-app Notification for
+    each (see _notify_recipient_in_app — genuinely new, the original never
+    had this in-app)."""
+    event = _get_event_or_404(db, event_id)
+    _require_event_access(event, user)
+
+    app_url = os.environ.get("APP_URL", "https://daawatey-frontend-t3tobt7bfq-uc.a.run.app")
+    sms_sent = 0
+    email_sent = 0
+    recipients = (
+        db.query(models.InvitationRecipient)
+        .filter(models.InvitationRecipient.event_id == event_id)
+        .all()
+    )
+    for recipient in recipients:
+        invitation_link = f"{app_url}/i/{recipient.personal_token}"
+        invitee_name = _resolve_display_name(
+            recipient.external_full_name, recipient.nickname, recipient.first_name, recipient.last_name
+        ) or (recipient.phone or recipient.email or "")
+
+        if recipient.phone:
+            text = f"لحظرة {invitee_name}، تم تحديث تفاصيل مناسبة {event.title}. {invitation_link}"
+            if send_sms(recipient.phone, text, reference=recipient.id):
+                sms_sent += 1
+
+        if recipient.email:
+            html = (
+                f'<div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; '
+                f'margin: 0 auto; padding: 20px;">'
+                f"<p>لحظرة {invitee_name}، تم تحديث تفاصيل مناسبة {event.title}.</p>"
+                f'<p><a href="{invitation_link}" style="display: inline-block; background: '
+                f'{event.theme_color}; color: white; padding: 12px 24px; text-decoration: none; '
+                f'border-radius: 8px; margin: 16px 0;">عرض التفاصيل المحدثة</a></p>'
+                f'<p style="color: #888; font-size: 12px;">{invitation_link}</p></div>'
+            )
+            if send_email(recipient.email, f"تحديث على مناسبة {event.title}", html):
+                email_sent += 1
+
+        _notify_recipient_in_app(
+            db,
+            recipient,
+            title="تحديث على المناسبة",
+            message=f'تم تحديث تفاصيل مناسبة "{event.title}"',
+            event_id=event.id,
+        )
+
+    db.commit()
+    return {"success": True, "smsSent": sms_sent, "emailSent": email_sent}
+
+
 @router.delete("/events/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_event(
     event_id: str,
@@ -317,7 +378,67 @@ def add_recipient(
     db.commit()
     db.refresh(recipient)
     _send_invitation(event, recipient, invited_by=user)
+    _notify_recipient_in_app(
+        db,
+        recipient,
+        title="دعوة جديدة",
+        message=f'تمت دعوتك لحضور "{event.title}"',
+        event_id=event.id,
+    )
+    db.commit()
     return recipient
+
+
+def _notify_recipient_in_app(
+    db: Session, recipient: models.InvitationRecipient, *, title: str, message: str, event_id: str
+) -> None:
+    """In-app Notification (bell icon, /notifications) for a recipient —
+    genuinely new: the original app never surfaced invite/update events
+    in-app, only via SMS/email (see notifyEventUpdate in the ground truth,
+    which sends neither). Added per explicit request: this is *in addition
+    to* the SMS/email _send_invitation already sends, not a replacement.
+
+    Notification.target_user_email is required and isn't a foreign key —
+    same lazy-match pattern as pending_invites: if the recipient is already
+    linked to a registered account (recipient.user_id, matched by phone at
+    creation time), target that account's real email; otherwise fall back
+    to whatever email the recipient itself was given, which becomes
+    visible the moment they eventually sign in with it (get_app_user
+    creates their row lazily either way). A phone-only recipient with no
+    linked account yet has no email to target at all — no in-app
+    notification is possible for them until one of those becomes true;
+    SMS remains their only channel until then, which is what
+    _send_invitation already covers.
+
+    Doesn't commit — callers batch this with their own commit (add_recipient
+    already committed the recipient; notify_event_update batches all
+    recipients in one commit at the end)."""
+    target_email = None
+    if recipient.user_id:
+        linked_user = db.get(models.User, recipient.user_id)
+        if linked_user is not None:
+            target_email = linked_user.email
+    if not target_email:
+        target_email = recipient.email
+    if not target_email:
+        return
+
+    db.add(
+        models.Notification(
+            # No NotificationType value maps to "you were invited"/"event
+            # you're invited to changed" specifically (see NotificationType
+            # — the original never had this feature to name a type after).
+            # event_update reads close enough, and Notifications.jsx never
+            # renders type-specific icon/copy anyway — only title/message.
+            type=models.NotificationType.event_update,
+            title=title,
+            message=message,
+            is_read=False,
+            target_user_email=target_email,
+            event_id=event_id,
+            recipient_id=recipient.id,
+        )
+    )
 
 
 def _send_invitation(
