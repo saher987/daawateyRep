@@ -99,8 +99,13 @@ export default function AppLayout() {
       const now = Date.now();
       const newInvitations = invitations.filter((inv) => {
         if (seenIds.includes(inv.id)) return false;
-        const updated = new Date(inv.updated_date || inv.created_date).getTime();
-        return now - updated < recentMs;
+        // Was inv.updated_date || inv.created_date — Base44 field names
+        // that never existed on this API's MyInvitationRecipientOut, so
+        // `new Date(undefined)` was NaN and this filter silently matched
+        // nothing, ever. created_at is the real field (added alongside
+        // this fix — see schemas.py).
+        const created = new Date(inv.created_at).getTime();
+        return now - created < recentMs;
       });
       return notifs.length + newInvitations.length;
     },

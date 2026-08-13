@@ -91,7 +91,9 @@ export default function Notifications() {
                   <p className="text-sm text-muted-foreground mt-1">{n.message}</p>
                   <div className="flex items-center gap-1 text-xs text-muted-foreground mt-2">
                     <Clock className="w-3 h-3" />
-                    {n.created_date && format(new Date(n.created_date), "yyyy/MM/dd HH:mm")}
+                    {/* Was n.created_date — Base44's field name; this API's NotificationOut
+                        uses created_at, so this silently never rendered a timestamp. */}
+                    {n.created_at && format(new Date(n.created_at), "yyyy/MM/dd HH:mm")}
                   </div>
                 </div>
               </div>

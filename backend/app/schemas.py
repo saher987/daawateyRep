@@ -9,7 +9,7 @@ the explicit, reviewed list of what's actually accepted/returned.
 from datetime import date as date_type
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models import (
     EventRequestStatus,
@@ -202,7 +202,11 @@ class RecipientCreate(BaseModel):
     last_name: str | None = None
     phone: str | None = None
     email: str | None = None
-    guests_count: int = 1
+    # ge=1: AddInviteeDialog.jsx's guests_count input already enforces
+    # min="1" client-side; this was the missing server-side half — a
+    # negative or zero value here previously stored literally, corrupting
+    # GuestStatsDashboard's totalGuests sum with no error anywhere.
+    guests_count: int = Field(default=1, ge=1)
     group_label: str | None = None
     user_id: str | None = None
 
@@ -225,9 +229,13 @@ class RecipientOut(BaseModel):
     rsvp_status: RsvpStatus
     rsvp_guests_count: int | None
     rsvp_message: str | None
+    rsvp_date: datetime | None
     guests_count: int
     group_label: str | None
     notes: str | None
+    first_opened_at: datetime | None
+    last_opened_at: datetime | None
+    created_at: datetime
 
 
 class PublicInvitationOut(BaseModel):
@@ -264,7 +272,12 @@ class PublicInvitationOut(BaseModel):
 
 class RsvpSubmit(BaseModel):
     rsvp_status: RsvpStatus
-    guests_count: int | None = None
+    # ge=1 only when provided — RsvpForm.jsx enforces min="1" client-side
+    # the same way AddInviteeDialog.jsx does (see RecipientCreate). A
+    # "declined" RSVP forces guests_count to 0 server-side regardless of
+    # this value (see events.py), so this bound only ever matters for
+    # accepted/maybe.
+    guests_count: int | None = Field(default=None, ge=1)
     message: str | None = None
 
 
@@ -277,6 +290,7 @@ class MyInvitationRecipientOut(BaseModel):
     rsvp_guests_count: int | None
     open_count: int
     first_opened_at: datetime | None
+    created_at: datetime
 
 
 class MyInvitationEventOut(BaseModel):

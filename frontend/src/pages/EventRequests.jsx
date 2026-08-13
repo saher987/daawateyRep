@@ -161,7 +161,12 @@ export default function EventRequests() {
                     <div className="flex items-center gap-1">
                       <Clock className="w-3.5 h-3.5" />
                       <span>
-                        {formatDistanceToNow(new Date(req.created_date), { addSuffix: true, locale: user?.preferred_language === "he" ? he : ar })}
+                        {/* Was req.created_date — Base44's field name; this API's
+                            EventRequestOut uses created_at. new Date(undefined) is an
+                            Invalid Date, and date-fns throws RangeError on one, which
+                            crashed this entire page for every admin/manager the moment
+                            a single event request existed. */}
+                        {formatDistanceToNow(new Date(req.created_at), { addSuffix: true, locale: user?.preferred_language === "he" ? he : ar })}
                       </span>
                     </div>
                   </div>
