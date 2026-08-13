@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { useT } from "@/lib/i18n";
+import { downloadFile } from "@/lib/downloadFile";
 
 const COLORS = {
   accepted: "#22c55e",
@@ -33,12 +34,7 @@ function exportToExcel(recipients, eventTitle, t) {
   const bom = "\uFEFF";
   const csv = bom + csvLines.join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${eventTitle || t.exportDefaultTitle} - ${t.exportGuestList}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+  downloadFile(blob, `${eventTitle || t.exportDefaultTitle} - ${t.exportGuestList}.csv`);
 }
 
 function exportPendingToExcel(recipients, eventTitle) {
@@ -56,12 +52,7 @@ function exportPendingToExcel(recipients, eventTitle) {
     .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))
     .join("\n");
   const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${eventTitle} - ממתינים לאישור.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+  downloadFile(blob, `${eventTitle} - ממתינים לאישור.csv`);
 }
 
 export default function GuestStatsDashboard({ recipients, event }) {

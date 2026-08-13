@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import html2canvas from "html2canvas";
 import { useBackButton } from "@/hooks/useBackButton";
+import { downloadFile } from "@/lib/downloadFile";
 
 const FONTS = [
   { value: "font-arabic", label: "عربي (افتراضي)", css: "'Noto Sans Arabic', sans-serif" },
@@ -107,11 +108,8 @@ export default function InvitationCardEditor({ open, onOpenChange, event, onSave
         allowTaint: true,
         backgroundColor: null,
       });
-      const url = canvas.toDataURL("image/png");
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `invitation-${event?.title || "card"}.png`;
-      a.click();
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+      await downloadFile(blob, `invitation-${event?.title || "card"}.png`);
     } catch {
       toast({ title: "خطأ", description: "فشل تحميل الصورة", variant: "destructive" });
     }

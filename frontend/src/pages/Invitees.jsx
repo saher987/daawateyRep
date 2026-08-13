@@ -12,6 +12,7 @@ import LoadingSpinner from "@/components/shared/LoadingSpinner";
 import EmptyState from "@/components/shared/EmptyState";
 import { format } from "date-fns";
 import { useT } from "@/lib/i18n";
+import { downloadFile } from "@/lib/downloadFile";
 
 export default function Invitees() {
   const t = useT();
@@ -47,12 +48,7 @@ export default function Invitees() {
       .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))
       .join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `المدعوين_${format(new Date(), "yyyyMMdd")}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadFile(blob, `المدعوين_${format(new Date(), "yyyyMMdd")}.csv`);
   };
 
   const filtered = recipients.filter(r => {

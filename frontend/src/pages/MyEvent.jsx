@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { format } from "date-fns";
 import { ar, he } from "date-fns/locale";
 import { useToast } from "@/components/ui/use-toast";
+import { downloadFile } from "@/lib/downloadFile";
 
 // rsvpLabel is built dynamically using t inside components
 const rsvpColor = {
@@ -144,12 +145,7 @@ function EventControlPanel({ event }) {
       .map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(","))
       .join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${event.title}_${format(new Date(), "yyyyMMdd")}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadFile(blob, `${event.title}_${format(new Date(), "yyyyMMdd")}.csv`);
   };
 
   return (
