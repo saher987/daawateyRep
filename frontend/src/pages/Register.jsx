@@ -11,6 +11,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   GoogleAuthProvider,
+  OAuthProvider,
   signInWithCredential,
   signInWithPopup,
   createUserWithEmailAndPassword,
@@ -25,6 +26,7 @@ import { Label } from "@/components/ui/label";
 import { UserPlus, Mail, Lock, Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
+import AppleIcon from "@/components/AppleIcon";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -35,6 +37,7 @@ export default function Register() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
 
   // Same pattern as Login.jsx: Firebase signs the account in immediately on
   // creation (no separate verification step to wait for), so redirect the
@@ -92,6 +95,30 @@ export default function Register() {
     }
   };
 
+  const handleApple = async () => {
+    setError("");
+    setAppleLoading(true);
+    try {
+      if (Capacitor.isNativePlatform()) {
+        const result = await FirebaseAuthentication.signInWithApple({ skipNativeAuth: true });
+        const idToken = result.credential?.idToken;
+        const rawNonce = result.credential?.nonce;
+        if (!idToken) throw new Error("Apple sign-in returned no idToken");
+        const provider = new OAuthProvider("apple.com");
+        await signInWithCredential(auth, provider.credential({ idToken, rawNonce }));
+      } else {
+        const provider = new OAuthProvider("apple.com");
+        provider.addScope("email");
+        provider.addScope("name");
+        await signInWithPopup(auth, provider);
+      }
+    } catch (err) {
+      setError(err.message || "Apple sign-in failed");
+    } finally {
+      setAppleLoading(false);
+    }
+  };
+
   return (
     <AuthLayout
       icon={UserPlus}
@@ -109,9 +136,9 @@ export default function Register() {
       <Button
         type="button"
         variant="outline"
-        className="w-full h-12 text-sm font-medium mb-6"
+        className="w-full h-12 text-sm font-medium mb-3"
         onClick={handleGoogle}
-        disabled={googleLoading || loading}
+        disabled={googleLoading || loading || appleLoading}
       >
         <GoogleIcon className="w-5 h-5 mr-2" />
         {googleLoading ? (
@@ -123,6 +150,25 @@ export default function Register() {
           "Continue with Google"
         )}
       </Button>
+
+      {Capacitor.getPlatform() !== "android" && (
+        <Button
+          type="button"
+          className="w-full h-12 text-sm font-medium mb-6 bg-black text-white hover:bg-black/90"
+          onClick={handleApple}
+          disabled={appleLoading || googleLoading || loading}
+        >
+          <AppleIcon className="w-5 h-5 mr-2" />
+          {appleLoading ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Connecting...
+            </>
+          ) : (
+            "Continue with Apple"
+          )}
+        </Button>
+      )}
 
       <div className="relative mb-6">
         <div className="absolute inset-0 flex items-center">

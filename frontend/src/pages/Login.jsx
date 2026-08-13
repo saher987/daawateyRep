@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   GoogleAuthProvider,
+  OAuthProvider,
   signInWithCredential,
   signInWithPopup,
   signInWithEmailAndPassword,
@@ -21,6 +22,7 @@ import { useAuth } from '../lib/AuthContext'
 import { BUILD_LABEL, formatDiagnostics } from '../lib/diagnostics'
 import AuthLayout from '../components/AuthLayout'
 import GoogleIcon from '../components/GoogleIcon'
+import AppleIcon from '../components/AppleIcon'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
@@ -64,6 +66,7 @@ export function Login() {
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
   const [googleBusy, setGoogleBusy] = useState(false)
+  const [appleBusy, setAppleBusy] = useState(false)
 
   // The Google/email flows below only ever *complete Firebase's* sign-in —
   // AuthContext's onAuthStateChanged listener picks that up asynchronously,
@@ -153,6 +156,56 @@ export function Login() {
     }
   }
 
+  async function handleAppleSignIn() {
+    setError(null)
+    setAppleBusy(true)
+    let step = 'start'
+    try {
+      if (Capacitor.isNativePlatform()) {
+        // No Credential Manager/legacy-picker split here — that's a
+        // Google-specific Android quirk (see handleGoogleSignIn). Apple's
+        // native flow is the system ASAuthorizationController sheet, one
+        // path, iOS-only (the button below is hidden on Android — see the
+        // render section for why).
+        step = 'native: signInWithApple'
+        const result = await FirebaseAuthentication.signInWithApple({ skipNativeAuth: true })
+
+        step = 'native: read idToken/nonce from plugin result'
+        const idToken = result.credential?.idToken
+        // Apple's credential carries the *raw* nonce (unhashed) here —
+        // Firebase's OAuthProvider.credential() re-hashes it itself to
+        // verify against the hashed nonce Apple's server already checked.
+        // Passing the wrong one is a silent auth failure, not an error
+        // message, so this is worth naming explicitly rather than just
+        // "nonce".
+        const rawNonce = result.credential?.nonce
+        if (!idToken) {
+          throw new Error(
+            `Plugin returned no idToken. credential=${JSON.stringify(result.credential ?? null)}`,
+          )
+        }
+
+        step = 'web SDK: signInWithCredential'
+        const provider = new OAuthProvider('apple.com')
+        await signInWithCredential(auth, provider.credential({ idToken, rawNonce }))
+      } else {
+        step = 'web SDK: signInWithPopup'
+        const provider = new OAuthProvider('apple.com')
+        // Apple only ever hands over name/email on the very first
+        // authorization for a given app — request both scopes up front so
+        // that first response actually carries something to store,
+        // instead of getting a silent "user.displayName is null" later.
+        provider.addScope('email')
+        provider.addScope('name')
+        await signInWithPopup(auth, provider)
+      }
+    } catch (err) {
+      setError(`[failed at ${step}]\n${describeError(err)}`)
+    } finally {
+      setAppleBusy(false)
+    }
+  }
+
   async function handleEmailSubmit(e) {
     e.preventDefault()
     setError(null)
@@ -185,9 +238,9 @@ export function Login() {
       <Button
         type="button"
         variant="outline"
-        className="w-full h-12 text-sm font-medium mb-6"
+        className="w-full h-12 text-sm font-medium mb-3"
         onClick={handleGoogleSignIn}
-        disabled={googleBusy || busy}
+        disabled={googleBusy || busy || appleBusy}
       >
         <GoogleIcon className="w-5 h-5 mr-2" />
         {googleBusy ? (
@@ -199,6 +252,31 @@ export function Login() {
           'Continue with Google'
         )}
       </Button>
+
+      {/* Apple's own guideline (not just App Store review — it's the actual
+          HIG) is a solid black button, not an outlined one matching the
+          other providers. Hidden on native Android: Sign in with Apple is
+          an App Store requirement for iOS apps that offer third-party
+          login, not something Android users would ever expect or need —
+          and the plugin's Android support for it is unverified here. */}
+      {Capacitor.getPlatform() !== 'android' && (
+        <Button
+          type="button"
+          className="w-full h-12 text-sm font-medium mb-6 bg-black text-white hover:bg-black/90"
+          onClick={handleAppleSignIn}
+          disabled={appleBusy || googleBusy || busy}
+        >
+          <AppleIcon className="w-5 h-5 mr-2" />
+          {appleBusy ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Connecting...
+            </>
+          ) : (
+            'Continue with Apple'
+          )}
+        </Button>
+      )}
 
       {error && (
         <div

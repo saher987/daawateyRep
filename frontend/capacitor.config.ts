@@ -6,9 +6,12 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   plugins: {
     FirebaseAuthentication: {
-      // Providers the native plugin will initialize. Apple isn't listed —
-      // added once an Apple Developer account is in hand (see ARCHITECTURE.md).
-      providers: ['google.com'],
+      // Apple Developer account is in hand as of the iOS/Apple Sign-In
+      // milestone (see ARCHITECTURE.md) — apple.com added alongside
+      // google.com. Harmless on Android (Login.jsx/Register.jsx hide the
+      // Apple button there; this just means the native plugin knows the
+      // provider exists, nothing more).
+      providers: ['google.com', 'apple.com'],
       skipNativeAuth: true,
     },
   },

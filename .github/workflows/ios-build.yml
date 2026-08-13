@@ -1,0 +1,69 @@
+name: Build iOS App (Simulator)
+
+# Mirrors android-build.yml's debug build: a compile-and-package check
+# against daawatey-staging, not a signed release. Builds for the iOS
+# Simulator specifically (CODE_SIGNING_ALLOWED=NO) — no signing
+# certificate/provisioning profile exists yet, and a simulator build
+# doesn't need one. A real device / TestFlight build is a separate
+# ios-release-build.yml, added once the Apple Developer portal signing
+# assets (distribution cert, provisioning profile) exist as GitHub
+# Secrets — same two-tier split as android-build.yml / android-release-build.yml.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: macos-latest
+    # Same staging secrets android-build.yml uses.
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Write GoogleService-Info.plist
+        # Firebase's iOS app registration for daawatey-staging — same
+        # one-time "download from Firebase Console, base64-encode, paste
+        # as a secret" process as Android's GOOGLE_SERVICES_JSON_BASE64
+        # (see frontend/README.md). Unlike Android's Gradle plugin, Xcode
+        # doesn't validate this file's presence/content at *build* time —
+        # only at runtime (FirebaseApp.configure() crashes without a real
+        # one) — so this build can succeed even before that secret exists,
+        # but the resulting app won't actually be able to sign in until it
+        # does.
+        run: echo "${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 }}" | base64 -d > frontend/ios/App/App/GoogleService-Info.plist
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build web assets
+        working-directory: frontend
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_API_BASE_URL: https://daawatey-backend-qougz5q6wq-uc.a.run.app
+          VITE_BUILD_ID: "${{ github.run_number }}-${{ github.sha }}"
+          VITE_ALLOW_EMAIL_AUTH: "true"
+        run: npm run build
+
+      - name: Sync Capacitor iOS project
+        working-directory: frontend
+        run: npx cap sync ios
+
+      - name: Build for iOS Simulator
+        working-directory: frontend/ios/App
+        run: |
+          xcodebuild build \
+            -project App.xcodeproj \
+            -scheme App \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            -destination "generic/platform=iOS Simulator" \
+            CODE_SIGNING_ALLOWED=NO
