@@ -11,6 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import Footer from "@/components/layout/Footer";
 import BottomTabBar from "@/components/layout/BottomTabBar";
+import InstallAppBanner from "@/components/shared/InstallAppBanner";
 import useNavigationDirection from "@/hooks/useNavigationDirection";
 import { useT } from "@/lib/i18n";
 
@@ -293,6 +294,9 @@ export default function AppLayout() {
               <span>{t.completeProfile}</span>
             </div>
           }
+
+          {/* Android app install nudge — mobile web only, see InstallAppBanner.jsx */}
+          <InstallAppBanner />
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={location.pathname}
