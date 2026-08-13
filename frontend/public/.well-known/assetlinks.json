@@ -5,7 +5,8 @@
       "namespace": "android_app",
       "package_name": "com.daawatey.app",
       "sha256_cert_fingerprints": [
-        "7D:B5:05:48:80:62:1E:9F:EE:A0:90:D7:B3:D7:BD:40:D1:7A:46:20:EB:D1:55:D3:64:CE:5A:66:42:1F:77:21"
+        "7D:B5:05:48:80:62:1E:9F:EE:A0:90:D7:B3:D7:BD:40:D1:7A:46:20:EB:D1:55:D3:64:CE:5A:66:42:1F:77:21",
+        "6B:72:08:DD:1B:9D:60:45:DA:48:E4:AB:0C:87:34:9A:BC:35:B0:B7:7B:3A:45:93:E1:73:8D:80:2B:94:22:17"
       ]
     }
   }

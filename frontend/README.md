@@ -174,20 +174,23 @@ checks it against. Same trust model as the Firebase cert registration above,
 and it has the exact same "Quantum-ready" trap: **the fingerprint that
 matters is the deployment cert's, not what Play Console shows you.**
 
-The file currently lists only the shared debug keystore's SHA-256
-(`7D:B5:05:48:80:62:1E:9F:EE:A0:90:D7:B3:D7:BD:40:D1:7A:46:20:EB:D1:55:D3:64:CE:5A:66:42:1F:77:21`
-— computed from `android/app/debug.keystore`, matches the SHA-1 documented
-above). That covers debug/sideloaded builds. **Before App Links will work on
-a real Play Store install**, add the release deployment cert's SHA-256 to
-the `sha256_cert_fingerprints` array too, using the same certificate file
-you already pulled for Firebase registration:
+The file lists two fingerprints: the shared debug keystore's SHA-256
+(`7D:B5:05:48:...` — computed from `android/app/debug.keystore`, matches
+the SHA-1 documented above, covers debug/sideloaded builds) and the real
+Play Store deployment cert's SHA-256 (`6B:72:08:DD:...` — pulled from
+`deployment_cert.der`, same certificate file registered with Firebase for
+the Google Sign-In fix above). Both are needed: the first for local/CI
+debug builds, the second for what actual Play Store users install.
+
+If the release signing key is ever rotated, re-download the certificates
+from Play Console → App signing and re-run:
 
 ```bash
 openssl x509 -inform DER -in deployment_cert.der -noout -fingerprint -sha256
 ```
 
 (Colons and all — Android's Digital Asset Links format wants them, unlike
-Firebase's console field. Add the upload key's SHA-256 as well if you want
+Firebase's console field. Add the upload key's SHA-256 too if you want
 sideloaded release builds to also deep-link, same reasoning as registering
 it with Firebase.)
 
