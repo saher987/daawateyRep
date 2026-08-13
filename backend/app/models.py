@@ -392,6 +392,15 @@ class OtpVerification(Base):
     otp_code: Mapped[str] = mapped_column(String, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     is_used: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Failed /otp/verify guesses against this specific code. A 6-digit code
+    # is only 1,000,000 possibilities and this endpoint has no auth — with
+    # no cap, an attacker who knows a phone number could script through all
+    # of them well within the 10-minute expiry and verify without ever
+    # receiving the SMS. Locking the code out (is_used=True) after
+    # _MAX_VERIFY_ATTEMPTS wrong guesses, combined with the send-side
+    # cooldown in otp.py, bounds the real attempt budget to a few dozen
+    # guesses per 10-minute window instead of a million.
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow
     )

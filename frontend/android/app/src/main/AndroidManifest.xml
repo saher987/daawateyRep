@@ -22,6 +22,25 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- Android App Links: invitation links (SMS/email, the ones
+                 InviteeRow.jsx builds as `${origin}/i/<token>`) open directly
+                 in the app instead of the browser, when installed. Requires
+                 autoVerify (Android checks assetlinks.json — see
+                 frontend/public/.well-known/assetlinks.json — before it will
+                 route here instead of the browser) and BROWSABLE so it can
+                 be reached from a tapped link, not just launcher icon. The
+                 host below must exactly match APP_URL (see DEPLOYMENT.md) —
+                 update both together if the prod domain ever changes. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="daawatey-frontend-t3tobt7bfq-uc.a.run.app"
+                    android:pathPrefix="/i/" />
+            </intent-filter>
+
         </activity>
 
         <provider

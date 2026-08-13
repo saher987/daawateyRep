@@ -38,13 +38,23 @@ router = APIRouter(prefix="/api", tags=["uploads"])
 # var for something that isn't actually varying per environment.
 _MAX_UPLOAD_BYTES = 15 * 1024 * 1024
 
+# An explicit allowlist, not `content_type.startswith("image/")` — that
+# prefix check let `image/svg+xml` through too. SVG is XML, so an "image"
+# upload could carry a `<script>` payload; served back from a public,
+# world-readable bucket URL (see below) with that same content-type, a
+# browser executes it on direct navigation to the link. Every format here
+# is a real raster/vector-without-script format the app's own upload UI
+# (profile photo, event cover/invitation image, generated invitation-card
+# PNG) actually produces — nothing legitimate is lost by dropping svg+xml.
+_ALLOWED_CONTENT_TYPES = {"image/png", "image/jpeg", "image/webp", "image/gif"}
+
 
 @router.post("/uploads")
 async def upload_file(
     file: UploadFile,
     _: models.User = Depends(get_app_user),
 ) -> dict:
-    if not file.content_type or not file.content_type.startswith("image/"):
+    if file.content_type not in _ALLOWED_CONTENT_TYPES:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Only image uploads are supported")
 
     body = await file.read()

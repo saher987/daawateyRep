@@ -161,3 +161,57 @@ differently-signed app) removes Play's re-signing from the equation:
   registered in Firebase
 - fails both ways → the Firebase/GCP project config is at fault, not the
   certificate
+
+## Android App Links (invitation links open the app, not the browser)
+
+`public/.well-known/assetlinks.json` is what makes Android trust that
+`com.daawatey.app` is allowed to handle `https://<APP_URL host>/i/<token>`
+links — it's served as a normal static file at
+`https://<host>/.well-known/assetlinks.json` (Vite copies `public/` verbatim
+into `dist/`, nginx serves it like any other file), and
+`AndroidManifest.xml`'s `autoVerify="true"` intent-filter is what Android
+checks it against. Same trust model as the Firebase cert registration above,
+and it has the exact same "Quantum-ready" trap: **the fingerprint that
+matters is the deployment cert's, not what Play Console shows you.**
+
+The file currently lists only the shared debug keystore's SHA-256
+(`7D:B5:05:48:80:62:1E:9F:EE:A0:90:D7:B3:D7:BD:40:D1:7A:46:20:EB:D1:55:D3:64:CE:5A:66:42:1F:77:21`
+— computed from `android/app/debug.keystore`, matches the SHA-1 documented
+above). That covers debug/sideloaded builds. **Before App Links will work on
+a real Play Store install**, add the release deployment cert's SHA-256 to
+the `sha256_cert_fingerprints` array too, using the same certificate file
+you already pulled for Firebase registration:
+
+```bash
+openssl x509 -inform DER -in deployment_cert.der -noout -fingerprint -sha256
+```
+
+(Colons and all — Android's Digital Asset Links format wants them, unlike
+Firebase's console field. Add the upload key's SHA-256 as well if you want
+sideloaded release builds to also deep-link, same reasoning as registering
+it with Firebase.)
+
+**The host in both `assetlinks.json`'s implicit domain and the
+manifest's `android:host` must exactly equal `APP_URL`'s host** (see
+DEPLOYMENT.md) — that's literally the domain the SMS/email invitation link
+uses. If `APP_URL` ever changes (a custom domain, for instance), update the
+intent-filter's `android:host` in `AndroidManifest.xml` and re-verify;
+`assetlinks.json` itself doesn't encode the host, only the app identity, so
+it doesn't need touching.
+
+**Verifying it actually took**, after installing a build with these changes:
+
+```bash
+adb shell dumpsys package com.daawatey.app | grep -A5 "Domain verification"
+```
+
+Should show the host as `verified`. If it shows `legacy_failure` or similar,
+Android couldn't fetch/match `assetlinks.json` — check the file is actually
+reachable at that exact URL and that the fingerprint matches the *installed*
+build's actual signing cert (`apksigner verify --print-certs app.apk`), not
+just what you think Play re-signed it with.
+
+Tapping a link when the app isn't installed still falls through to the
+browser exactly as before — that's not something this changes, App Links is
+purely "prefer the app when it's able to handle this," never a hard
+requirement.
