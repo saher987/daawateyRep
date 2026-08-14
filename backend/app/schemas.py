@@ -325,7 +325,11 @@ class EventRequestCreate(BaseModel):
     title: str
     details: str
     requester_name: str | None = None
-    requester_phone: str | None = None
+    # Mandatory per explicit product decision — a phone number is how
+    # admins actually follow up on a request (see RequestEventDialog.jsx's
+    # own "للتواصل المباشر" phone-number callout), and title/details being
+    # allowed empty (see the edge-case suite) doesn't extend to this one.
+    requester_phone: str = Field(min_length=1)
     requester_email: str | None = None
 
 

@@ -13,11 +13,15 @@ const ADMIN_PHONE = "050-000-0000";
 export default function RequestEventDialog({ open, onOpenChange, user }) {
   const [title, setTitle] = useState("");
   const [details, setDetails] = useState("");
+  // Pre-filled from the profile when available, but always editable and
+  // always required — a saved profile phone shouldn't quietly stand in
+  // for someone actually confirming it's the right number to call.
+  const [phone, setPhone] = useState(user?.phone || "");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = async () => {
-    if (!title.trim() || !details.trim()) return;
+    if (!title.trim() || !details.trim() || !phone.trim()) return;
     setLoading(true);
     try {
       await base44.entities.EventRequest.create({
@@ -25,7 +29,7 @@ export default function RequestEventDialog({ open, onOpenChange, user }) {
         details: details.trim(),
         requester_name: [user?.first_name, user?.last_name].filter(Boolean).join(" ") || user?.full_name || "",
         requester_email: user?.email || "",
-        requester_phone: user?.phone || "",
+        requester_phone: phone.trim(),
         status: "pending",
       });
       // Notify admins/managers via notification
@@ -46,6 +50,7 @@ export default function RequestEventDialog({ open, onOpenChange, user }) {
     if (!val) {
       setTitle("");
       setDetails("");
+      setPhone(user?.phone || "");
       setSubmitted(false);
     }
     onOpenChange(val);
@@ -101,10 +106,22 @@ export default function RequestEventDialog({ open, onOpenChange, user }) {
                 className="rounded-xl resize-none min-h-[100px]"
               />
             </div>
+            <div className="space-y-2">
+              <Label>رقم الهاتف *</Label>
+              <Input
+                type="tel"
+                dir="ltr"
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
+                placeholder="05X-XXXXXXX"
+                className="h-11 rounded-xl"
+                required
+              />
+            </div>
             <Button
               className="w-full h-11 rounded-xl gap-2"
               onClick={handleSubmit}
-              disabled={loading || !title.trim() || !details.trim()}
+              disabled={loading || !title.trim() || !details.trim() || !phone.trim()}
             >
               <CalendarPlus className="w-4 h-4" />
               {loading ? "جاري الإرسال..." : "إرسال الطلب"}
