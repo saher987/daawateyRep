@@ -1,4 +1,4 @@
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 
 const translations = {
@@ -41,6 +41,54 @@ const translations = {
     welcomeTo: "مرحباً بك في دعوتي",
     noInvitationsGuest: "لا توجد دعوات للعرض. سجّل دخولك لرؤية دعواتك الشخصية.",
     mustLogin: "يجب تسجيل الدخول لعرض دعواتك",
+
+    // Auth pages (Login/Register/ForgotPassword/ResetPassword) — shared
+    authConnecting: "جارٍ الاتصال...",
+    authOr: "أو",
+    authEmail: "البريد الإلكتروني",
+    authPassword: "كلمة المرور",
+    authConfirmPassword: "تأكيد كلمة المرور",
+    authNewPasswordLabel: "كلمة المرور الجديدة",
+    authPasswordsNoMatch: "كلمتا المرور غير متطابقتين",
+    // Login
+    authWelcomeBack: "مرحباً بعودتك",
+    authLoginSubtitle: "سجّل الدخول للمتابعة",
+    authContinueWithGoogle: "المتابعة عبر Google",
+    authContinueWithApple: "المتابعة عبر Apple",
+    authForgotPassword: "نسيت كلمة المرور؟",
+    authLoggingIn: "جارٍ تسجيل الدخول...",
+    authNoAccount: "ليس لديك حساب؟",
+    authSignUp: "إنشاء حساب",
+    // Register
+    authCreateYourAccount: "إنشاء حسابك",
+    authSignUpSubtitle: "سجّل للبدء",
+    authAlreadyHaveAccount: "لديك حساب بالفعل؟",
+    authCreateAccountBtn: "إنشاء الحساب",
+    authCreatingAccount: "جارٍ إنشاء الحساب...",
+    authRegistrationFailed: "فشل التسجيل",
+    authGoogleSignInFailed: "فشل تسجيل الدخول عبر Google",
+    authAppleSignInFailed: "فشل تسجيل الدخول عبر Apple",
+    // ForgotPassword
+    authResetPasswordTitle: "إعادة تعيين كلمة المرور",
+    authResetPasswordSubtitle: "سنرسل لك رابطاً لإعادة تعيينها",
+    authBackToLogin: "العودة لتسجيل الدخول",
+    authResetSentMessage: "إذا كان هناك حساب مرتبط بهذا البريد، ستصلك رسالة لإعادة تعيين كلمة المرور قريباً.",
+    authSendResetLink: "إرسال رابط إعادة التعيين",
+    authSending: "جارٍ الإرسال...",
+    // ResetPassword
+    authNewPasswordTitle: "كلمة مرور جديدة",
+    authCheckingLink: "جارٍ التحقق من رابط إعادة التعيين...",
+    authInvalidLinkTitle: "رابط غير صالح",
+    authInvalidLinkSubtitle: "رابط إعادة تعيين كلمة المرور مفقود أو غير صالح أو منتهي الصلاحية",
+    authRequestNewLink: "طلب رابط جديد",
+    authInvalidLinkBody: "يبدو أن الرابط الذي استخدمته غير مكتمل أو لم يعد صالحاً. يرجى طلب رسالة جديدة لإعادة تعيين كلمة المرور.",
+    authPasswordUpdatedTitle: "تم تحديث كلمة المرور",
+    authPasswordUpdatedSubtitle: "يمكنك الآن تسجيل الدخول بكلمة مرورك الجديدة",
+    authPasswordResetDone: "تم إعادة تعيين كلمة مرورك.",
+    authEnterNewPasswordSubtitle: "أدخل كلمة المرور الجديدة أدناه",
+    authResetPasswordBtn: "إعادة تعيين كلمة المرور",
+    authResetting: "جارٍ إعادة التعيين...",
+    authResetFailed: "فشلت إعادة تعيين كلمة المرور",
 
     // Dashboard
     dashboardSubtitle: "مرحباً بك في منصة الدعوات",
@@ -560,6 +608,54 @@ const translations = {
     noInvitationsGuest: "אין הזמנות להצגה. התחבר כדי לראות את ההזמנות שלך.",
     mustLogin: "יש להתחבר כדי לצפות בהזמנות",
 
+    // Auth pages (Login/Register/ForgotPassword/ResetPassword) — shared
+    authConnecting: "מתחבר...",
+    authOr: "או",
+    authEmail: "אימייל",
+    authPassword: "סיסמה",
+    authConfirmPassword: "אימות סיסמה",
+    authNewPasswordLabel: "סיסמה חדשה",
+    authPasswordsNoMatch: "הסיסמאות אינן תואמות",
+    // Login
+    authWelcomeBack: "ברוך שובך",
+    authLoginSubtitle: "התחבר כדי להמשיך",
+    authContinueWithGoogle: "המשך עם Google",
+    authContinueWithApple: "המשך עם Apple",
+    authForgotPassword: "שכחת סיסמה?",
+    authLoggingIn: "מתחבר...",
+    authNoAccount: "אין לך חשבון?",
+    authSignUp: "הרשמה",
+    // Register
+    authCreateYourAccount: "צור את החשבון שלך",
+    authSignUpSubtitle: "הירשם כדי להתחיל",
+    authAlreadyHaveAccount: "כבר יש לך חשבון?",
+    authCreateAccountBtn: "צור חשבון",
+    authCreatingAccount: "יוצר חשבון...",
+    authRegistrationFailed: "ההרשמה נכשלה",
+    authGoogleSignInFailed: "ההתחברות עם Google נכשלה",
+    authAppleSignInFailed: "ההתחברות עם Apple נכשלה",
+    // ForgotPassword
+    authResetPasswordTitle: "איפוס סיסמה",
+    authResetPasswordSubtitle: "נשלח לך קישור לאיפוס",
+    authBackToLogin: "חזרה להתחברות",
+    authResetSentMessage: "אם קיים חשבון עם כתובת זו, תקבל קישור לאיפוס הסיסמה בקרוב.",
+    authSendResetLink: "שלח קישור לאיפוס",
+    authSending: "שולח...",
+    // ResetPassword
+    authNewPasswordTitle: "סיסמה חדשה",
+    authCheckingLink: "בודק את קישור האיפוס...",
+    authInvalidLinkTitle: "קישור לא תקין",
+    authInvalidLinkSubtitle: "קישור איפוס הסיסמה חסר, לא תקין או שפג תוקפו",
+    authRequestNewLink: "בקש קישור חדש",
+    authInvalidLinkBody: "נראה שהקישור שבו השתמשת אינו שלם או שכבר אינו תקף. אנא בקש הודעת איפוס סיסמה חדשה.",
+    authPasswordUpdatedTitle: "הסיסמה עודכנה",
+    authPasswordUpdatedSubtitle: "כעת תוכל להתחבר עם הסיסמה החדשה שלך",
+    authPasswordResetDone: "הסיסמה שלך אופסה.",
+    authEnterNewPasswordSubtitle: "הזן את הסיסמה החדשה שלך למטה",
+    authResetPasswordBtn: "איפוס סיסמה",
+    authResetting: "מאפס...",
+    authResetFailed: "איפוס הסיסמה נכשל",
+
     // Dashboard
     dashboardSubtitle: "ברוך הבא לפלטפורמת ההזמנות",
     newEvent: "אירוע חדש",
@@ -1062,4 +1158,35 @@ export function I18nProvider({ children }) {
 
 export function useT() {
   return useContext(I18nContext);
+}
+
+// For pre-auth pages (Login/Register/ForgotPassword/ResetPassword,
+// InvitationPage) that render before there's a `user` to read
+// preferred_language from — useT()/I18nProvider both depend on
+// useAuth(), which is exactly what doesn't exist yet here. Reads the
+// same localStorage key I18nProvider already writes to (so a signed-in
+// user's language choice carries over to their next visit to /login),
+// defaulting to Arabic, and lets the page itself switch languages via a
+// visible toggle before any account exists.
+function readStoredLanguage() {
+  try {
+    const stored = localStorage.getItem("preferred_language");
+    return stored && translations[stored] ? stored : null;
+  } catch {
+    return null;
+  }
+}
+
+export function usePublicLanguage() {
+  const [lang, setLang] = useState(() => readStoredLanguage() || "ar");
+
+  const setLanguage = (code) => {
+    if (!translations[code]) return;
+    setLang(code);
+    try {
+      localStorage.setItem("preferred_language", code);
+    } catch {}
+  };
+
+  return [lang, setLanguage];
 }

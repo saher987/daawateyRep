@@ -20,6 +20,7 @@ import { Capacitor } from "@capacitor/core";
 import { FirebaseAuthentication } from "@capacitor-firebase/authentication";
 import { auth } from "@/lib/firebase";
 import { useAuth } from "@/lib/AuthContext";
+import { translations, usePublicLanguage } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,6 +32,8 @@ import AppleIcon from "@/components/AppleIcon";
 export default function Register() {
   const navigate = useNavigate();
   const { isAuthenticated, isLoadingAuth } = useAuth();
+  const [lang, setLang] = usePublicLanguage();
+  const t = translations[lang];
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -52,7 +55,7 @@ export default function Register() {
     e.preventDefault();
     setError("");
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      setError(t.authPasswordsNoMatch);
       return;
     }
     setLoading(true);
@@ -60,7 +63,7 @@ export default function Register() {
       await createUserWithEmailAndPassword(auth, email, password);
       // onAuthStateChanged -> isAuthenticated -> the effect above navigates.
     } catch (err) {
-      setError(err.message || "Registration failed");
+      setError(err.message || t.authRegistrationFailed);
     } finally {
       setLoading(false);
     }
@@ -89,7 +92,7 @@ export default function Register() {
         await signInWithPopup(auth, new GoogleAuthProvider());
       }
     } catch (err) {
-      setError(err.message || "Google sign-in failed");
+      setError(err.message || t.authGoogleSignInFailed);
     } finally {
       setGoogleLoading(false);
     }
@@ -113,7 +116,7 @@ export default function Register() {
         await signInWithPopup(auth, provider);
       }
     } catch (err) {
-      setError(err.message || "Apple sign-in failed");
+      setError(err.message || t.authAppleSignInFailed);
     } finally {
       setAppleLoading(false);
     }
@@ -122,13 +125,16 @@ export default function Register() {
   return (
     <AuthLayout
       icon={UserPlus}
-      title="Create your account"
-      subtitle="Sign up to get started"
+      title={t.authCreateYourAccount}
+      subtitle={t.authSignUpSubtitle}
+      dir={t.dir}
+      lang={lang}
+      onLanguageChange={setLang}
       footer={
         <>
-          Already have an account?{" "}
+          {t.authAlreadyHaveAccount}{" "}
           <Link to="/login" className="text-primary font-medium hover:underline">
-            Log in
+            {t.login}
           </Link>
         </>
       }
@@ -144,10 +150,10 @@ export default function Register() {
         {googleLoading ? (
           <>
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Connecting...
+            {t.authConnecting}
           </>
         ) : (
-          "Continue with Google"
+          t.authContinueWithGoogle
         )}
       </Button>
 
@@ -162,10 +168,10 @@ export default function Register() {
           {appleLoading ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Connecting...
+              {t.authConnecting}
             </>
           ) : (
-            "Continue with Apple"
+            t.authContinueWithApple
           )}
         </Button>
       )}
@@ -175,7 +181,7 @@ export default function Register() {
           <div className="w-full border-t border-border" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-card px-3 text-muted-foreground">or</span>
+          <span className="bg-card px-3 text-muted-foreground">{t.authOr}</span>
         </div>
       </div>
 
@@ -187,7 +193,7 @@ export default function Register() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">{t.authEmail}</Label>
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
@@ -204,7 +210,7 @@ export default function Register() {
           </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">{t.authPassword}</Label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
@@ -221,7 +227,7 @@ export default function Register() {
           </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="confirm">Confirm Password</Label>
+          <Label htmlFor="confirm">{t.authConfirmPassword}</Label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
@@ -241,10 +247,10 @@ export default function Register() {
           {loading ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Creating account...
+              {t.authCreatingAccount}
             </>
           ) : (
-            "Create account"
+            t.authCreateAccountBtn
           )}
         </Button>
       </form>

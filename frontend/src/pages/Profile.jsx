@@ -255,7 +255,6 @@ export default function Profile() {
             <SelectContent>
               <SelectItem value="ar">{t.langAr}</SelectItem>
               <SelectItem value="he">{t.langHe}</SelectItem>
-              <SelectItem value="en">{t.langEn}</SelectItem>
             </SelectContent>
           </Select>
         </div>

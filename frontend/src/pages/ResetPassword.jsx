@@ -10,6 +10,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { confirmPasswordReset, verifyPasswordResetCode } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { translations, usePublicLanguage } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +20,8 @@ import AuthLayout from "@/components/AuthLayout";
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
   const oobCode = searchParams.get("oobCode");
+  const [lang, setLang] = usePublicLanguage();
+  const t = translations[lang];
 
   const [checkingCode, setCheckingCode] = useState(true);
   const [codeValid, setCodeValid] = useState(false);
@@ -43,7 +46,7 @@ export default function ResetPassword() {
     e.preventDefault();
     setError("");
     if (newPassword !== confirmPassword) {
-      setError("Passwords do not match");
+      setError(t.authPasswordsNoMatch);
       return;
     }
     setLoading(true);
@@ -51,7 +54,7 @@ export default function ResetPassword() {
       await confirmPasswordReset(auth, oobCode, newPassword);
       setDone(true);
     } catch (err) {
-      setError(err.message || "Failed to reset password");
+      setError(err.message || t.authResetFailed);
     } finally {
       setLoading(false);
     }
@@ -59,7 +62,7 @@ export default function ResetPassword() {
 
   if (checkingCode) {
     return (
-      <AuthLayout icon={Lock} title="New password" subtitle="Checking your reset link...">
+      <AuthLayout icon={Lock} title={t.authNewPasswordTitle} subtitle={t.authCheckingLink} dir={t.dir}>
         <div className="flex justify-center py-4">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
@@ -71,18 +74,18 @@ export default function ResetPassword() {
     return (
       <AuthLayout
         icon={AlertTriangle}
-        title="Invalid reset link"
-        subtitle="This password reset link is missing, invalid, or expired"
+        title={t.authInvalidLinkTitle}
+        subtitle={t.authInvalidLinkSubtitle}
+        dir={t.dir}
+        lang={lang}
+        onLanguageChange={setLang}
         footer={
           <Link to="/forgot-password" className="text-primary font-medium hover:underline">
-            Request a new link
+            {t.authRequestNewLink}
           </Link>
         }
       >
-        <p className="text-sm text-foreground text-center">
-          The link you used appears to be incomplete or no longer valid. Please request a new
-          password reset email.
-        </p>
+        <p className="text-sm text-foreground text-center">{t.authInvalidLinkBody}</p>
       </AuthLayout>
     );
   }
@@ -91,21 +94,29 @@ export default function ResetPassword() {
     return (
       <AuthLayout
         icon={Lock}
-        title="Password updated"
-        subtitle="You can now log in with your new password"
+        title={t.authPasswordUpdatedTitle}
+        subtitle={t.authPasswordUpdatedSubtitle}
+        dir={t.dir}
         footer={
           <Link to="/login" className="text-primary font-medium hover:underline">
-            Log in
+            {t.login}
           </Link>
         }
       >
-        <p className="text-sm text-foreground text-center">Your password has been reset.</p>
+        <p className="text-sm text-foreground text-center">{t.authPasswordResetDone}</p>
       </AuthLayout>
     );
   }
 
   return (
-    <AuthLayout icon={Lock} title="New password" subtitle="Enter your new password below">
+    <AuthLayout
+      icon={Lock}
+      title={t.authNewPasswordTitle}
+      subtitle={t.authEnterNewPasswordSubtitle}
+      dir={t.dir}
+      lang={lang}
+      onLanguageChange={setLang}
+    >
       {error && (
         <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
           {error}
@@ -113,7 +124,7 @@ export default function ResetPassword() {
       )}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="password">New Password</Label>
+          <Label htmlFor="password">{t.authNewPasswordLabel}</Label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
@@ -131,7 +142,7 @@ export default function ResetPassword() {
           </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="confirm">Confirm Password</Label>
+          <Label htmlFor="confirm">{t.authConfirmPassword}</Label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
@@ -151,10 +162,10 @@ export default function ResetPassword() {
           {loading ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Resetting...
+              {t.authResetting}
             </>
           ) : (
-            "Reset password"
+            t.authResetPasswordBtn
           )}
         </Button>
       </form>

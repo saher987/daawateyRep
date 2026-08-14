@@ -20,6 +20,7 @@ import { LogIn, Mail, Lock, Loader2 } from 'lucide-react'
 import { auth } from '../lib/firebase'
 import { useAuth } from '../lib/AuthContext'
 import { BUILD_LABEL, formatDiagnostics } from '../lib/diagnostics'
+import { translations, usePublicLanguage } from '../lib/i18n'
 import AuthLayout from '../components/AuthLayout'
 import GoogleIcon from '../components/GoogleIcon'
 import AppleIcon from '../components/AppleIcon'
@@ -27,8 +28,13 @@ import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 
-// Computed once at module load — these facts don't change at runtime.
-const diagnostics = formatDiagnostics()
+// Not rendered on the page anymore (it's not something a real user should
+// ever see) — logged to the console instead, so it's still reachable by
+// asking someone to open devtools when something needs debugging on a
+// device we can't attach to directly.
+if (typeof window !== 'undefined') {
+  console.info(`[daawatey] build ${BUILD_LABEL}\n${formatDiagnostics()}`)
+}
 
 // Email/password is meant for test builds only — simulators and device farms
 // can't run a real Google/Apple picker. Prod builds must never set this flag.
@@ -61,6 +67,8 @@ function describeError(err) {
 export function Login() {
   const navigate = useNavigate()
   const { isAuthenticated, isLoadingAuth } = useAuth()
+  const [lang, setLang] = usePublicLanguage()
+  const t = translations[lang]
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
@@ -222,14 +230,17 @@ export function Login() {
   return (
     <AuthLayout
       icon={LogIn}
-      title="Welcome back"
-      subtitle="Log in to continue"
+      title={t.authWelcomeBack}
+      subtitle={t.authLoginSubtitle}
+      dir={t.dir}
+      lang={lang}
+      onLanguageChange={setLang}
       footer={
         allowEmailAuth ? (
           <>
-            Don't have an account?{' '}
+            {t.authNoAccount}{' '}
             <Link to="/register" className="text-primary font-medium hover:underline">
-              Sign up
+              {t.authSignUp}
             </Link>
           </>
         ) : undefined
@@ -246,10 +257,10 @@ export function Login() {
         {googleBusy ? (
           <>
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Connecting...
+            {t.authConnecting}
           </>
         ) : (
-          'Continue with Google'
+          t.authContinueWithGoogle
         )}
       </Button>
 
@@ -270,10 +281,10 @@ export function Login() {
           {appleBusy ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Connecting...
+              {t.authConnecting}
             </>
           ) : (
-            'Continue with Apple'
+            t.authContinueWithApple
           )}
         </Button>
       )}
@@ -294,13 +305,13 @@ export function Login() {
               <div className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-3 text-muted-foreground">or</span>
+              <span className="bg-card px-3 text-muted-foreground">{t.authOr}</span>
             </div>
           </div>
 
           <form onSubmit={handleEmailSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t.authEmail}</Label>
               <div className="relative">
                 <Mail
                   className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
@@ -320,9 +331,9 @@ export function Login() {
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">{t.authPassword}</Label>
                 <Link to="/forgot-password" className="text-xs text-primary hover:underline">
-                  Forgot password?
+                  {t.authForgotPassword}
                 </Link>
               </div>
               <div className="relative">
@@ -347,24 +358,15 @@ export function Login() {
               {busy ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Logging in...
+                  {t.authLoggingIn}
                 </>
               ) : (
-                'Log in'
+                t.login
               )}
             </Button>
           </form>
         </>
       )}
-
-      <details className="mt-8 text-xs text-muted-foreground">
-        <summary className="cursor-pointer select-none">Build diagnostics</summary>
-        <pre className="mt-2 p-2 border border-border rounded-md whitespace-pre-wrap break-words">
-          build {BUILD_LABEL}
-          {'\n'}
-          {diagnostics}
-        </pre>
-      </details>
     </AuthLayout>
   )
 }

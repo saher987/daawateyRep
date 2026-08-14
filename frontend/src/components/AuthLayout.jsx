@@ -1,12 +1,24 @@
 // Ported unchanged from the original Base44 app (zaffaf/src/components/AuthLayout.jsx) —
 // the card-with-icon-header shell shared by Login/Register/ForgotPassword/etc there.
-// Only Login.tsx uses it here so far; the other auth pages aren't built yet.
 import React from "react";
+import AuthLanguageToggle from "./AuthLanguageToggle";
 
-export default function AuthLayout({ icon: Icon, title, subtitle, footer, children }) {
+export default function AuthLayout({
+  icon: Icon,
+  title,
+  subtitle,
+  footer,
+  children,
+  dir = "rtl",
+  lang,
+  onLanguageChange,
+}) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+    <div dir={dir} className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md">
+        {lang && onLanguageChange && (
+          <AuthLanguageToggle lang={lang} onChange={onLanguageChange} />
+        )}
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary mb-4">
             <Icon className="w-7 h-7 text-primary-foreground" aria-hidden="true" />
