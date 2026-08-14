@@ -37,7 +37,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:scheme="https"
-                    android:host="daawatey-frontend-t3tobt7bfq-uc.a.run.app"
+                    android:host="www.daawatey.com"
                     android:pathPrefix="/i/" />
             </intent-filter>
 
