@@ -94,15 +94,20 @@ jobs:
             # service runs as daawatey-staging but its DATABASE_URL secret
             # lives in daawatey-prod (see the SECRETS_PROJECT comment
             # above) — a cross-project reference needs gcloud's full
-            # resource-path form instead, and that form specifically wants
-            # .../versions/latest, not the :latest shorthand (which is only
-            # valid on the short same-project form — using it on the full
-            # path 404s with "not a valid secret name", caught live on the
-            # first staging deploy attempt).
+            # resource-path form instead: projects/PROJECT_NUMBER/secrets/
+            # NAME:VERSION. Two things caught live across the first two
+            # staging deploy attempts: it's always :VERSION (colon), never
+            # /versions/VERSION — "No secret version specified" is what you
+            # get for the latter, even on a full path — and cross-project
+            # resolution specifically wants the numeric project *number*
+            # (1046309287701, daawatey-prod's — visible in any IAM policy
+            # dump for the project), not the "daawatey-prod" project ID
+            # string, which errors "not a valid secret name" despite
+            # otherwise-correct syntax.
             if [ "${{ inputs.environment }}" = "prod" ]; then
               DB_SECRET_REF="database-url:latest"
             else
-              DB_SECRET_REF="projects/${{ env.SECRETS_PROJECT }}/secrets/database-url-staging/versions/latest"
+              DB_SECRET_REF="projects/1046309287701/secrets/database-url-staging:latest"
             fi
             # One single --set-secrets flag, not one per secret: gcloud
             # treats a repeated --set-secrets as last-one-wins on the whole
