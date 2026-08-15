@@ -89,15 +89,20 @@ jobs:
             FLAGS="$FLAGS##RESEND_FROM_EMAIL=${{ secrets.RESEND_FROM_EMAIL }}"
           fi
           if [ -n "${{ secrets.CLOUDSQL_CONNECTION_NAME }}" ]; then
-            # Different database name per environment, same instance, same
-            # Secret Manager project (see the SECRETS_PROJECT comment
-            # above) — full projects/.../secrets/... path either way so
-            # staging's cross-project reference and prod's same-project one
-            # both resolve the same way, no special-casing needed.
+            # prod's secret lives in the same project it's deploying into,
+            # so the short "name:latest" form works. Staging's Cloud Run
+            # service runs as daawatey-staging but its DATABASE_URL secret
+            # lives in daawatey-prod (see the SECRETS_PROJECT comment
+            # above) — a cross-project reference needs gcloud's full
+            # resource-path form instead, and that form specifically wants
+            # .../versions/latest, not the :latest shorthand (which is only
+            # valid on the short same-project form — using it on the full
+            # path 404s with "not a valid secret name", caught live on the
+            # first staging deploy attempt).
             if [ "${{ inputs.environment }}" = "prod" ]; then
-              DB_SECRET_NAME="database-url"
+              DB_SECRET_REF="database-url:latest"
             else
-              DB_SECRET_NAME="database-url-staging"
+              DB_SECRET_REF="projects/${{ env.SECRETS_PROJECT }}/secrets/database-url-staging/versions/latest"
             fi
             # One single --set-secrets flag, not one per secret: gcloud
             # treats a repeated --set-secrets as last-one-wins on the whole
@@ -105,10 +110,11 @@ jobs:
             # silently dropped DATABASE_URL the moment the prod-only
             # Pulseem/Resend branch below also fired. Built up as one
             # comma-separated list instead.
-            SECRETS_FLAG="DATABASE_URL=projects/${{ env.SECRETS_PROJECT }}/secrets/$DB_SECRET_NAME:latest"
+            SECRETS_FLAG="DATABASE_URL=$DB_SECRET_REF"
 
-            # Pulseem (SMS) / Resend (email) stay real-send only on prod.
-            # Staging intentionally has no pulseem-api-key-staging/
+            # Pulseem (SMS) / Resend (email) stay real-send only on prod —
+            # same-project secrets, short form is fine here too. Staging
+            # intentionally has no pulseem-api-key-staging/
             # resend-api-key-staging secrets — app/integrations/pulseem.py
             # and resend_email.py already degrade gracefully (log + skip)
             # when their key isn't set, which is exactly the point here:
@@ -116,7 +122,7 @@ jobs:
             # number/inbox. Reusing prod's real keys on staging would do
             # exactly that, silently.
             if [ "${{ inputs.environment }}" = "prod" ]; then
-              SECRETS_FLAG="$SECRETS_FLAG,PULSEEM_API_KEY=projects/${{ env.SECRETS_PROJECT }}/secrets/pulseem-api-key:latest,RESEND_API_KEY=projects/${{ env.SECRETS_PROJECT }}/secrets/resend-api-key:latest"
+              SECRETS_FLAG="$SECRETS_FLAG,PULSEEM_API_KEY=pulseem-api-key:latest,RESEND_API_KEY=resend-api-key:latest"
             fi
 
             FLAGS="$FLAGS --add-cloudsql-instances=${{ secrets.CLOUDSQL_CONNECTION_NAME }} --set-secrets=$SECRETS_FLAG"
