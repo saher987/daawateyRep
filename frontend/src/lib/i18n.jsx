@@ -411,6 +411,15 @@ const translations = {
     userUpdated: "تم التحديث",
     userUpdatedDesc: "تم تحديث بيانات المستخدم",
     saving2: "جاري الحفظ...",
+    userInactive: "غير مُفعّل",
+    deactivateUser: "تعطيل المستخدم",
+    deactivateConfirmTitle: "تعطيل هذا المستخدم؟",
+    deactivateConfirmDesc: "لن يتمكن المستخدم من تسجيل الدخول بعد الآن، لكن فعالياته ودعواته الحالية تبقى كما هي. يمكن إعادة تفعيل الحساب لاحقًا في أي وقت.",
+    reactivateUser: "إعادة تفعيل المستخدم",
+    userDeactivated: "تم التعطيل",
+    userDeactivatedDesc: "تم تعطيل حساب المستخدم",
+    userReactivated: "تم التفعيل",
+    userReactivatedDesc: "تمت إعادة تفعيل حساب المستخدم",
 
     // Invitees page
     inviteesTitle: "المدعوين",
@@ -977,6 +986,15 @@ const translations = {
     userUpdated: "עודכן",
     userUpdatedDesc: "פרטי המשתמש עודכנו בהצלחה",
     saving2: "שומר...",
+    userInactive: "לא פעיל",
+    deactivateUser: "השבת משתמש",
+    deactivateConfirmTitle: "להשבית את המשתמש הזה?",
+    deactivateConfirmDesc: "המשתמש לא יוכל להתחבר יותר, אך האירועים וההזמנות הקיימים שלו יישארו כפי שהם. ניתן להפעיל מחדש את החשבון בכל עת.",
+    reactivateUser: "הפעל משתמש מחדש",
+    userDeactivated: "הושבת",
+    userDeactivatedDesc: "חשבון המשתמש הושבת",
+    userReactivated: "הופעל מחדש",
+    userReactivatedDesc: "חשבון המשתמש הופעל מחדש",
 
     // Invitees page
     inviteesTitle: "מוזמנים",

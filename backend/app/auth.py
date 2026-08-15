@@ -97,6 +97,16 @@ def get_app_user(
     """
     user = db.query(models.User).filter_by(firebase_uid=current.uid).one_or_none()
     if user is not None:
+        if not user.is_active:
+            # Firebase-side disable + revoke (see users.py's deactivate
+            # endpoint) blocks new sign-ins and kills the session within a
+            # refresh, but an ID token already in the browser stays valid
+            # until it expires (up to ~1h) regardless — this is what
+            # actually enforces the ban on every request in between.
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Account disabled",
+            )
         return user
 
     invite = (

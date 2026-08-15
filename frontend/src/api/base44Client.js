@@ -228,6 +228,16 @@ const usersApi = {
   async update(id, data) {
     return request(`/api/users/${id}`, { method: 'PUT', body: data })
   },
+  // Admin "delete" action — soft: deactivates the account (blocks sign-in,
+  // keeps their events/invitations/RSVPs intact for the real guests
+  // attached to them) rather than erasing the row. See backend/app/
+  // routers/users.py's deactivate_user docstring for why.
+  async delete(id) {
+    return request(`/api/users/${id}`, { method: 'DELETE' })
+  },
+  async reactivate(id) {
+    return request(`/api/users/${id}/reactivate`, { method: 'POST' })
+  },
 }
 
 // A separate namespace from `entities.User`, matching Base44's own split —
