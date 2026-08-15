@@ -18,6 +18,19 @@ permissions:
 env:
   REGION: us-central1
   ARTIFACT_REPO: daawatey
+  # Both environments' Cloud SQL instance and Secret Manager secrets live
+  # in daawatey-prod — staging deliberately shares prod's instance (a
+  # second database, "daawatey_staging", not a second instance; see
+  # BUSINESS_LOGIC.md) rather than paying for a whole separate Cloud SQL
+  # instance nobody needs yet. That means a staging deploy (running as
+  # secrets.GCP_PROJECT_ID=daawatey-staging) has to reach across into
+  # daawatey-prod's Secret Manager for its own DATABASE_URL — hence the
+  # full projects/.../secrets/... paths below instead of bare
+  # "name:latest" (which only resolves within the deploying project).
+  # backend-runtime@daawatey-staging's cross-project secretAccessor grant
+  # on database-url-staging (and cloudsql.client on daawatey-prod) were
+  # set up by hand in Cloud Shell — see BUSINESS_LOGIC.md.
+  SECRETS_PROJECT: daawatey-prod
 
 jobs:
   deploy:
@@ -44,8 +57,9 @@ jobs:
           docker push "$IMAGE"
 
       # CLOUDSQL_CONNECTION_NAME only exists once an environment actually has
-      # a Cloud SQL instance provisioned (see BUSINESS_LOGIC.md) — staging
-      # doesn't yet, so this whole block is a deliberate no-op there.
+      # a database to reach (see BUSINESS_LOGIC.md) — both staging and prod
+      # have one now, pointed at the same daawatey-prod:us-central1:daawatey-db
+      # instance, just different databases on it.
       #
       # DATABASE_URL/PULSEEM_API_KEY/RESEND_API_KEY are deliberately NOT
       # GitHub secrets: they live in Google Secret Manager instead, and
@@ -75,7 +89,37 @@ jobs:
             FLAGS="$FLAGS##RESEND_FROM_EMAIL=${{ secrets.RESEND_FROM_EMAIL }}"
           fi
           if [ -n "${{ secrets.CLOUDSQL_CONNECTION_NAME }}" ]; then
-            FLAGS="$FLAGS --add-cloudsql-instances=${{ secrets.CLOUDSQL_CONNECTION_NAME }} --set-secrets=DATABASE_URL=database-url:latest,PULSEEM_API_KEY=pulseem-api-key:latest,RESEND_API_KEY=resend-api-key:latest"
+            # Different database name per environment, same instance, same
+            # Secret Manager project (see the SECRETS_PROJECT comment
+            # above) — full projects/.../secrets/... path either way so
+            # staging's cross-project reference and prod's same-project one
+            # both resolve the same way, no special-casing needed.
+            if [ "${{ inputs.environment }}" = "prod" ]; then
+              DB_SECRET_NAME="database-url"
+            else
+              DB_SECRET_NAME="database-url-staging"
+            fi
+            # One single --set-secrets flag, not one per secret: gcloud
+            # treats a repeated --set-secrets as last-one-wins on the whole
+            # deploy, not additive — two separate flags here would have
+            # silently dropped DATABASE_URL the moment the prod-only
+            # Pulseem/Resend branch below also fired. Built up as one
+            # comma-separated list instead.
+            SECRETS_FLAG="DATABASE_URL=projects/${{ env.SECRETS_PROJECT }}/secrets/$DB_SECRET_NAME:latest"
+
+            # Pulseem (SMS) / Resend (email) stay real-send only on prod.
+            # Staging intentionally has no pulseem-api-key-staging/
+            # resend-api-key-staging secrets — app/integrations/pulseem.py
+            # and resend_email.py already degrade gracefully (log + skip)
+            # when their key isn't set, which is exactly the point here:
+            # testing on staging must never text or email a real phone
+            # number/inbox. Reusing prod's real keys on staging would do
+            # exactly that, silently.
+            if [ "${{ inputs.environment }}" = "prod" ]; then
+              SECRETS_FLAG="$SECRETS_FLAG,PULSEEM_API_KEY=projects/${{ env.SECRETS_PROJECT }}/secrets/pulseem-api-key:latest,RESEND_API_KEY=projects/${{ env.SECRETS_PROJECT }}/secrets/resend-api-key:latest"
+            fi
+
+            FLAGS="$FLAGS --add-cloudsql-instances=${{ secrets.CLOUDSQL_CONNECTION_NAME }} --set-secrets=$SECRETS_FLAG"
           fi
           echo "flags=$FLAGS" >> "$GITHUB_OUTPUT"
 

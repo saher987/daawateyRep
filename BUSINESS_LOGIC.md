@@ -303,6 +303,60 @@ creates a fresh revision even against an unchanged image) if you need the
 new value live immediately, rather than waiting for natural autoscaling
 churn to eventually replace existing instances.
 
+### 5a. Staging environment: a second database, not a second instance
+
+`daawatey-staging` (Cloud Run project) has no Cloud SQL instance of its
+own — it deliberately shares `daawatey-prod`'s instance via a second
+database (`daawatey_staging`) with its own scoped user, rather than
+paying for a whole separate instance nobody needs yet at this app's
+scale. This exists specifically so testing (manual, or automated —
+Google Play's Pre-launch report robo-crawler signing in with its own
+synthetic Google accounts is what surfaced the need for this in the
+first place) never touches real prod data again.
+
+```bash
+gcloud config set project daawatey-prod
+gcloud sql databases create daawatey_staging --instance=daawatey-db
+gcloud sql users create daawatey_staging_app --instance=daawatey-db --password="$STAGING_DB_PASSWORD"
+```
+
+Migrate it the same way as step 4 above, just against the new database:
+
+```bash
+export DATABASE_URL="postgresql+psycopg://daawatey_staging_app:${STAGING_DB_PASSWORD}@127.0.0.1:5432/daawatey_staging"
+alembic upgrade head
+```
+
+Because the instance lives in `daawatey-prod` but the staging backend
+runs as `daawatey-staging`'s own service account, that account needs two
+things granted **in `daawatey-prod`**, not `daawatey-staging` — this is
+the staging equivalent of step 2 above, just cross-project instead of
+same-project:
+
+```bash
+# Reach the instance at all (same role as step 2, just cross-project):
+gcloud projects add-iam-policy-binding daawatey-prod \
+  --member="serviceAccount:backend-runtime@daawatey-staging.iam.gserviceaccount.com" \
+  --role="roles/cloudsql.client"
+
+# Read its own DATABASE_URL secret, which also lives in daawatey-prod's
+# Secret Manager (see the SECRETS_PROJECT comment in deploy.yml):
+printf '%s' "postgresql+psycopg://daawatey_staging_app:${STAGING_DB_PASSWORD}@/daawatey_staging?host=/cloudsql/daawatey-prod:us-central1:daawatey-db" | \
+  gcloud secrets create database-url-staging --data-file=-
+gcloud secrets add-iam-policy-binding database-url-staging \
+  --member="serviceAccount:backend-runtime@daawatey-staging.iam.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+```
+
+`deploy.yml` picks the right database name (`database-url` vs
+`database-url-staging`) automatically based on which environment you
+choose when running the Deploy workflow — no separate GitHub secret
+needed for that. Pulseem/Resend stay real-send **only on prod**: staging
+deliberately has no `pulseem-api-key-staging`/`resend-api-key-staging`
+secrets, so `app/integrations/pulseem.py`/`resend_email.py`'s existing
+degrade-gracefully behavior (log + skip, no crash) means testing on
+staging can never text or email a real phone number/inbox.
+
 ### 6. File uploads (Core.UploadFile): enable Firebase Storage + grant write access
 
 Real image uploads (profile photos, event cover/invitation images, venue
