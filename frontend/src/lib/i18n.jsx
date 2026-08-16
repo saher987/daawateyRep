@@ -6,6 +6,11 @@ const translations = {
     // Nav
     dashboard: "لوحة التحكم",
     myInvitations: "دعواتي",
+    // Nav label for /my-invitations (the page that actually lists events
+    // you own/manage — see MyInvitations.jsx). Kept separate from
+    // `myInvitations` above, which is now reused as the /events nav
+    // label instead — the two menu items effectively swapped names.
+    ownedEventsLabel: "مناسباتي",
     myEvent: "مناسبتي",
     events: "المناسبات",
     notifications: "الإشعارات",
@@ -573,6 +578,11 @@ const translations = {
     // Nav
     dashboard: "לוח בקרה",
     myInvitations: "ההזמנות שלי",
+    // Nav label for /my-invitations (the page that actually lists events
+    // you own/manage — see MyInvitations.jsx). Kept separate from
+    // `myInvitations` above, which is now reused as the /events nav
+    // label instead — the two menu items effectively swapped names.
+    ownedEventsLabel: "אירועים בבעלותי",
     myEvent: "האירוע שלי",
     events: "אירועים",
     notifications: "התראות",

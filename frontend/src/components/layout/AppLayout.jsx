@@ -21,9 +21,9 @@ function useNavItems() {
   const isVenueOwner = user?.role === "venue_owner";
   return [
   { path: "/dashboard", icon: LayoutDashboard, label: t.dashboard, adminOnly: true },
-  { path: "/my-invitations", icon: Mail, label: t.myInvitations },
+  { path: "/my-invitations", icon: Mail, label: t.ownedEventsLabel },
   { path: "/my-event", icon: CalendarHeart, label: t.myEvent, userOnly: true },
-  { path: "/events", icon: CalendarHeart, label: t.events, adminOnly: true },
+  { path: "/events", icon: CalendarHeart, label: t.myInvitations, adminOnly: true },
   { path: "/planned-weddings", icon: Heart, label: isVenueOwner ? t.plannedWeddings : t.upcomingWeddings, venueOwner: true },
   { path: "/notifications", icon: Bell, label: t.notifications },
   { path: "/users", icon: ShieldCheck, label: t.users, privileged: true },
