@@ -258,7 +258,14 @@ export default function EventDetails() {
                     <div className="p-8 text-center text-muted-foreground text-sm">{t.noInviteesInCategory}</div>
                   ) : (
                     filtered.map(recipient => (
-                      <InviteeRow key={recipient.id} recipient={recipient} eventId={eventId} canResend={isPrivileged} />
+                      <InviteeRow
+                        key={recipient.id}
+                        recipient={recipient}
+                        eventId={eventId}
+                        eventTitle={event?.title}
+                        eventGreeting={event?.invitation_greeting}
+                        canResend={isPrivileged}
+                      />
                     ))
                   )}
                 </Card>
