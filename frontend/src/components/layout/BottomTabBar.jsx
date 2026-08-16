@@ -16,14 +16,14 @@ export default function BottomTabBar({ unreadCount = 0, userRole, isAuthenticate
 
   const adminTabs = [
     { path: "/dashboard", icon: LayoutDashboard, label: t.dashboard },
-    { path: "/events", icon: CalendarHeart, label: t.events },
-    { path: "/my-invitations", icon: Mail, label: t.myInvitations },
+    { path: "/events", icon: CalendarHeart, label: t.myInvitations },
+    { path: "/my-invitations", icon: Mail, label: t.ownedEventsLabel },
     { path: "/notifications", icon: Bell, label: t.notifications },
     { path: "/profile", icon: UserCircle, label: t.profile },
   ];
 
   const userTabs = [
-    { path: "/my-invitations", icon: Mail, label: t.myInvitations },
+    { path: "/my-invitations", icon: Mail, label: t.ownedEventsLabel },
     { path: "/my-event", icon: CalendarHeart, label: t.myEvent },
     { path: "/notifications", icon: Bell, label: t.notifications },
     { path: "/profile", icon: UserCircle, label: t.profile },
