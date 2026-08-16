@@ -13,8 +13,13 @@ import { useToast } from "@/components/ui/use-toast";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import MobileSelect from "@/components/shared/MobileSelect";
-import { Mail, Phone, MapPin, Pencil, Search, Clock, Users as UsersIcon, X, UserPlus } from "lucide-react";
+import { Mail, Phone, MapPin, Pencil, Search, Clock, Users as UsersIcon, X, UserPlus, UserX, UserCheck } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ar, he } from "date-fns/locale";
 import { useT } from "@/lib/i18n";
@@ -56,6 +61,27 @@ export default function Users() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
       toast({ title: t.userUpdated, description: t.userUpdatedDesc });
+      setEditingUser(null);
+    },
+  });
+
+  const deactivateMutation = useMutation({
+    mutationFn: (id) => base44.entities.User.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      toast({ title: t.userDeactivated, description: t.userDeactivatedDesc });
+      setEditingUser(null);
+    },
+    onError: (e) => {
+      toast({ title: t.inviteError, description: e.message || t.inviteError, variant: "destructive" });
+    },
+  });
+
+  const reactivateMutation = useMutation({
+    mutationFn: (id) => base44.entities.User.reactivate(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      toast({ title: t.userReactivated, description: t.userReactivatedDesc });
       setEditingUser(null);
     },
   });
@@ -204,7 +230,7 @@ export default function Users() {
           <div className="text-center py-12 text-muted-foreground">{t.noUsersFound}</div>
         )}
         {filteredUsers.map(u => (
-          <Card key={u.id} className="p-4">
+          <Card key={u.id} className={`p-4 ${u.is_active === false ? "opacity-60" : ""}`}>
             <div className="flex items-start gap-4">
               <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <span className="text-base font-bold text-primary">{u.full_name?.[0] || "U"}</span>
@@ -218,6 +244,11 @@ export default function Users() {
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${roleColor[u.role] || roleColor.user}`}>
                     {roleLabel[u.role] || u.role}
                   </span>
+                  {u.is_active === false && (
+                    <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-muted text-muted-foreground">
+                      {t.userInactive}
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-1">
@@ -246,14 +277,54 @@ export default function Users() {
                 </div>
               </div>
 
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => openEdit(u)}
-                className="flex-shrink-0"
-              >
-                <Pencil className="w-4 h-4" />
-              </Button>
+              <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => openEdit(u)}
+                >
+                  <Pencil className="w-4 h-4" />
+                </Button>
+
+                {/* Admin-only, hidden on the signed-in admin's own row so
+                    they can't lock themselves out. Reactivate is a single
+                    click (nothing destructive to confirm); deactivate goes
+                    through the same AlertDialog confirm as EventDetails.jsx's
+                    delete-event action. */}
+                {user?.role === "admin" && u.id !== user.id && (
+                  u.is_active === false ? (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => reactivateMutation.mutate(u.id)}
+                      disabled={reactivateMutation.isPending}
+                      title={t.reactivateUser}
+                    >
+                      <UserCheck className="w-4 h-4 text-muted-foreground" />
+                    </Button>
+                  ) : (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" title={t.deactivateUser}>
+                          <UserX className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>{t.deactivateConfirmTitle}</AlertDialogTitle>
+                          <AlertDialogDescription>{t.deactivateConfirmDesc}</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>{t.cancel}</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => deactivateMutation.mutate(u.id)}>
+                            {t.deactivateUser}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )
+                )}
+              </div>
             </div>
           </Card>
         ))}

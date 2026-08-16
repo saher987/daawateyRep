@@ -2,7 +2,9 @@
 
 ## Environments
 
-Two fully separate Firebase/GCP projects — no shared resources between them:
+Two separate Firebase/GCP projects, each with its own Cloud Run services,
+Firebase Auth users, and Firebase Storage bucket — **except the database**,
+which staging deliberately shares with prod. See the Database section below.
 
 | | staging | prod |
 |---|---|---|
@@ -14,8 +16,11 @@ Both have Firebase Authentication enabled with **Google** and **Email/Password**
 providers. Web app config is not secret (it ships in the frontend bundle) but
 is still kept out of git since it's per-environment — see `frontend/.env.example`.
 
-Cloud Run services, Artifact Registry, and the CI/CD deploy targets for each
-environment are set up in Milestone 2.
+Cloud Run services, Artifact Registry, and the WIF-based CI/CD deploy pipeline
+(`.github/workflows/deploy.yml`, `workflow_dispatch` with a staging/prod
+choice) are built and working for both environments — see `BUSINESS_LOGIC.md`
+for the full setup (API enablement, Artifact Registry, WIF pool/provider,
+per-environment deploy service accounts, GitHub secrets).
 
 ## Auth
 
@@ -110,4 +115,28 @@ better than Firestore. See `BUSINESS_LOGIC.md` for the full schema and
 reasoning. Migration scripts live in `/migrations` (Alembic), written to be
 run manually against Cloud SQL by you — never auto-applied on deploy.
 
-Scoped to `daawatey-prod` only for now; staging doesn't get a database yet.
+### Staging: a second database, not a second instance
+
+There is **one** Cloud SQL instance, `daawatey-db`, and it lives in
+`daawatey-prod` — `daawatey-staging` has no Cloud SQL instance of its own.
+Staging gets its own database (`daawatey_staging`, its own DB user) on that
+same instance instead of a whole separate instance, which isn't worth paying
+for at this app's current scale. This exists to keep test traffic — manual
+testing, and Google Play's Pre-launch report robo-crawler signing in with its
+own synthetic Google accounts — out of real prod data, without a second
+instance's cost.
+
+The consequence: staging's Cloud Run service (running as the
+`daawatey-staging` service account) reaches *across* into `daawatey-prod` for
+two things — `roles/cloudsql.client` on the shared instance, and
+`roles/secretmanager.secretAccessor` on `database-url-staging`, which also
+lives in `daawatey-prod`'s Secret Manager (staging has no Secret Manager
+secrets of its own for this). `deploy.yml` picks the right secret
+(`database-url` vs. `database-url-staging`) automatically based on which
+environment you deploy. Full setup steps (including the exact `gcloud`
+commands and the cross-project IAM grants) are in `BUSINESS_LOGIC.md` §5a.
+
+Pulseem (SMS) and Resend (email) stay real-send **only on prod** — staging
+has no equivalent API key secrets, so those integrations degrade gracefully
+(log + skip) there, guaranteeing a staging sign-in/test run can never text or
+email a real phone number or inbox.

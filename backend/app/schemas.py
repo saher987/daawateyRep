@@ -55,6 +55,7 @@ class UserOut(BaseModel):
     town: str | None
     preferred_language: str
     last_login: datetime | None
+    is_active: bool
 
 
 class UserAdminUpdate(BaseModel):

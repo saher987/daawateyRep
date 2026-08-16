@@ -117,6 +117,14 @@ class User(Base):
     preferred_language: Mapped[str] = mapped_column(String, nullable=False, default="ar")
     last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     photo_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Admin ban/deactivate, not self-deletion — DELETE /api/account (a user
+    # removing their own data) still hard-deletes the row. This is the
+    # opposite case: an admin dealing with an unwanted account whose events/
+    # invitations/RSVPs real guests still depend on, so the row has to stay.
+    # get_app_user rejects any request from a uid mapped to an inactive row,
+    # and the deactivate endpoint also disables + revokes the Firebase
+    # account itself — see app/routers/users.py.
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow
     )
