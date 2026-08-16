@@ -277,14 +277,54 @@ export default function Users() {
                 </div>
               </div>
 
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => openEdit(u)}
-                className="flex-shrink-0"
-              >
-                <Pencil className="w-4 h-4" />
-              </Button>
+              <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => openEdit(u)}
+                >
+                  <Pencil className="w-4 h-4" />
+                </Button>
+
+                {/* Admin-only, hidden on the signed-in admin's own row so
+                    they can't lock themselves out. Reactivate is a single
+                    click (nothing destructive to confirm); deactivate goes
+                    through the same AlertDialog confirm as EventDetails.jsx's
+                    delete-event action. */}
+                {user?.role === "admin" && u.id !== user.id && (
+                  u.is_active === false ? (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => reactivateMutation.mutate(u.id)}
+                      disabled={reactivateMutation.isPending}
+                      title={t.reactivateUser}
+                    >
+                      <UserCheck className="w-4 h-4 text-muted-foreground" />
+                    </Button>
+                  ) : (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" title={t.deactivateUser}>
+                          <UserX className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>{t.deactivateConfirmTitle}</AlertDialogTitle>
+                          <AlertDialogDescription>{t.deactivateConfirmDesc}</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>{t.cancel}</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => deactivateMutation.mutate(u.id)}>
+                            {t.deactivateUser}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )
+                )}
+              </div>
             </div>
           </Card>
         ))}
@@ -445,49 +485,6 @@ export default function Users() {
               >
                 {updateMutation.isPending ? t.saving2 : t.saveChanges}
               </Button>
-
-              {/* Admin-only, same gate as the role picker above. Deals with
-                  unwanted accounts (spam/abuse) without erasing them — see
-                  base44Client.js's usersApi.delete for why it's a
-                  deactivate, not a real delete. Hidden for the signed-in
-                  admin's own row so they can't lock themselves out. */}
-              {user?.role === "admin" && editingUser.id !== user.id && (
-                editingUser.is_active === false ? (
-                  <Button
-                    variant="outline"
-                    onClick={() => reactivateMutation.mutate(editingUser.id)}
-                    disabled={reactivateMutation.isPending}
-                    className="w-full h-11 rounded-xl gap-2"
-                  >
-                    <UserCheck className="w-4 h-4" />
-                    {t.reactivateUser}
-                  </Button>
-                ) : (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full h-11 rounded-xl gap-2 text-destructive hover:text-destructive"
-                      >
-                        <UserX className="w-4 h-4" />
-                        {t.deactivateUser}
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>{t.deactivateConfirmTitle}</AlertDialogTitle>
-                        <AlertDialogDescription>{t.deactivateConfirmDesc}</AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>{t.cancel}</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => deactivateMutation.mutate(editingUser.id)}>
-                          {t.deactivateUser}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                )
-              )}
             </div>
           )}
         </DialogContent>
