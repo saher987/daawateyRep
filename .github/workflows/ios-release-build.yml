@@ -210,8 +210,18 @@ jobs:
       - name: Report which certificate signed the app
         # Same reasoning as android-release-build.yml's apksigner check —
         # confirms the *actual* embedded signing identity from the build
-        # output, not just what we asked xcodebuild for.
-        run: codesign -dvv "$RUNNER_TEMP/export/App.ipa" 2>&1 || true
+        # output, not just what we asked xcodebuild for. codesign has to
+        # inspect the .app bundle itself, not the .ipa around it — an .ipa
+        # is just a zip, and running codesign on the zip directly always
+        # says "code object is not signed at all" regardless of whether the
+        # app inside it is actually signed correctly (confirmed on the
+        # first successful export: this misreported despite EXPORT
+        # SUCCEEDED and a genuinely valid signed .app inside).
+        run: |
+          UNZIP_DIR="$RUNNER_TEMP/ipa-check"
+          mkdir -p "$UNZIP_DIR"
+          unzip -q "$RUNNER_TEMP/export/App.ipa" -d "$UNZIP_DIR"
+          codesign -dvv "$UNZIP_DIR"/Payload/*.app 2>&1 || true
 
       - uses: actions/upload-artifact@v4
         with:
