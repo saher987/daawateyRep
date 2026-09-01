@@ -22,6 +22,12 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<!-- Skips App Store Connect's export-compliance question on every
+	     submission: this app only uses standard HTTPS/TLS (Firebase Auth,
+	     the Cloud Run backend, Firebase Storage) — no custom/proprietary
+	     encryption — which is exactly the exemption this key declares. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

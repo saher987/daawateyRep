@@ -1,0 +1,162 @@
+name: Build iOS Release (IPA)
+
+# The signed, App Store-bound counterpart to ios-build.yml's unsigned
+# simulator build — mirrors android-release-build.yml's shape and reasoning
+# (prod config, real signing assets, non-secret confirmation printouts)
+# adapted to iOS's own signing model: instead of one keystore file, Apple
+# needs a distribution certificate *and* a provisioning profile that names
+# each other (the profile embeds which certificate it trusts), both
+# installed into a fresh, job-scoped keychain rather than passed as a
+# single file to gradle.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: macos-latest
+    environment: prod
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Write GoogleService-Info.plist
+        # daawatey-prod's iOS app registration — same base64-secret pattern
+        # as Android's google-services.json and ios-build.yml's staging
+        # copy, just the prod project's file this time.
+        run: echo "${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 }}" | base64 -d > frontend/ios/App/App/GoogleService-Info.plist
+
+      - name: Show GoogleService-Info.plist identifiers (non-secret)
+        # Confirms the secret is actually the prod project's file, not a
+        # stale/staging one — same reasoning as android-release-build.yml's
+        # certificate printout: prove it from the build log, don't just
+        # assume the secret is right.
+        run: |
+          PLIST=frontend/ios/App/App/GoogleService-Info.plist
+          echo "project_id : $(/usr/libexec/PlistBuddy -c 'Print :PROJECT_ID' "$PLIST")"
+          echo "bundle_id  : $(/usr/libexec/PlistBuddy -c 'Print :BUNDLE_ID' "$PLIST")"
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build web assets
+        working-directory: frontend
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_API_BASE_URL: https://daawatey-backend-t3tobt7bfq-uc.a.run.app
+          VITE_BUILD_ID: "${{ github.run_number }}-${{ github.sha }}"
+          # Real production build: Google/Apple Sign-In only, same rule as
+          # android-release-build.yml.
+          VITE_ALLOW_EMAIL_AUTH: "false"
+        run: npm run build
+
+      - name: Sync Capacitor iOS project
+        working-directory: frontend
+        run: npx cap sync ios
+
+      - name: Import signing certificate & provisioning profile
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_PASSWORD }}
+          PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+          # Only needs to survive this one job — a fresh, random-enough
+          # value scoped to the run, not a real secret worth its own name.
+          KEYCHAIN_PASSWORD: ${{ github.run_id }}
+        run: |
+          CERT_PATH="$RUNNER_TEMP/distribution.p12"
+          PROFILE_PATH="$RUNNER_TEMP/profile.mobileprovision"
+          KEYCHAIN_PATH="$RUNNER_TEMP/signing.keychain-db"
+
+          echo -n "$CERTIFICATE_BASE64" | base64 --decode -o "$CERT_PATH"
+          echo -n "$PROVISIONING_PROFILE_BASE64" | base64 --decode -o "$PROFILE_PATH"
+
+          # A dedicated keychain rather than the runner's real login
+          # keychain — lives entirely under $RUNNER_TEMP, which GitHub
+          # wipes with the rest of the job's workspace, so nothing signing-
+          # related survives past this run.
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | sed 's/"//g')
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # xcodebuild finds provisioning profiles here by filename = the
+          # profile's own UUID, not anything human-chosen — extract it from
+          # the profile itself rather than guessing/hardcoding it.
+          PROFILES_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$PROFILES_DIR"
+          PROFILE_UUID=$(security cms -D -i "$PROFILE_PATH" | /usr/libexec/PlistBuddy -c "Print :UUID" /dev/stdin)
+          cp "$PROFILE_PATH" "$PROFILES_DIR/$PROFILE_UUID.mobileprovision"
+
+      - name: Write export options
+        run: |
+          cat > "$RUNNER_TEMP/ExportOptions.plist" << PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store-connect</string>
+            <key>teamID</key>
+            <string>${{ secrets.APPLE_TEAM_ID }}</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>signingCertificate</key>
+            <string>Apple Distribution</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>com.daawatey.app</key>
+              <!-- Must exactly match the profile *name* chosen on Apple's
+                   portal (Certificates, Identifiers & Profiles → Profiles),
+                   not its UUID or filename. -->
+              <string>Daawatey App Store</string>
+            </dict>
+          </dict>
+          </plist>
+          PLIST
+
+      - name: Archive
+        working-directory: frontend/ios/App
+        run: |
+          xcodebuild archive \
+            -project App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -destination "generic/platform=iOS" \
+            CODE_SIGN_STYLE=Manual \
+            PROVISIONING_PROFILE_SPECIFIER="Daawatey App Store" \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}"
+
+      - name: Export signed IPA
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist"
+
+      - name: Report which certificate signed the app
+        # Same reasoning as android-release-build.yml's apksigner check —
+        # confirms the *actual* embedded signing identity from the build
+        # output, not just what we asked xcodebuild for.
+        run: codesign -dvv "$RUNNER_TEMP/export/App.ipa" 2>&1 || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: daawatey-release-ipa
+          path: ${{ runner.temp }}/export/App.ipa
+          retention-days: 30
+
+      - name: Clean up temporary keychain
+        if: always()
+        run: security delete-keychain "$RUNNER_TEMP/signing.keychain-db" || true
