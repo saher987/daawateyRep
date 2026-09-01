@@ -229,6 +229,32 @@ jobs:
           path: ${{ runner.temp }}/export/App.ipa
           retention-days: 30
 
+      - name: Upload to App Store Connect
+        # The GitHub artifact above always lands regardless of this step —
+        # it's a fallback you can hand to Transporter by hand if this ever
+        # fails, same reasoning as keeping the sideloadable APK alongside
+        # the AAB in android-release-build.yml. altool wants the API key
+        # file at one of a few fixed, undocumented-via-flag locations, not
+        # a path you can pass directly — this is the standard one.
+        env:
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+          ASC_API_KEY_BASE64: ${{ secrets.ASC_API_KEY_BASE64 }}
+        run: |
+          KEYS_DIR="$HOME/.appstoreconnect/private_keys"
+          mkdir -p "$KEYS_DIR"
+          KEY_PATH="$KEYS_DIR/AuthKey_${ASC_API_KEY_ID}.p8"
+          echo -n "$ASC_API_KEY_BASE64" | base64 --decode -o "$KEY_PATH"
+          if [ ! -s "$KEY_PATH" ]; then
+            echo "::error::ASC_API_KEY_BASE64 decoded to an empty file — the secret is missing or empty."
+            exit 1
+          fi
+          xcrun altool --upload-app \
+            -f "$RUNNER_TEMP/export/App.ipa" \
+            -t ios \
+            --apiKey "$ASC_API_KEY_ID" \
+            --apiIssuer "$ASC_API_ISSUER_ID"
+
       - name: Clean up temporary keychain
         if: always()
         run: security delete-keychain "$RUNNER_TEMP/signing.keychain-db" || true
