@@ -71,6 +71,10 @@ jobs:
           # value scoped to the run, not a real secret worth its own name.
           KEYCHAIN_PASSWORD: ${{ github.run_id }}
         run: |
+          # Two failed guesses in a row from output *position* alone, both
+          # wrong (the actual failure point moved and I didn't know it) —
+          # tracing every command as it actually runs beats guessing again.
+          set -x
           CERT_PATH="$RUNNER_TEMP/distribution.p12"
           PROFILE_PATH="$RUNNER_TEMP/profile.mobileprovision"
           KEYCHAIN_PATH="$RUNNER_TEMP/signing.keychain-db"
