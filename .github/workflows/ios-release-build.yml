@@ -113,20 +113,38 @@ jobs:
           # the profile itself rather than guessing/hardcoding it.
           PROFILES_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
           mkdir -p "$PROFILES_DIR"
-          # `security cms -D` (the more commonly-suggested way to do this)
-          # needs Apple's WWDR intermediate cert present in the keychain to
-          # verify the profile's CMS signature, and silently produces empty
-          # output without it — a well-known flaky dependency in CI
-          # specifically (hit on the very first run of this workflow: a
-          # correctly-sized, correctly-decoded profile still failed with
-          # "Cannot parse a NULL or zero-length data", which is actually
-          # PlistBuddy complaining about the empty stdin `cms -D` gave it).
-          # openssl with verification explicitly disabled sidesteps the
-          # whole class of failure — we only need the plist's contents
-          # here, not to verify who signed it.
-          PROFILE_UUID=$(openssl smime -inform der -verify -noverify -in "$PROFILE_PATH" 2>/dev/null | /usr/libexec/PlistBuddy -c "Print :UUID" /dev/stdin)
+          # Both `security cms -D` and `openssl smime -verify -noverify`
+          # have now failed on this exact file with no diagnosable reason
+          # visible (empty output, no stderr surfaced) — rather than guess
+          # at a third tool/flag combination, try both against real files
+          # (not a pipe straight into PlistBuddy, which was swallowing
+          # whichever tool's stderr explained the *actual* failure) and
+          # print each one's stderr on failure so the next run's log says
+          # why, whichever tool turns out to be the problem.
+          PROFILE_PLIST="$RUNNER_TEMP/profile.plist"
+          set +e
+          security cms -D -i "$PROFILE_PATH" > "$PROFILE_PLIST" 2>"$RUNNER_TEMP/cms_stderr.txt"
+          CMS_STATUS=$?
+          set -e
+          if [ "$CMS_STATUS" -ne 0 ] || [ ! -s "$PROFILE_PLIST" ]; then
+            echo "::warning::security cms -D failed (exit $CMS_STATUS) or produced no output — stderr was:"
+            cat "$RUNNER_TEMP/cms_stderr.txt" || true
+            echo "::warning::Falling back to openssl smime"
+            set +e
+            openssl smime -inform der -verify -noverify -in "$PROFILE_PATH" -out "$PROFILE_PLIST" 2>"$RUNNER_TEMP/openssl_stderr.txt"
+            OPENSSL_STATUS=$?
+            set -e
+            if [ "$OPENSSL_STATUS" -ne 0 ] || [ ! -s "$PROFILE_PLIST" ]; then
+              echo "::error::openssl smime also failed (exit $OPENSSL_STATUS) or produced no output — stderr was:"
+              cat "$RUNNER_TEMP/openssl_stderr.txt" || true
+              echo "::error::Could not extract plist content from the provisioning profile via either tool."
+              exit 1
+            fi
+          fi
+          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" "$PROFILE_PLIST")
           if [ -z "$PROFILE_UUID" ]; then
-            echo "::error::Could not read a UUID out of the provisioning profile — it may not be valid CMS/plist data despite being non-empty."
+            echo "::error::Extracted plist but it has no UUID key — dumping it for inspection:"
+            cat "$PROFILE_PLIST" || true
             exit 1
           fi
           echo "profile UUID: $PROFILE_UUID"
