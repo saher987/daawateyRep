@@ -192,13 +192,24 @@ jobs:
           # cert/profile only to the App bundle when producing the .ipa
           # (via ExportOptions.plist above) is the standard fix for this
           # exact SPM-dependency conflict.
+          # CURRENT_PROJECT_VERSION (CFBundleVersion) is otherwise hardcoded
+          # to 1 in the Xcode project — fine for the first-ever upload, but
+          # every run after it hits ENTITY_ERROR.ATTRIBUTE.INVALID.DUPLICATE
+          # from App Store Connect (confirmed: run 7 uploaded fine at
+          # version 1, run 8 failed re-uploading the same 1). Same problem
+          # android-release-build.yml already solves with
+          # -PandroidVersionCode=${{ github.run_number }} — same fix here.
+          # Unlike the code-signing settings above, this is a generic build
+          # setting harmlessly inherited by SPM package targets, not one
+          # with per-target-type validation that errors on propagation.
           xcodebuild archive \
             -project App.xcodeproj \
             -scheme App \
             -configuration Release \
             -archivePath "$RUNNER_TEMP/App.xcarchive" \
             -destination "generic/platform=iOS" \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO \
+            CURRENT_PROJECT_VERSION="${{ github.run_number }}"
 
       - name: Export signed IPA
         run: |
