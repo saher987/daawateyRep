@@ -109,7 +109,23 @@ jobs:
           # the profile itself rather than guessing/hardcoding it.
           PROFILES_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
           mkdir -p "$PROFILES_DIR"
-          PROFILE_UUID=$(security cms -D -i "$PROFILE_PATH" | /usr/libexec/PlistBuddy -c "Print :UUID" /dev/stdin)
+          # `security cms -D` (the more commonly-suggested way to do this)
+          # needs Apple's WWDR intermediate cert present in the keychain to
+          # verify the profile's CMS signature, and silently produces empty
+          # output without it — a well-known flaky dependency in CI
+          # specifically (hit on the very first run of this workflow: a
+          # correctly-sized, correctly-decoded profile still failed with
+          # "Cannot parse a NULL or zero-length data", which is actually
+          # PlistBuddy complaining about the empty stdin `cms -D` gave it).
+          # openssl with verification explicitly disabled sidesteps the
+          # whole class of failure — we only need the plist's contents
+          # here, not to verify who signed it.
+          PROFILE_UUID=$(openssl smime -inform der -verify -noverify -in "$PROFILE_PATH" 2>/dev/null | /usr/libexec/PlistBuddy -c "Print :UUID" /dev/stdin)
+          if [ -z "$PROFILE_UUID" ]; then
+            echo "::error::Could not read a UUID out of the provisioning profile — it may not be valid CMS/plist data despite being non-empty."
+            exit 1
+          fi
+          echo "profile UUID: $PROFILE_UUID"
           cp "$PROFILE_PATH" "$PROFILES_DIR/$PROFILE_UUID.mobileprovision"
 
       - name: Write export options
