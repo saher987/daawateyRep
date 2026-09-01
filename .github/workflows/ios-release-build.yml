@@ -78,6 +78,21 @@ jobs:
           echo -n "$CERTIFICATE_BASE64" | base64 --decode -o "$CERT_PATH"
           echo -n "$PROVISIONING_PROFILE_BASE64" | base64 --decode -o "$PROFILE_PATH"
 
+          # A missing/empty secret decodes to a 0-byte file, which
+          # `security cms`/`security import` then fail on with a cryptic
+          # "Cannot parse a NULL or zero-length data" — check explicitly so
+          # a bad secret says exactly that instead.
+          echo "distribution.p12 size: $(wc -c < "$CERT_PATH") bytes"
+          echo "profile.mobileprovision size: $(wc -c < "$PROFILE_PATH") bytes"
+          if [ ! -s "$CERT_PATH" ]; then
+            echo "::error::IOS_DISTRIBUTION_CERTIFICATE_BASE64 decoded to an empty file — the secret is missing or empty."
+            exit 1
+          fi
+          if [ ! -s "$PROFILE_PATH" ]; then
+            echo "::error::IOS_PROVISIONING_PROFILE_BASE64 decoded to an empty file — the secret is missing or empty."
+            exit 1
+          fi
+
           # A dedicated keychain rather than the runner's real login
           # keychain — lives entirely under $RUNNER_TEMP, which GitHub
           # wipes with the rest of the job's workspace, so nothing signing-
