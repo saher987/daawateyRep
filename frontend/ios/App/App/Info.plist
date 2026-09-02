@@ -28,6 +28,29 @@
 	     encryption — which is exactly the exemption this key declares. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<!-- @capacitor-firebase/authentication bundles the Facebook SDK as one
+	     of its supported providers (FBSDKCoreKit/FBSDKLoginKit/FBAEMKit) —
+	     confirmed linked into the app binary even though this app never
+	     calls any Facebook Login API. FBSDKCoreKit auto-initializes at
+	     launch and, without these keys, throws an uncaught NSException
+	     immediately (crash before any UI renders — reproduced on a real
+	     device via TestFlight, build 9: SIGABRT/objc_exception_throw during
+	     -[UIWindow _mainQueue_makeKeyAndVisible], with FBSDKCoreKit et al.
+	     present in the crash log's linked images and zero Facebook keys
+	     here). These placeholder values satisfy the SDK's startup check
+	     without ever being used for anything real, and auto-logging/
+	     tracking is explicitly disabled since Facebook Login itself is
+	     never invoked. -->
+	<key>FacebookAppID</key>
+	<string>0000000000000000</string>
+	<key>FacebookClientToken</key>
+	<string>0000000000000000000000000000000</string>
+	<key>FacebookDisplayName</key>
+	<string>daawatey</string>
+	<key>FacebookAutoLogAppEventsEnabled</key>
+	<false/>
+	<key>FacebookAdvertiserIDCollectionEnabled</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

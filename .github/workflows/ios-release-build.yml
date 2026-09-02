@@ -234,6 +234,28 @@ jobs:
           unzip -q "$RUNNER_TEMP/export/App.ipa" -d "$UNZIP_DIR"
           codesign -dvv "$UNZIP_DIR"/Payload/*.app 2>&1 || true
 
+      - name: Zip dSYMs for symbolication
+        # Only the .ipa was kept before this — fine until a device crash
+        # log needs symbolicating, at which point there's no way to turn
+        # raw addresses back into function/file/line without the matching
+        # dSYMs (had to reason from unsymbolicated offsets + linked-image
+        # names for the first TestFlight crash instead). archivePath's
+        # dSYMs directory has one per framework/binary in this exact build.
+        run: |
+          DSYM_DIR="$RUNNER_TEMP/App.xcarchive/dSYMs"
+          if [ -d "$DSYM_DIR" ]; then
+            (cd "$DSYM_DIR" && zip -qr "$RUNNER_TEMP/export/dSYMs.zip" .)
+          else
+            echo "::warning::No dSYMs directory in the archive — nothing to zip."
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: daawatey-release-dsyms
+          path: ${{ runner.temp }}/export/dSYMs.zip
+          retention-days: 30
+          if-no-files-found: warn
+
       - uses: actions/upload-artifact@v4
         with:
           name: daawatey-release-ipa
