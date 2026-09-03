@@ -233,12 +233,25 @@ jobs:
           # This one is a generic build setting harmlessly inherited by SPM
           # package targets, not one with per-target-type validation that
           # errors on propagation, so it's still fine as a CLI override.
+          #
+          # DEVELOPMENT_TEAM: CODE_SIGN_STYLE=Manual (set on the App target
+          # above) needs a team explicitly, or archive fails immediately —
+          # "Signing for 'App' requires a development team ... Select a
+          # development team ... that matches the selected profile" (run 15).
+          # Same "generic, not per-target-type-validated" category as
+          # CURRENT_PROJECT_VERSION above — a bare team identifier doesn't
+          # force any target into needing a provisioning profile the way
+          # CODE_SIGN_STYLE/CODE_SIGN_IDENTITY/PROVISIONING_PROFILE_SPECIFIER
+          # did, so it's fine as a CLI override; kept out of the committed
+          # project file since it's sourced from the same secret
+          # ExportOptions.plist's teamID already uses above.
           xcodebuild archive \
             -project App.xcodeproj \
             -scheme App \
             -configuration Release \
             -archivePath "$RUNNER_TEMP/App.xcarchive" \
             -destination "generic/platform=iOS" \
+            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
             CURRENT_PROJECT_VERSION="${{ github.run_number }}"
 
       - name: Export signed IPA
