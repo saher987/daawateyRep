@@ -329,7 +329,32 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
-				CODE_SIGN_STYLE = Automatic;
+				// Manual, but scoped to just this target's build config in
+				// the project file — NOT passed as an xcodebuild CLI
+				// override. That distinction is what CODE_SIGNING_ALLOWED=NO
+				// (removed from the Archive step) was working around: CLI-
+				// level CODE_SIGN_STYLE/IDENTITY/PROVISIONING_PROFILE_
+				// SPECIFIER overrides apply to every target in the build
+				// graph, including the CapApp-SPM package's library targets
+				// (Firebase, Facebook SDK, etc.), none of which are app
+				// bundles and none of which can accept a provisioning
+				// profile — hence "X does not support provisioning
+				// profiles" for each one. Project-file settings stay scoped
+				// to this target only, so the SPM targets are never touched.
+				//
+				// Disabling signing entirely at archive time (the old
+				// workaround) avoided that error, but as a side effect also
+				// skipped Xcode's entitlements-processing phase altogether
+				// — -exportArchive then had nothing to re-sign from and
+				// silently fell back to the profile's bare identity
+				// (application-identifier/team-identifier/get-task-allow),
+				// dropping com.apple.developer.applesignin entirely. That's
+				// the actual, confirmed (via codesign -d --entitlements on
+				// the exported .app in CI) cause of Sign In with Apple's
+				// AuthorizationError 1000 on-device — not a Developer Portal
+				// or profile problem, both of which were already correct.
+				CODE_SIGN_IDENTITY = "Apple Distribution";
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -340,6 +365,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.daawatey.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "Daawatey App Store";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;

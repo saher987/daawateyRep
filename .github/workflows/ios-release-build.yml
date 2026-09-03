@@ -192,18 +192,37 @@ jobs:
       - name: Archive
         working-directory: frontend/ios/App
         run: |
-          # CODE_SIGN_STYLE=Manual etc. as xcodebuild command-line overrides
-          # apply to *every* target in the build graph, not just the App
-          # target — including all the SPM package dependencies (Firebase,
-          # Facebook SDK, GoogleUtilities, GTMSessionFetcher, AppAuth,
-          # GoogleSignIn, Promises...), none of which are app bundles and
-          # none of which support provisioning profiles at all. Hit this on
-          # the first real archive attempt: a wall of "X does not support
-          # provisioning profiles" errors, one per dependency. Skipping
-          # signing entirely here and letting -exportArchive apply the real
-          # cert/profile only to the App bundle when producing the .ipa
-          # (via ExportOptions.plist above) is the standard fix for this
-          # exact SPM-dependency conflict.
+          # CODE_SIGN_STYLE=Manual etc. as xcodebuild *command-line*
+          # overrides apply to every target in the build graph, not just the
+          # App target — including all the SPM package dependencies
+          # (Firebase, Facebook SDK, GoogleUtilities, GTMSessionFetcher,
+          # AppAuth, GoogleSignIn, Promises...), none of which are app
+          # bundles and none of which support provisioning profiles at all.
+          # Hit this on the first real archive attempt: a wall of "X does
+          # not support provisioning profiles" errors, one per dependency.
+          #
+          # CODE_SIGNING_ALLOWED=NO (previously set here) avoided that by
+          # skipping signing at archive time entirely and letting
+          # -exportArchive apply the real cert/profile only to the App
+          # bundle afterwards. That worked for basic signing, but it also
+          # skips Xcode's entitlements-processing phase for the App target
+          # — -exportArchive then has nothing to re-sign from and silently
+          # drops any custom entitlement (confirmed: com.apple.developer.
+          # applesignin never made it into the exported binary despite
+          # App.entitlements + CODE_SIGN_ENTITLEMENTS being set correctly,
+          # which is why Sign In with Apple kept failing with
+          # AuthorizationError 1000 even after the entitlement/profile were
+          # otherwise correct).
+          #
+          # The actual fix: put CODE_SIGN_IDENTITY/CODE_SIGN_STYLE=Manual/
+          # PROVISIONING_PROFILE_SPECIFIER in the App target's own
+          # XCBuildConfiguration in project.pbxproj instead of passing them
+          # as CLI overrides here. Project-file settings are scoped to that
+          # one target and never reach the SPM package graph — only the CLI
+          # form does — so real signing (and entitlements generation) now
+          # happens for App during archive, without resurrecting the SPM
+          # errors CODE_SIGNING_ALLOWED=NO was added to avoid.
+          #
           # CURRENT_PROJECT_VERSION (CFBundleVersion) is otherwise hardcoded
           # to 1 in the Xcode project — fine for the first-ever upload, but
           # every run after it hits ENTITY_ERROR.ATTRIBUTE.INVALID.DUPLICATE
@@ -211,16 +230,15 @@ jobs:
           # version 1, run 8 failed re-uploading the same 1). Same problem
           # android-release-build.yml already solves with
           # -PandroidVersionCode=${{ github.run_number }} — same fix here.
-          # Unlike the code-signing settings above, this is a generic build
-          # setting harmlessly inherited by SPM package targets, not one
-          # with per-target-type validation that errors on propagation.
+          # This one is a generic build setting harmlessly inherited by SPM
+          # package targets, not one with per-target-type validation that
+          # errors on propagation, so it's still fine as a CLI override.
           xcodebuild archive \
             -project App.xcodeproj \
             -scheme App \
             -configuration Release \
             -archivePath "$RUNNER_TEMP/App.xcarchive" \
             -destination "generic/platform=iOS" \
-            CODE_SIGNING_ALLOWED=NO \
             CURRENT_PROJECT_VERSION="${{ github.run_number }}"
 
       - name: Export signed IPA
@@ -252,10 +270,15 @@ jobs:
           # actually grants, so a mismatch (if any) shows up directly in
           # this log instead of being inferred from project settings alone.
           echo "--- entitlements actually embedded in the signed binary ---"
-          codesign -d --entitlements :- "$UNZIP_DIR"/Payload/*.app 2>&1 || true
+          codesign -d --entitlements - "$UNZIP_DIR"/Payload/*.app 2>&1 || true
           echo "--- entitlements granted by the embedded provisioning profile ---"
-          security cms -D -i "$UNZIP_DIR"/Payload/*.app/embedded.mobileprovision 2>/dev/null \
-            | /usr/libexec/PlistBuddy -c "Print :Entitlements" /dev/stdin 2>&1 || true
+          # security cms -D piped straight into PlistBuddy failed here last
+          # run ("Cannot parse a NULL or zero-length data") — same
+          # pipe-into-PlistBuddy gotcha already worked around in the signing
+          # setup step above. Decode to a real file first instead.
+          PROFILE_CHECK_PLIST="$RUNNER_TEMP/profile-check.plist"
+          security cms -D -i "$UNZIP_DIR"/Payload/*.app/embedded.mobileprovision > "$PROFILE_CHECK_PLIST" 2>&1 || true
+          /usr/libexec/PlistBuddy -c "Print :Entitlements" "$PROFILE_CHECK_PLIST" 2>&1 || true
 
       - name: Zip dSYMs for symbolication
         # Only the .ipa was kept before this — fine until a device crash
