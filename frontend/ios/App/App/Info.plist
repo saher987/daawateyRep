@@ -31,16 +31,24 @@
 	<!-- @capacitor-firebase/authentication bundles the Facebook SDK as one
 	     of its supported providers (FBSDKCoreKit/FBSDKLoginKit/FBAEMKit) —
 	     confirmed linked into the app binary even though this app never
-	     calls any Facebook Login API. FBSDKCoreKit auto-initializes at
-	     launch and, without these keys, throws an uncaught NSException
-	     immediately (crash before any UI renders — reproduced on a real
-	     device via TestFlight, build 9: SIGABRT/objc_exception_throw during
-	     -[UIWindow _mainQueue_makeKeyAndVisible], with FBSDKCoreKit et al.
-	     present in the crash log's linked images and zero Facebook keys
-	     here). These placeholder values satisfy the SDK's startup check
-	     without ever being used for anything real, and auto-logging/
-	     tracking is explicitly disabled since Facebook Login itself is
-	     never invoked. -->
+	     calls any Facebook Login API. These placeholder values silence
+	     FBSDKCoreKit's own startup validation without ever being used for
+	     anything real, and auto-logging/tracking is explicitly disabled
+	     since Facebook Login itself is never invoked.
+
+	     NOTE: these keys were originally added as a hypothesis for the
+	     TestFlight launch crash (build 9: SIGABRT/objc_exception_throw
+	     during -[UIWindow _mainQueue_makeKeyAndVisible]). That hypothesis
+	     was disproven — build 10 shipped with these keys and crashed at
+	     byte-identical offsets. Symbolicating build 10's crash via its
+	     dSYM found the real cause: GoogleService-Info.plist was written to
+	     disk by CI but never referenced in App.xcodeproj's Resources build
+	     phase, so it was missing from the shipped bundle, and the
+	     Capacitor Firebase Authentication plugin's `load()` calls
+	     `+[FIRApp configure]`, which throws when that file is absent. Fixed
+	     in App.xcodeproj/project.pbxproj (see ios-release-build.yml). These
+	     Facebook keys are kept because they're still correct/harmless, not
+	     because they were the fix. -->
 	<key>FacebookAppID</key>
 	<string>0000000000000000</string>
 	<key>FacebookClientToken</key>

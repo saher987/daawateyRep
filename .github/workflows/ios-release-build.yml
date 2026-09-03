@@ -26,6 +26,18 @@ jobs:
         # daawatey-prod's iOS app registration — same base64-secret pattern
         # as Android's google-services.json and ios-build.yml's staging
         # copy, just the prod project's file this time.
+        #
+        # This file must land at this exact path *before* the Archive step:
+        # App.xcodeproj/project.pbxproj now lists GoogleService-Info.plist as
+        # a Resources build-phase member (by path, not by content), so
+        # whatever real file exists here at build time is what gets copied
+        # into the .app bundle. Previously this step wrote the file to disk
+        # but nothing in the Xcode project referenced it, so it was silently
+        # dropped from every IPA — @capacitor-firebase/authentication's
+        # plugin `load()` then called `+[FIRApp configure]` against a bundle
+        # with no GoogleService-Info.plist, which throws an uncaught
+        # NSException immediately at launch (root-caused via dSYM
+        # symbolication of TestFlight builds 9/10's identical crash).
         run: echo "${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 }}" | base64 -d > frontend/ios/App/App/GoogleService-Info.plist
 
       - name: Show GoogleService-Info.plist identifiers (non-secret)
