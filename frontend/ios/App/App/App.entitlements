@@ -6,5 +6,20 @@
 	<array>
 		<string>Default</string>
 	</array>
+	<!-- The app never uses Game Center — this exists only because App
+	     Store Connect refused "Add for Review" with "You must add the
+	     com.apple.developer.game-center key in Xcode", despite Game
+	     Center being off both in App Store Connect's own Game Center page
+	     (nothing configured) and in the App ID's capability list. This is
+	     a documented false positive: GoogleAppMeasurement (part of
+	     Firebase Analytics, pulled in transitively by
+	     @capacitor-firebase/authentication) weakly links GameKit.framework
+	     for optional game-analytics events it never fires here, and
+	     App Store Connect's validator flags that link as "wants Game
+	     Center" regardless of whether it's actually used. Declaring the
+	     entitlement satisfies the check without building any Game Center
+	     feature. -->
+	<key>com.apple.developer.game-center</key>
+	<true/>
 </dict>
 </plist>
