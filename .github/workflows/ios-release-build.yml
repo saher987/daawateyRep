@@ -162,6 +162,22 @@ jobs:
           echo "profile UUID: $PROFILE_UUID"
           cp "$PROFILE_PATH" "$PROFILES_DIR/$PROFILE_UUID.mobileprovision"
 
+          # Two archive failures in a row insisting this exact secret's
+          # profile "doesn't include the Game Center capability" despite
+          # the App ID capability being enabled and the profile reportedly
+          # regenerated twice — rather than guess a third time whether
+          # that's a stale download, a propagation delay, or something
+          # else, print exactly what capabilities THIS run's decoded
+          # secret actually grants, before archive ever touches it. Also
+          # print CreationDate: a regenerated profile gets a new one, so
+          # this alone proves whether the secret is actually the profile
+          # just regenerated or a stale one from before.
+          echo "--- provisioning profile entitlements (from this run's IOS_PROVISIONING_PROFILE_BASE64 secret) ---"
+          /usr/libexec/PlistBuddy -c "Print :Entitlements" "$PROFILE_PLIST" 2>&1 || true
+          echo "--- profile name/creation date ---"
+          /usr/libexec/PlistBuddy -c "Print :Name" "$PROFILE_PLIST" 2>&1 || true
+          /usr/libexec/PlistBuddy -c "Print :CreationDate" "$PROFILE_PLIST" 2>&1 || true
+
       - name: Write export options
         run: |
           cat > "$RUNNER_TEMP/ExportOptions.plist" << PLIST
