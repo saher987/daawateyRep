@@ -3,7 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- viewport-fit=cover: required for CSS env(safe-area-inset-*) to
+         resolve to anything but 0 inside a Capacitor/WKWebView shell — the
+         header/bottom-tab-bar's safe-area padding (AppLayout.jsx,
+         BottomTabBar.jsx) is silently a no-op without it. Reproduced on a
+         real device via TestFlight: the top header rendered flush under
+         the iOS status bar, overlapping the clock/hamburger menu. Harmless
+         on plain web, where there's no notch/status bar to cover. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>daawatey</title>
   </head>
   <body>
