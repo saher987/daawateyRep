@@ -245,6 +245,17 @@ jobs:
           mkdir -p "$UNZIP_DIR"
           unzip -q "$RUNNER_TEMP/export/App.ipa" -d "$UNZIP_DIR"
           codesign -dvv "$UNZIP_DIR"/Payload/*.app 2>&1 || true
+          # Sign In with Apple failed on-device (AuthorizationError 1000) on
+          # a build that should have carried the applesignin entitlement —
+          # rather than guess again, print exactly what actually got signed
+          # into the binary and what the embedded provisioning profile
+          # actually grants, so a mismatch (if any) shows up directly in
+          # this log instead of being inferred from project settings alone.
+          echo "--- entitlements actually embedded in the signed binary ---"
+          codesign -d --entitlements :- "$UNZIP_DIR"/Payload/*.app 2>&1 || true
+          echo "--- entitlements granted by the embedded provisioning profile ---"
+          security cms -D -i "$UNZIP_DIR"/Payload/*.app/embedded.mobileprovision 2>/dev/null \
+            | /usr/libexec/PlistBuddy -c "Print :Entitlements" /dev/stdin 2>&1 || true
 
       - name: Zip dSYMs for symbolication
         # Only the .ipa was kept before this — fine until a device crash
