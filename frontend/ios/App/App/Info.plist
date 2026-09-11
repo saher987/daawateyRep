@@ -59,6 +59,20 @@
 	<false/>
 	<key>FacebookAdvertiserIDCollectionEnabled</key>
 	<false/>
+	<!-- Profile.jsx's avatar picker is a plain <input type="file"
+	     accept="image/*">. Inside Capacitor's WKWebView on iOS, that
+	     triggers the native file-upload action sheet (Photo Library /
+	     Take Photo / Choose File) — not a Capacitor Camera-plugin call,
+	     but iOS still enforces these usage-description keys before
+	     granting camera/photo-library access from that native sheet, and
+	     force-terminates the app instantly if they're missing. Root cause
+	     of the "2.1.0 App Completeness" rejection: the reviewer tapped
+	     the avatar and the app crashed the moment the permission prompt
+	     would have shown. -->
+	<key>NSCameraUsageDescription</key>
+	<string>يحتاج التطبيق إلى الوصول إلى الكاميرا لتمكينك من تصوير صورة شخصية جديدة.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>يحتاج التطبيق إلى الوصول إلى مكتبة الصور لتمكينك من اختيار صورة شخصية.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>
