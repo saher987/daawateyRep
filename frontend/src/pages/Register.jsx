@@ -28,6 +28,7 @@ import { UserPlus, Mail, Lock, Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
 import AppleIcon from "@/components/AppleIcon";
+import PhoneOtpLogin from "@/components/auth/PhoneOtpLogin";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -139,6 +140,23 @@ export default function Register() {
         </>
       }
     >
+      {/* Phone OTP — the primary way in (2026-09 product decision, see
+          BUSINESS_LOGIC.md). Same component/reasoning as Login.jsx: verify
+          the code and you're both signed in *and* created (or linked to
+          an invitation already waiting under this phone) in one step —
+          no separate "Register" concept needed for it. Google/Apple/email
+          below remain for anyone who prefers them. */}
+      <PhoneOtpLogin t={t} onVerified={() => {}} />
+
+      <div className="relative my-6">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-border" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-card px-3 text-muted-foreground">{t.authOrOtherWay}</span>
+        </div>
+      </div>
+
       <Button
         type="button"
         variant="outline"

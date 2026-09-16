@@ -5,6 +5,7 @@ import { CalendarHeart, MapPin, Clock, Heart, Sparkles, Check, X, ArrowRight, Lo
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import MapButtons from "@/components/shared/MapButtons";
+import PhoneOtpLogin from "@/components/auth/PhoneOtpLogin";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { translations } from "@/lib/i18n";
@@ -23,6 +24,7 @@ export default function InvitationPage() {
   const [changingRsvp, setChangingRsvp] = useState(false);
   const [loggedInUser, setLoggedInUser] = useState(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [otpModalOpen, setOtpModalOpen] = useState(false);
   const lang = getInvitationLang();
   const isHe = lang === "he";
 
@@ -109,6 +111,24 @@ export default function InvitationPage() {
   };
   const alreadyResponded = (rsvpDone || recipient.rsvp_status === "accepted" || recipient.rsvp_status === "declined") && !changingRsvp;
   const finalStatus = rsvpDone || recipient.rsvp_status;
+
+  // "More details" CTA: an already-logged-in guest goes straight to their
+  // invitations. Otherwise open the phone-OTP flow right here instead of
+  // base44.auth.redirectToLogin's Google/Apple picker — the guest doesn't
+  // need a whole account-provider choice, just to prove they own the phone
+  // number this invitation was already sent to.
+  const handleSeeMoreDetails = () => {
+    if (loggedInUser) {
+      window.location.href = "/my-invitations";
+    } else {
+      setOtpModalOpen(true);
+    }
+  };
+
+  const handleOtpVerified = () => {
+    setOtpModalOpen(false);
+    window.location.href = "/my-invitations";
+  };
 
   return (
     <div className="min-h-screen bg-background" dir="rtl">
@@ -263,13 +283,7 @@ export default function InvitationPage() {
                   <div className="pt-2 border-t border-border">
                     <Button
                       className="w-full h-12 rounded-xl gap-2"
-                      onClick={() => {
-                        if (loggedInUser) {
-                          window.location.href = "/my-invitations";
-                        } else {
-                          base44.auth.redirectToLogin("/my-invitations");
-                        }
-                      }}
+                      onClick={handleSeeMoreDetails}
                     >
                       {isHe ? "פרטים נוספים" : "مزيد من التفاصيل"}
                       <ArrowRight className="w-4 h-4" />
@@ -310,13 +324,7 @@ export default function InvitationPage() {
                     <Button
                       variant="ghost"
                       className="w-full h-11 rounded-xl gap-2 text-muted-foreground"
-                      onClick={() => {
-                        if (loggedInUser) {
-                          window.location.href = "/my-invitations";
-                        } else {
-                          base44.auth.redirectToLogin("/my-invitations");
-                        }
-                      }}
+                      onClick={handleSeeMoreDetails}
                     >
                       {isHe ? "פרטים נוספים" : "مزيد من التفاصيل"}
                       <ArrowRight className="w-4 h-4" />
@@ -336,6 +344,31 @@ export default function InvitationPage() {
           </p>
         </div>
       </div>
+
+      {/* "More details" phone-OTP login */}
+      <AnimatePresence>
+        {otpModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
+            onClick={() => setOtpModalOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm"
+            >
+              <Card className="p-6 shadow-xl">
+                <PhoneOtpLogin
+                  recipientId={recipient.id}
+                  t={translations[lang]}
+                  onVerified={handleOtpVerified}
+                />
+              </Card>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

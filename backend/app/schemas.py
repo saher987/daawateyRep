@@ -407,12 +407,23 @@ class OtpSendResponse(BaseModel):
 class OtpVerifyRequest(BaseModel):
     phone: str
     otp_code: str
-    recipient_id: str
+    # Optional: the invitation this verification should link to (the
+    # invitation page's "see more info" flow has one on hand). The
+    # phone-first Login/Register flow has no invitation context yet, so
+    # this is None there — verify_otp still finds/creates the account and
+    # opportunistically links any invitation already on file under this
+    # phone number (see otp.py).
+    recipient_id: str | None = None
 
 
 class OtpVerifyResponse(BaseModel):
     success: bool
     is_new_user: bool
+    # A Firebase custom token for the (found-or-created) account this
+    # phone number belongs to. The client signs in with
+    # signInWithCustomToken(auth, custom_token) — this is a full login,
+    # not just a verification step.
+    custom_token: str
 
 
 class PlannedWeddingCreate(BaseModel):

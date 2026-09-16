@@ -24,6 +24,7 @@ import { translations, usePublicLanguage } from '../lib/i18n'
 import AuthLayout from '../components/AuthLayout'
 import GoogleIcon from '../components/GoogleIcon'
 import AppleIcon from '../components/AppleIcon'
+import PhoneOtpLogin from '../components/auth/PhoneOtpLogin'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
@@ -246,6 +247,31 @@ export function Login() {
         ) : undefined
       }
     >
+      {/* Phone OTP — the primary way in (2026-09 product decision, see
+          BUSINESS_LOGIC.md): matches how a guest already exists in this
+          system (a phone number on an invitation), avoids paying for an
+          SMS on every login (Firebase's session persists across app
+          restarts same as Google/Apple below), and needs no third-party
+          account at all. Google/Apple/email stay available underneath for
+          anyone who prefers them or already has one of those accounts. */}
+      <PhoneOtpLogin
+        t={t}
+        onVerified={() => {
+          // onAuthStateChanged (AuthContext) picks up the new Firebase
+          // session and the effect above navigates once isAuthenticated
+          // flips — same as every other sign-in method on this page.
+        }}
+      />
+
+      <div className="relative my-6">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-border" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-card px-3 text-muted-foreground">{t.authOrOtherWay}</span>
+        </div>
+      </div>
+
       <Button
         type="button"
         variant="outline"

@@ -9,11 +9,12 @@ import random
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from firebase_admin import auth as firebase_auth
 from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.db import get_db
-from app.integrations.pulseem import send_sms
+from app.integrations.pulseem import send_sms, to_international_phone
 
 router = APIRouter(prefix="/api", tags=["otp"])
 
@@ -30,6 +31,22 @@ _SEND_COOLDOWN = timedelta(seconds=60)
 
 def _generate_code() -> str:
     return f"{random.randint(0, 999999):06d}"
+
+
+def _find_by_phone(db: Session, model, phone: str, normalized_phone: str):
+    """Match a row's phone column against `phone`, tolerating "05..." vs.
+    "+972 5..." vs. "972..." formatting differences. Tries an exact-string
+    match first (hits the column's index — cheap, and covers the common
+    case since most numbers get typed the same way twice) before falling
+    back to a full scan with normalization, which is O(rows) but only ever
+    runs when the fast path misses."""
+    exact = db.query(model).filter(model.phone == phone).first()
+    if exact is not None:
+        return exact
+    for candidate in db.query(model).filter(model.phone.isnot(None)):
+        if to_international_phone(candidate.phone) == normalized_phone:
+            return candidate
+    return None
 
 
 @router.post("/otp/send", response_model=schemas.OtpSendResponse)
@@ -77,9 +94,20 @@ def send_otp(body: schemas.OtpSendRequest, db: Session = Depends(get_db)) -> sch
 
 @router.post("/otp/verify", response_model=schemas.OtpVerifyResponse)
 def verify_otp(body: schemas.OtpVerifyRequest, db: Session = Depends(get_db)) -> schemas.OtpVerifyResponse:
-    """verifyOtpAndLink: validate the code, mark it used, link the verified
-    phone (and, if an account with that phone already exists, the user_id)
-    to the InvitationRecipient.
+    """verifyOtpAndLink, extended into a full phone login (2026-09 product
+    decision: phone OTP as the primary way in, for both a guest opening an
+    invitation and a brand-new user with no invitation yet — see
+    BUSINESS_LOGIC.md). Validates the code exactly as before, then:
+
+      1. Finds-or-creates the app account this phone number belongs to,
+         and mints a Firebase custom token for it. The client signs in
+         with that token — this is a real login, not just verification.
+      2. Links (and pre-fills the account's name from) whatever
+         InvitationRecipient this phone belongs to — either the specific
+         one the caller names (`recipient_id`, from the invitation page)
+         or, failing that, any recipient already on file under this phone
+         (a brand-new phone-first signup with no invitation context yet
+         still lands pre-linked to one waiting for them).
 
     Looked up by phone + unused only (not phone + code together, as before)
     so a wrong guess still finds the real pending code to count an attempt
@@ -113,15 +141,84 @@ def verify_otp(body: schemas.OtpVerifyRequest, db: Session = Depends(get_db)) ->
 
     otp.is_used = True
 
-    recipient = db.get(models.InvitationRecipient, body.recipient_id)
-    if recipient is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Invitation not found")
+    # Phone numbers get typed in different formats depending on who typed
+    # them (a host inviting someone vs. the guest themselves) — compare
+    # normalized (972XXXXXXXXX) so "05..." and "+972 5..." match the same
+    # underlying number, without changing what's actually stored anywhere.
+    normalized_phone = to_international_phone(phone)
 
-    existing_user = db.query(models.User).filter(models.User.phone == phone).first()
-    recipient.phone_verified = True
-    recipient.verified_phone = phone
+    # Only trust a caller-supplied recipient_id if that recipient's own
+    # phone actually matches what was just OTP-verified — otherwise
+    # anyone could verify their own phone and pass someone else's
+    # recipient_id to get that person's invitation linked (and thus
+    # visible under /my-invitations) to their own account.
+    recipient = None
+    if body.recipient_id:
+        candidate = db.get(models.InvitationRecipient, body.recipient_id)
+        if (
+            candidate is not None
+            and candidate.phone
+            and to_international_phone(candidate.phone) == normalized_phone
+        ):
+            recipient = candidate
+
+    # No (valid) recipient_id given — a phone-first Login/Register signup
+    # with no invitation context in hand. Opportunistically link any
+    # recipient already invited under this phone anyway.
+    if recipient is None:
+        recipient = _find_by_phone(db, models.InvitationRecipient, phone, normalized_phone)
+
+    # Reuse the existing account if one is already registered under this
+    # phone number (e.g. a Google/Apple account the guest later added a
+    # matching phone to in Profile) — mint the token for *that* Firebase
+    # uid so this is the same account logging in a second way, not a new,
+    # disconnected one.
+    existing_user = _find_by_phone(db, models.User, phone, normalized_phone)
+
+    is_new_user = existing_user is None
     if existing_user is not None:
-        recipient.user_id = existing_user.id
+        user = existing_user
+        uid = user.firebase_uid
+    else:
+        # Deterministic per-number uid: a second OTP login from the same
+        # phone (no Google/Apple account ever added) reuses this same row
+        # instead of creating another one.
+        uid = f"phone:{normalized_phone}"
+        user = db.query(models.User).filter_by(firebase_uid=uid).one_or_none()
+        if user is None:
+            user = models.User(
+                firebase_uid=uid,
+                # users.email is NOT NULL + unique; phone-only accounts
+                # get the same never-colliding placeholder app.auth's
+                # lazy User-creation already uses for this exact case.
+                email=f"{uid}@no-email.invalid",
+                phone=phone,
+            )
+            db.add(user)
+            # id has a Python-side default (_uuid), which SQLAlchemy only
+            # evaluates on flush — read below via recipient.user_id, so
+            # without this explicit flush that assignment would silently
+            # write None instead of the real id.
+            db.flush()
+        else:
+            is_new_user = False
+
+    if recipient is not None:
+        recipient.phone_verified = True
+        recipient.verified_phone = phone
+        recipient.user_id = user.id
+        if not user.first_name and not user.last_name:
+            if recipient.first_name:
+                user.first_name = recipient.first_name
+            if recipient.last_name:
+                user.last_name = recipient.last_name
 
     db.commit()
-    return schemas.OtpVerifyResponse(success=True, is_new_user=existing_user is None)
+
+    # create_custom_token needs no prior Firebase-side user for this uid —
+    # it's a pure JWT the client redeems via signInWithCustomToken, which
+    # creates the underlying Firebase Auth user lazily on first use if one
+    # doesn't already exist.
+    custom_token = firebase_auth.create_custom_token(uid).decode("utf-8")
+
+    return schemas.OtpVerifyResponse(success=True, is_new_user=is_new_user, custom_token=custom_token)
