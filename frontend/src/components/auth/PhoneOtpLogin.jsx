@@ -125,12 +125,21 @@ export default function PhoneOtpLogin({ recipientId, initialPhone, t: tOverride,
           )}
 
           <Input
-            type="number"
+            // type="text" + inputMode="numeric", not type="number": a
+            // number input silently strips a leading zero as you type it
+            // (e.g. "031047" collapses to "31047"), so any code starting
+            // with 0 — 1 in 10 — could never be typed at all. inputMode
+            // still gets the numeric keyboard on mobile without that.
+            type="text"
             inputMode="numeric"
+            pattern="[0-9]*"
             placeholder="— — — — — —"
             maxLength={6}
             value={otpCode}
-            onChange={(e) => { setError(null); setOtpCode(e.target.value.slice(0, 6)); }}
+            onChange={(e) => {
+              setError(null);
+              setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6));
+            }}
             className="h-16 rounded-xl text-center text-3xl font-mono tracking-widest"
             dir="ltr"
             autoFocus
