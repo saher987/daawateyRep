@@ -137,11 +137,24 @@ def get_app_user(
     try:
         db.commit()
     except IntegrityError:
-        # Two concurrent first-requests from the same brand-new account
-        # both tried to create the row — the loser here just reads what the
-        # winner committed instead of erroring out.
+        # Two different collisions land here: (a) two concurrent
+        # first-requests from the same brand-new account both tried to
+        # create the row — the loser just reads what the winner
+        # committed; (b) invite.phone already belongs to another account
+        # now that users.phone is unique (migrations/versions/0005) — a
+        # phone backfill that can't happen isn't worth losing the whole
+        # signup over, so retry once without it.
         db.rollback()
-        user = db.query(models.User).filter_by(firebase_uid=current.uid).one()
+        user = db.query(models.User).filter_by(firebase_uid=current.uid).one_or_none()
+        if user is None:
+            user = models.User(firebase_uid=current.uid, email=email, role=role, phone=None)
+            db.add(user)
+            if invite is not None:
+                # Expired by the rollback above — reassigning transparently
+                # reloads it first, then applies the new value.
+                invite.consumed_at = datetime.now(timezone.utc)
+            db.commit()
+            db.refresh(user)
     else:
         db.refresh(user)
     return user

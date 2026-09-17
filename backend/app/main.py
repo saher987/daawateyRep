@@ -2,11 +2,11 @@ import logging
 import os
 
 import firebase_admin
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from firebase_admin import auth as firebase_auth
-from sqlalchemy.exc import DataError
+from sqlalchemy.exc import DataError, IntegrityError
 from sqlalchemy.orm import Session
 
 from app import models, schemas
@@ -115,7 +115,19 @@ def update_profile(
     fields actually sent get updated (see ProfileUpdate's docstring for why)."""
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(user, field, value)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        # users.phone is unique (migrations/versions/0005) — without this,
+        # trying to save a phone another account already has crashes here
+        # with an unhandled 500 that reaches the browser as a bare "Failed
+        # to fetch" (CORS headers don't get attached to an error response
+        # from this deep in the middleware stack — see BUSINESS_LOGIC.md).
+        db.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail="phone_already_in_use",
+        ) from exc
     db.refresh(user)
     return _me_response(user)
 

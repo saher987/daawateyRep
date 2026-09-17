@@ -113,7 +113,12 @@ class User(Base):
     last_name: Mapped[str | None] = mapped_column(String, nullable=True)
     nickname: Mapped[str | None] = mapped_column(String, nullable=True)
     town: Mapped[str | None] = mapped_column(String, nullable=True)
-    phone: Mapped[str | None] = mapped_column(String, nullable=True)
+    # unique (not just indexed): two accounts sharing a phone is exactly
+    # what let the phone-OTP login match the wrong (deactivated) one — see
+    # migrations/versions/0005_user_phone_unique.py and otp.py. NULL-safe:
+    # Postgres UNIQUE never compares NULLs against each other, so the many
+    # accounts with no phone at all (Google/Apple sign-ins) are unaffected.
+    phone: Mapped[str | None] = mapped_column(String, unique=True, nullable=True, index=True)
     preferred_language: Mapped[str] = mapped_column(String, nullable=False, default="ar")
     last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     photo_url: Mapped[str | None] = mapped_column(String, nullable=True)

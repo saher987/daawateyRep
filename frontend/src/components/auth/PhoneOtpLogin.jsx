@@ -5,7 +5,7 @@
 // login: verifyOtp now gets back a Firebase custom token and signs in with
 // it, so this is usable standalone on Login/Register too, not just
 // alongside an invitation.
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { signInWithCustomToken } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { base44 } from "@/api/base44Client";
@@ -56,8 +56,14 @@ export default function PhoneOtpLogin({ recipientId, initialPhone, t: tOverride,
     }
   };
 
-  const verifyOtp = async () => {
-    if (otpCode.length !== 6) {
+  // codeOverride: WebOTP's auto-fill below calls this the instant it reads
+  // a code, before setOtpCode(code) has actually re-rendered — reading
+  // the otpCode *state* here would still see the stale pre-fill value
+  // (React state updates aren't synchronous), so the caller passes the
+  // just-read code explicitly instead of relying on that closure.
+  const verifyOtp = async (codeOverride) => {
+    const code = codeOverride ?? otpCode;
+    if (code.length !== 6) {
       setError(t.otpInvalidCode);
       return;
     }
@@ -66,7 +72,7 @@ export default function PhoneOtpLogin({ recipientId, initialPhone, t: tOverride,
     try {
       const res = await base44.functions.invoke("verifyOtpAndLink", {
         phone,
-        otpCode,
+        otpCode: code,
         recipientId,
       });
       // signInWithCustomToken triggers the same onAuthStateChanged flow
@@ -83,6 +89,33 @@ export default function PhoneOtpLogin({ recipientId, initialPhone, t: tOverride,
       setLoading(false);
     }
   };
+
+  // WebOTP API (Chrome/Android only — feature-detected, a silent no-op
+  // everywhere else including iOS Safari and the native app's WebView,
+  // whose origin isn't really https://daawatey.com). Requires the SMS
+  // text to end with "@daawatey.com #<code>" (see otp.py's send_otp) —
+  // the browser reads that straight out of the incoming SMS and offers a
+  // one-tap system "verify" prompt instead of the guest typing the code
+  // in by hand. abort() on step change/unmount: this promise otherwise
+  // stays pending until a matching SMS arrives or the page navigates away.
+  useEffect(() => {
+    if (step !== "verify" || !("OTPCredential" in window)) return;
+    const controller = new AbortController();
+    navigator.credentials
+      .get({ otp: { transport: ["sms"] }, signal: controller.signal })
+      .then((otp) => {
+        if (!otp?.code) return;
+        const digits = otp.code.replace(/\D/g, "").slice(0, 6);
+        setOtpCode(digits);
+        if (digits.length === 6) verifyOtp(digits);
+      })
+      .catch(() => {
+        // AbortError on cleanup, or the user dismissed the system prompt
+        // — either way, manual entry (already on screen) still works.
+      });
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
@@ -133,6 +166,11 @@ export default function PhoneOtpLogin({ recipientId, initialPhone, t: tOverride,
             type="text"
             inputMode="numeric"
             pattern="[0-9]*"
+            // iOS's QuickType suggestion bar (Safari *and* inside the
+            // native app's WKWebView) reads the code straight out of the
+            // Messages notification and offers it as a one-tap suggestion
+            // — no SMS-format requirement, unlike WebOTP below.
+            autoComplete="one-time-code"
             placeholder="— — — — — —"
             maxLength={6}
             value={otpCode}
@@ -148,7 +186,10 @@ export default function PhoneOtpLogin({ recipientId, initialPhone, t: tOverride,
           {error && <p className="text-sm text-destructive text-center">{error}</p>}
 
           <Button
-            onClick={verifyOtp}
+            // Not onClick={verifyOtp} directly — that would pass the click
+            // event through as codeOverride, and code.length on a
+            // SyntheticEvent is never 6.
+            onClick={() => verifyOtp()}
             disabled={loading || otpCode.length !== 6}
             className="w-full h-12 rounded-xl gap-2"
           >

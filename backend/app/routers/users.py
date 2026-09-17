@@ -107,6 +107,13 @@ def deactivate_user(
             status.HTTP_400_BAD_REQUEST, detail="Cannot deactivate your own account"
         )
     target.is_active = False
+    # users.phone is unique (migrations/versions/0005) — a disabled account
+    # has no further use for it, and leaving it in place only blocks that
+    # number from ever being used again (a new phone-OTP signup, or the
+    # real owner's still-active account claiming it) with a DB-level
+    # conflict. Same reasoning the migration itself applies to pre-existing
+    # duplicates at the time it ran.
+    target.phone = None
     db.commit()
     db.refresh(target)
     _sync_firebase_active(target.firebase_uid, active=False)

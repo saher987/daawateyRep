@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from firebase_admin import auth as firebase_auth
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import models, schemas
@@ -87,7 +88,18 @@ def send_otp(body: schemas.OtpSendRequest, db: Session = Depends(get_db)) -> sch
     db.add(otp)
     db.commit()
 
-    send_sms(phone, f"رمز التحقق الخاص بك في دعوتي: {code}", reference=otp.id)
+    # The trailing "@domain #code" line is the WebOTP API's required
+    # format (https://wicg.github.io/web-otp/) — Chrome on Android reads
+    # it straight out of the SMS and offers a one-tap "verify" prompt
+    # instead of the guest having to type the code in (see
+    # PhoneOtpLogin.jsx's navigator.credentials.get call). Harmless
+    # elsewhere: any client that doesn't recognize the format just shows
+    # it as two extra lines of text.
+    send_sms(
+        phone,
+        f"رمز التحقق الخاص بك في دعوتي: {code}\n\n@daawatey.com #{code}",
+        reference=otp.id,
+    )
 
     debug_echo = os.environ.get("OTP_DEBUG_ECHO") == "true"
     return schemas.OtpSendResponse(success=True, otp_preview=code if debug_echo else None)
@@ -193,23 +205,54 @@ def verify_otp(body: schemas.OtpVerifyRequest, db: Session = Depends(get_db)) ->
         # instead of creating another one.
         uid = f"phone:{normalized_phone}"
         user = db.query(models.User).filter_by(firebase_uid=uid).one_or_none()
-        if user is None:
-            user = models.User(
-                firebase_uid=uid,
-                # users.email is NOT NULL + unique; phone-only accounts
-                # get the same never-colliding placeholder app.auth's
-                # lazy User-creation already uses for this exact case.
-                email=f"{uid}@no-email.invalid",
-                phone=phone,
-            )
-            db.add(user)
-            # id has a Python-side default (_uuid), which SQLAlchemy only
-            # evaluates on flush — read below via recipient.user_id, so
-            # without this explicit flush that assignment would silently
-            # write None instead of the real id.
-            db.flush()
-        else:
+        if user is not None:
             is_new_user = False
+        else:
+            try:
+                user = models.User(
+                    firebase_uid=uid,
+                    # users.email is NOT NULL + unique; phone-only accounts
+                    # get the same never-colliding placeholder app.auth's
+                    # lazy User-creation already uses for this exact case.
+                    email=f"{uid}@no-email.invalid",
+                    phone=phone,
+                )
+                db.add(user)
+                # id has a Python-side default (_uuid), which SQLAlchemy
+                # only evaluates on flush — read below via
+                # recipient.user_id, so without this explicit flush that
+                # assignment would silently write None instead of the
+                # real id.
+                db.flush()
+            except IntegrityError:
+                # users.phone is unique (migrations/versions/0005). Two
+                # causes land here: another concurrent request for this
+                # same brand-new phone already won (the query above just
+                # hadn't seen it yet), or a stale inactive duplicate
+                # predating users.py's deactivate-time phone-clearing is
+                # still squatting on this exact string. Resolve whichever
+                # it is instead of crashing.
+                db.rollback()
+                # rollback() expires every object in the session, including
+                # `otp` — its is_used=True from above never got committed,
+                # so it needs reasserting or the code goes right back to
+                # being guessable/reusable after this request.
+                otp.is_used = True
+                user = db.query(models.User).filter_by(firebase_uid=uid).one_or_none()
+                if user is not None:
+                    is_new_user = False
+                else:
+                    stale = db.query(models.User).filter(models.User.phone == phone).one_or_none()
+                    if stale is not None and not stale.is_active:
+                        stale.phone = None
+                        db.flush()
+                    user = models.User(
+                        firebase_uid=uid,
+                        email=f"{uid}@no-email.invalid",
+                        phone=phone,
+                    )
+                    db.add(user)
+                    db.flush()
 
     if recipient is not None:
         recipient.phone_verified = True
