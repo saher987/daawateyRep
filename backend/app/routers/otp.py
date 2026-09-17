@@ -33,17 +33,18 @@ def _generate_code() -> str:
     return f"{random.randint(0, 999999):06d}"
 
 
-def _find_by_phone(db: Session, model, phone: str, normalized_phone: str):
+def _find_by_phone(db: Session, model, phone: str, normalized_phone: str, *extra_filters):
     """Match a row's phone column against `phone`, tolerating "05..." vs.
     "+972 5..." vs. "972..." formatting differences. Tries an exact-string
     match first (hits the column's index — cheap, and covers the common
     case since most numbers get typed the same way twice) before falling
     back to a full scan with normalization, which is O(rows) but only ever
-    runs when the fast path misses."""
-    exact = db.query(model).filter(model.phone == phone).first()
+    runs when the fast path misses. `extra_filters` are ANDed into both
+    queries — e.g. excluding deactivated Users (see call site)."""
+    exact = db.query(model).filter(model.phone == phone, *extra_filters).first()
     if exact is not None:
         return exact
-    for candidate in db.query(model).filter(model.phone.isnot(None)):
+    for candidate in db.query(model).filter(model.phone.isnot(None), *extra_filters):
         if to_international_phone(candidate.phone) == normalized_phone:
             return candidate
     return None
@@ -172,8 +173,15 @@ def verify_otp(body: schemas.OtpVerifyRequest, db: Session = Depends(get_db)) ->
     # phone number (e.g. a Google/Apple account the guest later added a
     # matching phone to in Profile) — mint the token for *that* Firebase
     # uid so this is the same account logging in a second way, not a new,
-    # disconnected one.
-    existing_user = _find_by_phone(db, models.User, phone, normalized_phone)
+    # disconnected one. is_active=True excludes deactivated duplicates —
+    # phone isn't unique on users, so two accounts sharing a number (one
+    # admin-disabled after the fact) is a real scenario, and matching the
+    # disabled one would sign in fine but then 403 "Account disabled" on
+    # the very next call (get_app_user), which looks like a silent failure
+    # from the client's side rather than a clear error.
+    existing_user = _find_by_phone(
+        db, models.User, phone, normalized_phone, models.User.is_active.is_(True)
+    )
 
     is_new_user = existing_user is None
     if existing_user is not None:
