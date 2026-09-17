@@ -35,6 +35,20 @@ Deferred work — not urgent, tracked here so it doesn't get lost.
   `backend-runtime@daawatey-prod`) — fixed via a one-time `gcloud`
   IAM grant (documented in BUSINESS_LOGIC.md §2a), no redeploy needed.
   User confirmed the full phone → SMS → code → signed-in flow works.
+- [x] **users.phone made unique; deactivate now clears it; WebOTP/one-time-code
+  added.** A real duplicate (two accounts, same phone, one later
+  admin-disabled) surfaced a matching bug — OTP login could sign into the
+  disabled account. Fixed app-side (commit `606d52c`, `is_active` filter
+  on the phone lookup), then closed properly at the data layer (commit
+  `10d54c1`): `migrations/versions/0005_user_phone_unique.py` (applied to
+  prod 2026-09-17 — ran cleanly, no active-vs-active collisions existed),
+  `users.py`'s deactivate now nulls `phone` so a disabled account can
+  never block a number again, and the three call sites that write `phone`
+  (auth.py's lazy creation, otp.py's new-account path, `PUT /api/profile`)
+  all handle the constraint gracefully instead of crashing on it. Also
+  added WebOTP (Chrome/Android auto-fill + auto-submit from the SMS) and
+  `autocomplete="one-time-code"` (iOS QuickType) to `PhoneOtpLogin.jsx`.
+
   Still open:
   - **Native builds.** iOS/Android still bundle the old Google/Apple-only
     flow until a new native build ships each. Hold off on iOS specifically
@@ -43,3 +57,8 @@ Deferred work — not urgent, tracked here so it doesn't get lost.
   - **Staging IAM grant.** `backend-runtime@daawatey-staging` needs the
     same `iam.serviceAccountTokenCreator` grant the first time this code
     path is actually exercised there (not yet done — see BUSINESS_LOGIC.md §2a).
+  - **SMS Retriever API (native Android, true silent auto-read).** WebOTP
+    likely doesn't work inside the native app's WebView (its origin isn't
+    really `https://daawatey.com`) — deferred, needs a native Capacitor
+    plugin and an app-signing-hash-in-every-SMS setup that gets
+    complicated once Play App Signing re-signs the app.
