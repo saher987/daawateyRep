@@ -234,6 +234,34 @@ gcloud projects add-iam-policy-binding daawatey-prod \
   --role="roles/cloudsql.client"
 ```
 
+### 2a. Firebase custom tokens (phone OTP login): another easy-to-miss IAM grant
+
+Same failure mode as #2 above, different permission. `firebase_admin.auth.create_custom_token()`
+(backend/app/routers/otp.py's phone-OTP login, added 2026-09) needs to sign
+a JWT. Cloud Run's Application Default Credentials have no private key to
+sign with locally, so the Admin SDK falls back to calling the IAM
+Credentials API's `signBlob`, which requires the runtime service account to
+be allowed to impersonate *itself*:
+
+```bash
+gcloud iam service-accounts add-iam-policy-binding \
+  backend-runtime@daawatey-prod.iam.gserviceaccount.com \
+  --member="serviceAccount:backend-runtime@daawatey-prod.iam.gserviceaccount.com" \
+  --role="roles/iam.serviceAccountTokenCreator" \
+  --project=daawatey-prod
+```
+
+Without it: `TokenSignError: ... Permission 'iam.serviceAccounts.signBlob'
+denied`, logged server-side but — same as the Cloud SQL case — surfaced to
+the browser as a bare "Failed to fetch" (the 500 goes out without CORS
+headers), not a permission error. Takes effect immediately, no redeploy
+needed. **Staging needs the equivalent grant on
+`backend-runtime@daawatey-staging.iam.gserviceaccount.com`** the first time
+phone-OTP login is actually exercised there — not yet done as of this
+writing, since staging testing of this feature was skipped in favor of
+testing for real against prod (see the "no real SMS on staging" reasoning
+elsewhere in this doc).
+
 ### 3. Secrets: Google Secret Manager, not GitHub
 
 `DATABASE_URL`, `PULSEEM_API_KEY`, and `RESEND_API_KEY` live in Secret
