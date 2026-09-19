@@ -30,6 +30,12 @@ import GoogleIcon from "@/components/GoogleIcon";
 import AppleIcon from "@/components/AppleIcon";
 import PhoneOtpLogin from "@/components/auth/PhoneOtpLogin";
 
+// 2026-09: phone OTP is the only sign-in method shown now — see the
+// matching flag/comment in Login.jsx. Kept in sync between the two files
+// deliberately rather than shared, since it's meant to be a one-line
+// flip, not a config value worth its own module.
+const SHOW_SOCIAL_LOGIN = false;
+
 export default function Register() {
   const navigate = useNavigate();
   const { isAuthenticated, isLoadingAuth } = useAuth();
@@ -148,50 +154,54 @@ export default function Register() {
           below remain for anyone who prefers them. */}
       <PhoneOtpLogin t={t} onVerified={() => {}} />
 
-      <div className="relative my-6">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-border" />
-        </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-card px-3 text-muted-foreground">{t.authOrOtherWay}</span>
-        </div>
-      </div>
+      {SHOW_SOCIAL_LOGIN && (
+        <>
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-3 text-muted-foreground">{t.authOrOtherWay}</span>
+            </div>
+          </div>
 
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full h-12 text-sm font-medium mb-3"
-        onClick={handleGoogle}
-        disabled={googleLoading || loading || appleLoading}
-      >
-        <GoogleIcon className="w-5 h-5 mr-2" />
-        {googleLoading ? (
-          <>
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            {t.authConnecting}
-          </>
-        ) : (
-          t.authContinueWithGoogle
-        )}
-      </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full h-12 text-sm font-medium mb-3"
+            onClick={handleGoogle}
+            disabled={googleLoading || loading || appleLoading}
+          >
+            <GoogleIcon className="w-5 h-5 mr-2" />
+            {googleLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                {t.authConnecting}
+              </>
+            ) : (
+              t.authContinueWithGoogle
+            )}
+          </Button>
 
-      {Capacitor.getPlatform() !== "android" && (
-        <Button
-          type="button"
-          className="w-full h-12 text-sm font-medium mb-6 bg-black text-white hover:bg-black/90"
-          onClick={handleApple}
-          disabled={appleLoading || googleLoading || loading}
-        >
-          <AppleIcon className="w-5 h-5 mr-2" />
-          {appleLoading ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              {t.authConnecting}
-            </>
-          ) : (
-            t.authContinueWithApple
+          {Capacitor.getPlatform() !== "android" && (
+            <Button
+              type="button"
+              className="w-full h-12 text-sm font-medium mb-6 bg-black text-white hover:bg-black/90"
+              onClick={handleApple}
+              disabled={appleLoading || googleLoading || loading}
+            >
+              <AppleIcon className="w-5 h-5 mr-2" />
+              {appleLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  {t.authConnecting}
+                </>
+              ) : (
+                t.authContinueWithApple
+              )}
+            </Button>
           )}
-        </Button>
+        </>
       )}
 
       <div className="relative mb-6">

@@ -43,6 +43,14 @@ if (typeof window !== 'undefined') {
 // native builds exist.
 const allowEmailAuth = import.meta.env.VITE_ALLOW_EMAIL_AUTH !== 'false'
 
+// 2026-09: phone OTP is the only sign-in method shown now — Google/Apple
+// stay fully wired (handlers, imports, native plugin config all still
+// here) so flipping this back to true is the entire re-enable, no rebuild
+// of the feature itself. Not an env var: this is a product decision, not
+// a per-environment one, so it shouldn't vary between builds the way
+// allowEmailAuth (test vs. prod) deliberately does.
+const SHOW_SOCIAL_LOGIN = false
+
 // Temporary, verbose diagnostic formatter — surfaces every field an error
 // might carry (native plugin errors often attach a `code` alongside
 // `message`, and sometimes other fields), since the on-device console isn't
@@ -263,56 +271,61 @@ export function Login() {
         }}
       />
 
-      <div className="relative my-6">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-border" />
-        </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-card px-3 text-muted-foreground">{t.authOrOtherWay}</span>
-        </div>
-      </div>
+      {SHOW_SOCIAL_LOGIN && (
+        <>
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-3 text-muted-foreground">{t.authOrOtherWay}</span>
+            </div>
+          </div>
 
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full h-12 text-sm font-medium mb-3"
-        onClick={handleGoogleSignIn}
-        disabled={googleBusy || busy || appleBusy}
-      >
-        <GoogleIcon className="w-5 h-5 mr-2" />
-        {googleBusy ? (
-          <>
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            {t.authConnecting}
-          </>
-        ) : (
-          t.authContinueWithGoogle
-        )}
-      </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full h-12 text-sm font-medium mb-3"
+            onClick={handleGoogleSignIn}
+            disabled={googleBusy || busy || appleBusy}
+          >
+            <GoogleIcon className="w-5 h-5 mr-2" />
+            {googleBusy ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                {t.authConnecting}
+              </>
+            ) : (
+              t.authContinueWithGoogle
+            )}
+          </Button>
 
-      {/* Apple's own guideline (not just App Store review — it's the actual
-          HIG) is a solid black button, not an outlined one matching the
-          other providers. Hidden on native Android: Sign in with Apple is
-          an App Store requirement for iOS apps that offer third-party
-          login, not something Android users would ever expect or need —
-          and the plugin's Android support for it is unverified here. */}
-      {Capacitor.getPlatform() !== 'android' && (
-        <Button
-          type="button"
-          className="w-full h-12 text-sm font-medium mb-6 bg-black text-white hover:bg-black/90"
-          onClick={handleAppleSignIn}
-          disabled={appleBusy || googleBusy || busy}
-        >
-          <AppleIcon className="w-5 h-5 mr-2" />
-          {appleBusy ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              {t.authConnecting}
-            </>
-          ) : (
-            t.authContinueWithApple
+          {/* Apple's own guideline (not just App Store review — it's the
+              actual HIG) is a solid black button, not an outlined one
+              matching the other providers. Hidden on native Android: Sign
+              in with Apple is an App Store requirement for iOS apps that
+              offer third-party login, not something Android users would
+              ever expect or need — and the plugin's Android support for it
+              is unverified here. */}
+          {Capacitor.getPlatform() !== 'android' && (
+            <Button
+              type="button"
+              className="w-full h-12 text-sm font-medium mb-6 bg-black text-white hover:bg-black/90"
+              onClick={handleAppleSignIn}
+              disabled={appleBusy || googleBusy || busy}
+            >
+              <AppleIcon className="w-5 h-5 mr-2" />
+              {appleBusy ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  {t.authConnecting}
+                </>
+              ) : (
+                t.authContinueWithApple
+              )}
+            </Button>
           )}
-        </Button>
+        </>
       )}
 
       {error && (
