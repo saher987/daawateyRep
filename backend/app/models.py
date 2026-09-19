@@ -417,3 +417,38 @@ class OtpVerification(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow
     )
+
+
+class PushToken(Base):
+    """One FCM registration token per signed-in device (web browser, or the
+    native Android/iOS app) — a user with the app open on two phones has two
+    rows. app.integrations.push sends to every row for a user, and prunes
+    whichever ones FCM reports back as unregistered (uninstalled app,
+    cleared browser data, token rotated) rather than retrying them forever.
+
+    ondelete="CASCADE" (unlike Notification's SET NULL, or
+    InvitationRecipient's no-ondelete/RESTRICT): a push token has no
+    standalone value once the account it's registered to is gone —
+    DELETE /api/account (main.py) does a plain db.delete(user), relying on
+    the DB to drop these rows itself rather than needing its own explicit
+    cleanup step."""
+
+    __tablename__ = "push_tokens"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # Globally unique, not just per-user: the same token re-registering
+    # (e.g. a page reload calling getToken() again) should update the
+    # existing row rather than accumulate duplicates, and if a device ever
+    # legitimately changes hands, the new owner's registration naturally
+    # takes it over from whichever user_id last held it.
+    token: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    platform: Mapped[str] = mapped_column(String, nullable=False)  # "web" | "android" | "ios"
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+    )

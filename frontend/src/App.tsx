@@ -10,6 +10,7 @@ import PageNotFound from './lib/PageNotFound'
 import { Login } from './pages/Login'
 import { Toaster } from './components/ui/toaster'
 import DeepLinkHandler from './components/DeepLinkHandler'
+import PushNotificationHandler from './components/PushNotificationHandler'
 
 // Route-level code splitting, same pattern as the original app.
 const MyInvitations = lazy(() => import('./pages/MyInvitations'))
@@ -49,6 +50,7 @@ function App() {
         <QueryClientProvider client={queryClientInstance}>
           <Router>
             <DeepLinkHandler />
+            <PushNotificationHandler />
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route

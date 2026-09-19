@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.auth import get_app_user, require_role
 from app.db import get_db
+from app.integrations.push import send_push_to_user
 from app.integrations.pulseem import send_sms
 from app.integrations.resend_email import send_email
 
@@ -384,13 +385,24 @@ def add_recipient(
         title="دعوة جديدة",
         message=f'تمت دعوتك لحضور "{event.title}"',
         event_id=event.id,
+        # Only the actual invite gets a real push, not every later
+        # event_update — a push is a much more attention-grabbing channel
+        # than the polled in-app bell, worth reserving for "you were
+        # invited" specifically rather than every detail edit.
+        send_push=True,
     )
     db.commit()
     return recipient
 
 
 def _notify_recipient_in_app(
-    db: Session, recipient: models.InvitationRecipient, *, title: str, message: str, event_id: str
+    db: Session,
+    recipient: models.InvitationRecipient,
+    *,
+    title: str,
+    message: str,
+    event_id: str,
+    send_push: bool = False,
 ) -> None:
     """In-app Notification (bell icon, /notifications) for a recipient —
     genuinely new: the original app never surfaced invite/update events
@@ -410,35 +422,48 @@ def _notify_recipient_in_app(
     SMS remains their only channel until then, which is what
     _send_invitation already covers.
 
+    send_push (2026-09): a real FCM push on top of the in-app row, gated
+    on the same "is there a linked, registered account" condition — no
+    account means no device token to push to either way. Only set True for
+    the actual invite (add_recipient), not every later event_update; the
+    data payload's `path` is what PhoneOtpLogin.jsx-adjacent native/web tap
+    handlers navigate to, landing on /i/<token> so the existing
+    open/RSVP-tracking in InvitationPage.jsx's own query fires exactly as
+    it does for a guest who tapped the SMS link directly.
+
     Doesn't commit — callers batch this with their own commit (add_recipient
     already committed the recipient; notify_event_update batches all
     recipients in one commit at the end)."""
-    target_email = None
-    if recipient.user_id:
-        linked_user = db.get(models.User, recipient.user_id)
-        if linked_user is not None:
-            target_email = linked_user.email
-    if not target_email:
-        target_email = recipient.email
-    if not target_email:
-        return
+    linked_user = db.get(models.User, recipient.user_id) if recipient.user_id else None
 
-    db.add(
-        models.Notification(
-            # No NotificationType value maps to "you were invited"/"event
-            # you're invited to changed" specifically (see NotificationType
-            # — the original never had this feature to name a type after).
-            # event_update reads close enough, and Notifications.jsx never
-            # renders type-specific icon/copy anyway — only title/message.
-            type=models.NotificationType.event_update,
-            title=title,
-            message=message,
-            is_read=False,
-            target_user_email=target_email,
-            event_id=event_id,
-            recipient_id=recipient.id,
+    target_email = linked_user.email if linked_user is not None else recipient.email
+    if target_email:
+        db.add(
+            models.Notification(
+                # No NotificationType value maps to "you were invited"/
+                # "event you're invited to changed" specifically (see
+                # NotificationType — the original never had this feature to
+                # name a type after). event_update reads close enough, and
+                # Notifications.jsx never renders type-specific icon/copy
+                # anyway — only title/message.
+                type=models.NotificationType.event_update,
+                title=title,
+                message=message,
+                is_read=False,
+                target_user_email=target_email,
+                event_id=event_id,
+                recipient_id=recipient.id,
+            )
         )
-    )
+
+    if send_push and linked_user is not None:
+        send_push_to_user(
+            db,
+            linked_user,
+            title=title,
+            body=message,
+            data={"path": f"/i/{recipient.personal_token}"},
+        )
 
 
 def _send_invitation(

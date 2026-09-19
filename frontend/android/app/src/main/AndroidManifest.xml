@@ -84,4 +84,9 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Android 13+ (API 33) requires this declared here before the app can
+         even ask for runtime notification permission (PushNotifications.
+         requestPermissions() in push.js) — without it the request silently
+         does nothing. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 </manifest>

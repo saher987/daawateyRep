@@ -31,6 +31,7 @@ staging/prod credentials.
 | `VITE_FIREBASE_STORAGE_BUCKET` | `daawatey-staging.firebasestorage.app` |
 | `VITE_FIREBASE_MESSAGING_SENDER_ID` | `742481007794` |
 | `VITE_FIREBASE_APP_ID` | from `daawatey-staging`'s web app config |
+| `VITE_FIREBASE_VAPID_KEY` | Firebase Console → Project Settings → Cloud Messaging → Web Push certificates → generate/copy the key pair (not sensitive, same visibility as the other `VITE_FIREBASE_*` values — web push registration in lib/push.js just silently no-ops without it) |
 
 ### 3. Add the equivalent secrets to the `prod` environment
 

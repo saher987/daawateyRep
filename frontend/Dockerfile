@@ -13,6 +13,12 @@ ARG VITE_FIREBASE_PROJECT_ID
 ARG VITE_FIREBASE_STORAGE_BUCKET
 ARG VITE_FIREBASE_MESSAGING_SENDER_ID
 ARG VITE_FIREBASE_APP_ID
+# Web push (lib/push.js): Firebase Console → Project Settings → Cloud
+# Messaging → Web Push certificates → generate/copy the key pair. Not
+# secret (same visibility as the other VITE_FIREBASE_* values above), just
+# not set up yet as of this writing — push registration on web silently
+# no-ops without it rather than failing anything.
+ARG VITE_FIREBASE_VAPID_KEY
 ARG VITE_API_BASE_URL
 ARG VITE_ALLOW_EMAIL_AUTH=false
 ARG VITE_BUILD_ID

@@ -322,6 +322,11 @@ class NotificationOut(BaseModel):
     created_at: datetime
 
 
+class PushTokenRegister(BaseModel):
+    token: str
+    platform: str  # "web" | "android" | "ios"
+
+
 class EventRequestCreate(BaseModel):
     title: str
     details: str

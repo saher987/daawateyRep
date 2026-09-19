@@ -290,6 +290,12 @@ const notificationsApi = {
   },
 }
 
+const pushApi = {
+  async registerToken(token, platform) {
+    return request('/api/push-tokens', { method: 'POST', body: { token, platform } })
+  },
+}
+
 // --- functions.invoke ---------------------------------------------------
 
 // Reshapes the backend's flat, guest-safe PublicInvitationOut into the
@@ -446,4 +452,5 @@ export const base44 = {
   },
   functions: functionsApi,
   integrations: integrationsApi,
+  push: pushApi,
 }
