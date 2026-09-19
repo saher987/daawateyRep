@@ -30,15 +30,42 @@
                  route here instead of the browser) and BROWSABLE so it can
                  be reached from a tapped link, not just launcher icon. The
                  host below must exactly match APP_URL (see DEPLOYMENT.md) —
-                 update both together if the prod domain ever changes. -->
+                 update both together if the prod domain ever changes.
+
+                 Was "www.daawatey.com" — real invitation links use
+                 window.location.origin (InviteeRow.jsx), which in prod is
+                 the bare "daawatey.com" (no www, confirmed against the
+                 actual deployed site), so this intent-filter never matched
+                 a single real link. www kept alongside as a second <data>
+                 in case anything ever does resolve there.
+
+                 /my-invitations added too: InvitationPage.jsx's "more
+                 details" button navigates there (not just /i/<token>) once
+                 signed in, and Android honors App Links for that kind of
+                 same-tab navigation (unlike iOS Universal Links, which need
+                 an actual tap on a link element) — so this is what lets
+                 that button hand off to the app too, not just the original
+                 invitation link. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:scheme="https"
+                    android:host="daawatey.com"
+                    android:pathPrefix="/i/" />
+                <data
+                    android:scheme="https"
+                    android:host="daawatey.com"
+                    android:path="/my-invitations" />
+                <data
+                    android:scheme="https"
                     android:host="www.daawatey.com"
                     android:pathPrefix="/i/" />
+                <data
+                    android:scheme="https"
+                    android:host="www.daawatey.com"
+                    android:path="/my-invitations" />
             </intent-filter>
 
         </activity>

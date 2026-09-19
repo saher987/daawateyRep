@@ -112,23 +112,43 @@ export default function InvitationPage() {
   const alreadyResponded = (rsvpDone || recipient.rsvp_status === "accepted" || recipient.rsvp_status === "declined") && !changingRsvp;
   const finalStatus = rsvpDone || recipient.rsvp_status;
 
-  // "More details" CTA: an already-logged-in guest goes straight to their
-  // invitations. Otherwise open the phone-OTP flow right here instead of
-  // base44.auth.redirectToLogin's Google/Apple picker — the guest doesn't
-  // need a whole account-provider choice, just to prove they own the phone
-  // number this invitation was already sent to.
-  const handleSeeMoreDetails = () => {
-    if (loggedInUser) {
-      window.location.href = "/my-invitations";
-    } else {
-      setOtpModalOpen(true);
-    }
-  };
-
   const handleOtpVerified = () => {
     setOtpModalOpen(false);
     window.location.href = "/my-invitations";
   };
+
+  // "More details" CTA. Logged in: a real <a href> (via Button's asChild),
+  // not an onClick handler — Android App Links honor a JS-redirect to a
+  // verified domain same as a real tap, but iOS Universal Links only ever
+  // fire for an actual tap on a link element, so this needs to genuinely
+  // be one for that to work once iOS deep-linking is set up. Not logged
+  // in: opens the phone-OTP flow right here instead of
+  // base44.auth.redirectToLogin's Google/Apple picker — the guest doesn't
+  // need a whole account-provider choice, just to prove they own the phone
+  // number this invitation was already sent to (that path's own eventual
+  // redirect, in handleOtpVerified above, is a plain JS one — an OTP
+  // round-trip can't itself be "the tap", so it doesn't reliably deep-link
+  // on iOS; still lands correctly on the web either way).
+  function MoreDetailsButton({ className, variant }) {
+    const label = (
+      <>
+        {isHe ? "פרטים נוספים" : "مزيد من التفاصيل"}
+        <ArrowRight className="w-4 h-4" />
+      </>
+    );
+    if (loggedInUser) {
+      return (
+        <Button asChild variant={variant} className={className}>
+          <a href="/my-invitations">{label}</a>
+        </Button>
+      );
+    }
+    return (
+      <Button variant={variant} className={className} onClick={() => setOtpModalOpen(true)}>
+        {label}
+      </Button>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background" dir="rtl">
@@ -281,13 +301,7 @@ export default function InvitationPage() {
 
                   {/* More details CTA */}
                   <div className="pt-2 border-t border-border">
-                    <Button
-                      className="w-full h-12 rounded-xl gap-2"
-                      onClick={handleSeeMoreDetails}
-                    >
-                      {isHe ? "פרטים נוספים" : "مزيد من التفاصيل"}
-                      <ArrowRight className="w-4 h-4" />
-                    </Button>
+                    <MoreDetailsButton className="w-full h-12 rounded-xl gap-2" />
                   </div>
                 </motion.div>
               ) : (
@@ -321,14 +335,10 @@ export default function InvitationPage() {
                     </Button>
                   </div>
                   <div className="border-t border-border pt-3">
-                    <Button
+                    <MoreDetailsButton
                       variant="ghost"
                       className="w-full h-11 rounded-xl gap-2 text-muted-foreground"
-                      onClick={handleSeeMoreDetails}
-                    >
-                      {isHe ? "פרטים נוספים" : "مزيد من التفاصيل"}
-                      <ArrowRight className="w-4 h-4" />
-                    </Button>
+                    />
                   </div>
                 </motion.div>
               )}
