@@ -139,9 +139,14 @@ class User(Base):
 
     @property
     def profile_complete(self) -> bool:
-        """Mirrors the original AppLayout check (spec §2, Flow G): first_name,
-        last_name, town, and phone must all be filled in."""
-        return bool(self.first_name and self.last_name and self.town and self.phone)
+        """AppLayout.jsx's client-side redirect-until-complete gate (and
+        Profile.jsx's own save-completion check) both key off this exact
+        field rather than re-deriving it — was nickname-less originally
+        (spec §2, Flow G's first_name/last_name/town/phone), extended
+        2026-09 per explicit product requirement to also require nickname."""
+        return bool(
+            self.first_name and self.last_name and self.nickname and self.town and self.phone
+        )
 
 
 class PendingInvite(Base):

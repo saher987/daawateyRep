@@ -37,18 +37,17 @@ if (typeof window !== 'undefined') {
   console.info(`[daawatey] build ${BUILD_LABEL}\n${formatDiagnostics()}`)
 }
 
-// Email/password is meant for test builds only — simulators and device farms
-// can't run a real Google/Apple picker. Prod builds must never set this flag.
-// On web today it's always effectively on; the flag starts mattering once
-// native builds exist.
-const allowEmailAuth = import.meta.env.VITE_ALLOW_EMAIL_AUTH !== 'false'
-
 // 2026-09: phone OTP is the only sign-in method shown now — Google/Apple
-// stay fully wired (handlers, imports, native plugin config all still
-// here) so flipping this back to true is the entire re-enable, no rebuild
-// of the feature itself. Not an env var: this is a product decision, not
-// a per-environment one, so it shouldn't vary between builds the way
-// allowEmailAuth (test vs. prod) deliberately does.
+// and email/password stay fully wired (handlers, imports, native plugin
+// config all still here) so flipping either back to true is the entire
+// re-enable, no rebuild of the feature itself. Not an env var: this is a
+// product decision, not a per-environment one.
+//
+// Email/password's original justification (simulators/device farms can't
+// run a real Google/Apple picker) no longer applies now that phone OTP —
+// also pickerless — is the default anyway; VITE_ALLOW_EMAIL_AUTH stays
+// wired for a possible future test-build use, just not consulted here.
+const allowEmailAuth = false
 const SHOW_SOCIAL_LOGIN = false
 
 // Temporary, verbose diagnostic formatter — surfaces every field an error

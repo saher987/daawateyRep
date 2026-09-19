@@ -29,7 +29,10 @@ export default function Profile() {
   const t = useT();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const wasIncomplete = user && (!user.first_name || !user.last_name || !user.town || !user.phone);
+  // user.profile_complete (backend, models.py) is the single source of
+  // truth for which fields count — see the matching comment in
+  // AppLayout.jsx's isProfileIncomplete.
+  const wasIncomplete = user && !user.profile_complete;
   const isPrivileged = user?.role === "admin" || user?.role === "manager";
   const lang = user?.preferred_language || "ar";
   const sortedCityKeys = sortCityKeysForDisplay(CITY_KEYS, t, lang);
@@ -108,7 +111,7 @@ export default function Profile() {
     setSaving(false);
     toast({ title: t.profileSaved, description: t.profileSavedDesc, duration: 3000 });
     await checkAppState?.();
-    if (wasIncomplete && form.first_name && form.last_name && form.town && form.phone) {
+    if (wasIncomplete && form.first_name && form.last_name && form.nickname && form.town && form.phone) {
       navigate("/");
     }
   };
@@ -173,7 +176,7 @@ export default function Profile() {
         <h3 className="font-semibold text-base">{t.personalInfo}</h3>
 
         <div className="space-y-2">
-          <Label>{t.nicknameLabel} <span className="text-muted-foreground font-normal text-xs">{t.nicknameHint}</span></Label>
+          <Label>{t.nicknameLabel} <span className="text-destructive">*</span> <span className="text-muted-foreground font-normal text-xs">{t.nicknameHint}</span></Label>
           <Input
             value={form.nickname}
             onChange={e => setForm(prev => ({ ...prev, nickname: e.target.value }))}
@@ -184,7 +187,7 @@ export default function Profile() {
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label>{t.firstName}</Label>
+            <Label>{t.firstName} <span className="text-destructive">*</span></Label>
             <Input
               value={form.first_name}
               onChange={e => setForm(prev => ({ ...prev, first_name: e.target.value }))}
@@ -193,7 +196,7 @@ export default function Profile() {
             />
           </div>
           <div className="space-y-2">
-            <Label>{t.lastName}</Label>
+            <Label>{t.lastName} <span className="text-destructive">*</span></Label>
             <Input
               value={form.last_name}
               onChange={e => setForm(prev => ({ ...prev, last_name: e.target.value }))}
@@ -228,7 +231,7 @@ export default function Profile() {
         </div>
 
         <div className="space-y-2">
-          <Label>{t.town}</Label>
+          <Label>{t.town} <span className="text-destructive">*</span></Label>
           <Select value={form.town} onValueChange={v => setForm(prev => ({ ...prev, town: v }))}>
             <SelectTrigger className="h-11 rounded-xl text-base">
               <SelectValue placeholder={t.townPlaceholder}>

@@ -7,7 +7,7 @@ import { useT } from "@/lib/i18n";
 // Remember the last deep path visited per tab root
 const tabHistory = {};
 
-export default function BottomTabBar({ unreadCount = 0, userRole, isAuthenticated }) {
+export default function BottomTabBar({ unreadCount = 0, userRole, isAuthenticated, isProfileIncomplete = false }) {
   const location = useLocation();
   const navigate = useNavigate();
   const t = useT();
@@ -54,6 +54,9 @@ export default function BottomTabBar({ unreadCount = 0, userRole, isAuthenticate
       base44.auth.redirectToLogin(window.location.href);
       return;
     }
+    // Same rule AppLayout's sidebar enforces — blocked here too rather
+    // than only in the sidebar, since this is the only nav on mobile.
+    if (isProfileIncomplete && tab.path !== "/profile") return;
     if (isActive(tab.path)) {
       // On a nested sub-path of this tab — navigate back to the tab root
       if (location.pathname !== tab.path) {
@@ -77,14 +80,16 @@ export default function BottomTabBar({ unreadCount = 0, userRole, isAuthenticate
     >
       {tabs.map((tab) => {
         const active = isActive(tab.path);
+        const disabled = isProfileIncomplete && tab.path !== "/profile";
         return (
           <button
             key={tab.path}
             onClick={(e) => handleTabClick(e, tab)}
             aria-current={active ? "page" : undefined}
+            aria-disabled={disabled ? true : undefined}
             aria-label={tab.path === "/notifications" && unreadCount > 0 ? `${tab.label} - ${unreadCount} غير مقروء` : tab.label}
             className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 relative transition-colors duration-150
-              ${active ? "text-primary" : "text-muted-foreground"}`}
+              ${disabled ? "opacity-40" : active ? "text-primary" : "text-muted-foreground"}`}
             style={{ minHeight: 56 }}
           >
             <div className="relative">

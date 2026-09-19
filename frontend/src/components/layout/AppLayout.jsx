@@ -64,9 +64,13 @@ export default function AppLayout() {
   const rootPaths = ["/", "/dashboard", "/my-invitations", "/my-event", "/events", "/notifications", "/profile", "/venue-schedule"];
   const direction = useNavigationDirection();
 
-  // Profile completion check
-  const isProfileIncomplete = user && isAuthenticated && (
-  !user.first_name || !user.last_name || !user.town || !user.phone);
+  // Profile completion check — user.profile_complete (backend, models.py)
+  // is the single source of truth for which fields count (first/last
+  // name, nickname, town, phone); read from there rather than
+  // re-deriving the field list here too, so this can't drift out of sync
+  // with it the way it already had (nickname was missing from this exact
+  // check until 2026-09).
+  const isProfileIncomplete = user && isAuthenticated && !user.profile_complete;
 
   const isOnProfilePage = location.pathname === "/profile";
 
@@ -182,15 +186,21 @@ export default function AppLayout() {
             to={item.path}
             onClick={(e) => {
               if (!isAuthenticated) {e.preventDefault();base44.auth.redirectToLogin(window.location.href);return;}
+              // Same rule the redirect effect above enforces on landing —
+              // blocking the click itself avoids a flash of the other
+              // page before it bounces back to /profile.
+              if (isProfileIncomplete && item.path !== "/profile") {e.preventDefault();return;}
               setSidebarOpen(false);
             }}
             aria-current={isActive(item.path) ? "page" : undefined}
+            aria-disabled={isProfileIncomplete && item.path !== "/profile" ? true : undefined}
             className={`flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium transition-all duration-200
-                ${isActive(item.path) ?
+                ${isProfileIncomplete && item.path !== "/profile" ? "opacity-40 pointer-events-none" :
+            isActive(item.path) ?
             "bg-primary text-primary-foreground shadow-md" :
             "text-muted-foreground hover:bg-accent hover:text-foreground"}`
             }>
-            
+
               <item.icon className="w-5 h-5 flex-shrink-0" />
               <span>{item.label}</span>
               {item.path === "/notifications" && unreadCount > 0 &&
@@ -331,7 +341,12 @@ export default function AppLayout() {
         <Footer />
 
         {/* Mobile bottom tab bar */}
-        <BottomTabBar unreadCount={unreadCount} userRole={user?.role} isAuthenticated={isAuthenticated} />
+        <BottomTabBar
+          unreadCount={unreadCount}
+          userRole={user?.role}
+          isAuthenticated={isAuthenticated}
+          isProfileIncomplete={isProfileIncomplete}
+        />
       </main>
 
     </div>);
