@@ -457,6 +457,7 @@ const translations = {
     colPhone: "الهاتف",
     colStatus: "حالة الرد",
     colGuests: "الضيوف",
+    colCity: "المدينة",
     colReplyDate: "تاريخ الرد",
 
     // GuestStatsDashboard
@@ -1052,6 +1053,7 @@ const translations = {
     colPhone: "טלפון",
     colStatus: "סטטוס תגובה",
     colGuests: "אורחים",
+    colCity: "עיר",
     colReplyDate: "תאריך תגובה",
 
     // GuestStatsDashboard

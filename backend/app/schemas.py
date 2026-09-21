@@ -237,6 +237,12 @@ class RecipientOut(BaseModel):
     first_opened_at: datetime | None
     last_opened_at: datetime | None
     created_at: datetime
+    # Not a column on invitation_recipients itself — InvitationRecipient has
+    # no city field of its own, only whichever linked User account (if any)
+    # does. Populated by events.py's list_recipients via a batched lookup,
+    # not automatic from_attributes conversion (there's no `town` attribute
+    # on the ORM row to read).
+    town: str | None = None
 
 
 class PublicInvitationOut(BaseModel):

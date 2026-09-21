@@ -20,6 +20,10 @@ function exportToExcel(recipients, eventTitle, t) {
     [t.email]: r.email || "",
     [t.colStatus]: r.rsvp_status === "accepted" ? t.statsAccepted : r.rsvp_status === "declined" ? t.statsDeclined : t.statsPending,
     [t.colGuests]: r.rsvp_guests_count || r.guests_count || 1,
+    // r.town (when the invitee is linked to a registered account) is a
+    // CITY_KEYS key like "nazareth", not a display string — translate it
+    // the same way Profile.jsx/Users.jsx do, don't export the raw key.
+    [t.colCity]: r.town ? (t[r.town] || r.town) : "",
     [t.exportMessage]: r.rsvp_message || "",
     [t.exportOpened]: r.last_opened_at ? t.exportYes : t.exportNo,
     [t.groupLabel]: r.group_label || "",
@@ -39,11 +43,12 @@ function exportToExcel(recipients, eventTitle, t) {
 
 function exportPendingToExcel(recipients, eventTitle, t) {
   const pending = recipients.filter(r => r.rsvp_status === "pending" || !r.rsvp_status);
-  const headers = [t.colName, t.colPhone, t.email, t.groupLabel, t.exportOpened, t.exportOpenDate];
+  const headers = [t.colName, t.colPhone, t.email, t.colCity, t.groupLabel, t.exportOpened, t.exportOpenDate];
   const rows = pending.map(r => [
     [r.nickname, r.first_name, r.last_name].filter(Boolean).join(" ") || r.external_full_name || r.full_name || "",
     r.phone || "",
     r.email || "",
+    r.town ? (t[r.town] || r.town) : "",
     r.group_label || "",
     r.open_count > 0 ? t.exportYes : t.exportNo,
     r.last_opened_at ? format(new Date(r.last_opened_at), "yyyy/MM/dd HH:mm") : "",

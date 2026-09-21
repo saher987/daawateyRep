@@ -567,12 +567,33 @@ def resend_invitation(
     return {"success": sent}
 
 
+def _attach_towns(
+    recipients: list[models.InvitationRecipient], db: Session
+) -> list[schemas.RecipientOut]:
+    """RecipientOut.town comes from the linked User account, not a column
+    on invitation_recipients itself — one batched lookup for the whole list
+    instead of a query per row."""
+    user_ids = {r.user_id for r in recipients if r.user_id}
+    towns: dict[str, str | None] = {}
+    if user_ids:
+        for uid, town in db.query(models.User.id, models.User.town).filter(
+            models.User.id.in_(user_ids)
+        ):
+            towns[uid] = town
+    return [
+        schemas.RecipientOut.model_validate(r).model_copy(
+            update={"town": towns.get(r.user_id)}
+        )
+        for r in recipients
+    ]
+
+
 @router.get("/events/{event_id}/recipients", response_model=list[schemas.RecipientOut])
 def list_recipients(
     event_id: str,
     user: models.User = Depends(get_app_user),
     db: Session = Depends(get_db),
-) -> list[models.InvitationRecipient]:
+) -> list[schemas.RecipientOut]:
     """getEventRecipients: the guest list behind Flow D's search/filter/
     export for admin/manager/owner — but EventDetails.jsx also calls this
     for a plain invited guest viewing their own event page (to find their
@@ -589,7 +610,7 @@ def list_recipients(
         .all()
     )
     if user.role in (models.Role.admin, models.Role.manager) or _is_owner_or_manager(event, user):
-        return all_recipients
+        return _attach_towns(all_recipients, db)
 
     mine = [
         r
@@ -600,7 +621,7 @@ def list_recipients(
     ]
     if not mine:
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Not authorized for this event")
-    return mine
+    return _attach_towns(mine, db)
 
 
 # --- Public invitation flow (Flow B) — looked up by token, no auth at all ---
