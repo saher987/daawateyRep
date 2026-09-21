@@ -574,15 +574,33 @@ def list_recipients(
     db: Session = Depends(get_db),
 ) -> list[models.InvitationRecipient]:
     """getEventRecipients: the guest list behind Flow D's search/filter/
-    export — same per-event access rule as everything else."""
+    export for admin/manager/owner — but EventDetails.jsx also calls this
+    for a plain invited guest viewing their own event page (to find their
+    own RSVP and decide whether to show the owner-only stats/guest-list
+    sections at all). _require_event_access alone would 403 that guest
+    outright; instead, anyone actually invited gets back *only their own*
+    recipient row(s), never the rest of the guest list — admin/manager/
+    owner still get everyone."""
     event = _get_event_or_404(db, event_id)
-    _require_event_access(event, user)
-    return list(
+    all_recipients = list(
         db.query(models.InvitationRecipient)
         .filter(models.InvitationRecipient.event_id == event_id)
         .order_by(models.InvitationRecipient.created_at)
         .all()
     )
+    if user.role in (models.Role.admin, models.Role.manager) or _is_owner_or_manager(event, user):
+        return all_recipients
+
+    mine = [
+        r
+        for r in all_recipients
+        if r.user_id == user.id
+        or (user.email and r.email == user.email)
+        or (user.phone and r.phone == user.phone)
+    ]
+    if not mine:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Not authorized for this event")
+    return mine
 
 
 # --- Public invitation flow (Flow B) — looked up by token, no auth at all ---

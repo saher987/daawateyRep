@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { CalendarPlus, CheckCircle2, Phone } from "lucide-react";
 
 // Admin phone displayed after submission — update as needed
-const ADMIN_PHONE = "050-000-0000";
+const ADMIN_PHONE = "0545351842";
 
 export default function RequestEventDialog({ open, onOpenChange, user }) {
   const [title, setTitle] = useState("");

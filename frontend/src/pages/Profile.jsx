@@ -46,6 +46,7 @@ export default function Profile() {
     phone: "",
     town: "",
     preferred_language: "ar",
+    photo_url: "",
   });
 
   useEffect(() => {
@@ -58,6 +59,12 @@ export default function Profile() {
         phone: freshUser.phone || "",
         town: freshUser.town || "",
         preferred_language: freshUser.preferred_language || "ar",
+        // Missing here previously — a freshly uploaded photo was genuinely
+        // saved server-side (handlePhotoUpload PATCHes it immediately), but
+        // this effect's baseForm never carried it back in, so the avatar
+        // reverted to the placeholder on every reload/revisit, looking like
+        // the upload "didn't save" even though it had.
+        photo_url: freshUser.photo_url || "",
       };
       // If profile is empty, try to pre-fill from InvitationRecipient
       if (!freshUser.first_name && !freshUser.last_name) {

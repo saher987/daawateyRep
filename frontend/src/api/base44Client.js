@@ -220,6 +220,7 @@ const usersApi = {
     const params = {}
     if (query.phone) params.phone = query.phone
     if (query.email) params.email = query.email
+    if (query.name) params.name = query.name
     return request('/api/users', { params })
   },
   async list(_sort, limit) {

@@ -13,6 +13,7 @@ import logging
 import firebase_admin
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from firebase_admin import auth as firebase_auth
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app import models, schemas
@@ -53,6 +54,7 @@ def _sync_firebase_active(firebase_uid: str, *, active: bool) -> None:
 def list_users(
     phone: str | None = Query(default=None),
     email: str | None = Query(default=None),
+    name: str | None = Query(default=None),
     limit: int = Query(default=200, le=500),
     _: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
     db: Session = Depends(get_db),
@@ -62,6 +64,20 @@ def list_users(
         query = query.filter(models.User.phone == phone)
     if email:
         query = query.filter(models.User.email == email)
+    if name:
+        # AddInviteeDialog.jsx's user picker — previously fetched up to 200
+        # users and filtered client-side, missing anyone beyond that page
+        # and doing the substring match in JS instead of the DB. ILIKE
+        # across all three name fields since a search term could match any
+        # of them (e.g. searching the nickname vs. the legal first name).
+        pattern = f"%{name}%"
+        query = query.filter(
+            or_(
+                models.User.first_name.ilike(pattern),
+                models.User.last_name.ilike(pattern),
+                models.User.nickname.ilike(pattern),
+            )
+        )
     return list(query.order_by(models.User.created_at.desc()).limit(limit).all())
 
 

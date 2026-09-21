@@ -41,17 +41,15 @@ export default function AddInviteeDialog({ open, onOpenChange, eventId }) {
       if (!q.trim()) { setResults(null); setSearching(false); return; }
       setSearching(true);
       try {
-        // Search users by name or phone
-        const [byPhone, all] = await Promise.all([
-          base44.entities.User.filter({ phone: q.trim() }),
-          base44.entities.User.list('-created_date', 200),
+        // Search users by name or phone — both done server-side now
+        // (GET /api/users?name=... / ?phone=...) instead of fetching up to
+        // 200 users and filtering client-side, which silently missed
+        // anyone beyond that page.
+        const trimmed = q.trim();
+        const [byPhone, byName] = await Promise.all([
+          base44.entities.User.filter({ phone: trimmed }),
+          base44.entities.User.filter({ name: trimmed }),
         ]);
-        const lower = q.toLowerCase();
-        const byName = all.filter(u =>
-          (u.full_name && u.full_name.toLowerCase().includes(lower)) ||
-          (u.first_name && u.first_name.toLowerCase().includes(lower)) ||
-          (u.last_name && u.last_name.toLowerCase().includes(lower))
-        );
         const merged = [...byPhone, ...byName].filter(
           (u, i, arr) => arr.findIndex(x => x.id === u.id) === i
         );
