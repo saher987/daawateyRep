@@ -37,6 +37,7 @@ def send_push_to_user(
         for row in db.query(models.PushToken).filter(models.PushToken.user_id == user.id)
     ]
     if not tokens:
+        logger.info("send_push_to_user: no tokens registered for user %s, skipping", user.id)
         return
 
     message = messaging.MulticastMessage(
@@ -49,6 +50,27 @@ def send_push_to_user(
     except firebase_exceptions.FirebaseError:
         logger.exception("FCM send_each_for_multicast failed for user %s", user.id)
         return
+
+    # No INFO-level confirmation of a successful call previously existed at
+    # all, which made a silently-undelivered push indistinguishable from a
+    # genuinely successful one when debugging after the fact — log FCM's own
+    # per-token verdict (message id or the exact rejection reason) so a
+    # "push never arrived" report can actually be diagnosed from logs alone.
+    for token, result in zip(tokens, response.responses):
+        if result.success:
+            logger.info(
+                "FCM accepted push for user %s (token %s...): message_id=%s",
+                user.id,
+                token[:12],
+                result.message_id,
+            )
+        else:
+            logger.warning(
+                "FCM rejected push for user %s (token %s...): %s",
+                user.id,
+                token[:12],
+                result.exception,
+            )
 
     # Prune tokens FCM says are actually gone (app uninstalled, browser data
     # cleared, token rotated) — UnregisteredError specifically, not every
