@@ -37,22 +37,22 @@ function exportToExcel(recipients, eventTitle, t) {
   downloadFile(blob, `${eventTitle || t.exportDefaultTitle} - ${t.exportGuestList}.csv`);
 }
 
-function exportPendingToExcel(recipients, eventTitle) {
+function exportPendingToExcel(recipients, eventTitle, t) {
   const pending = recipients.filter(r => r.rsvp_status === "pending" || !r.rsvp_status);
-  const headers = ["שם", "טלפון", "אימייל", "קבוצה", "פתח הזמנה", "תאריך פתיחה"];
+  const headers = [t.colName, t.colPhone, t.email, t.groupLabel, t.exportOpened, t.exportOpenDate];
   const rows = pending.map(r => [
     [r.nickname, r.first_name, r.last_name].filter(Boolean).join(" ") || r.external_full_name || r.full_name || "",
     r.phone || "",
     r.email || "",
     r.group_label || "",
-    r.open_count > 0 ? "כן" : "לא",
+    r.open_count > 0 ? t.exportYes : t.exportNo,
     r.last_opened_at ? format(new Date(r.last_opened_at), "yyyy/MM/dd HH:mm") : "",
   ]);
   const csvContent = [headers, ...rows]
     .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))
     .join("\n");
   const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
-  downloadFile(blob, `${eventTitle} - ממתינים לאישור.csv`);
+  downloadFile(blob, `${eventTitle || t.exportDefaultTitle} - ${t.exportPendingSuffix}.csv`);
 }
 
 export default function GuestStatsDashboard({ recipients, event }) {
@@ -101,10 +101,10 @@ export default function GuestStatsDashboard({ recipients, event }) {
             variant="outline"
             size="sm"
             className="gap-2 rounded-xl"
-            onClick={() => exportPendingToExcel(recipients, event?.title)}
+            onClick={() => exportPendingToExcel(recipients, event?.title, t)}
           >
             <Download className="w-4 h-4" />
-            ייצוא ממתינים
+            {t.exportPendingBtn}
           </Button>
           <Button
             variant="outline"

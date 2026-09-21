@@ -480,6 +480,9 @@ const translations = {
     exportNo: "لا",
     exportDefaultTitle: "مناسبة",
     exportGuestList: "قائمة الضيوف",
+    exportPendingBtn: "تصدير المنتظرين",
+    exportOpenDate: "تاريخ الفتح",
+    exportPendingSuffix: "قائمة المنتظرين",
 
     // EventRequests page
     eventRequestsSubtitle: "طلبات بانتظار المعالجة",
@@ -1072,6 +1075,9 @@ const translations = {
     exportNo: "לא",
     exportDefaultTitle: "אירוע",
     exportGuestList: "רשימת אורחים",
+    exportPendingBtn: "ייצוא ממתינים",
+    exportOpenDate: "תאריך פתיחה",
+    exportPendingSuffix: "ממתינים לאישור",
 
     // EventRequests page
     eventRequestsSubtitle: "בקשות הממתינות לטיפול",
