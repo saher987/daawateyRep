@@ -262,6 +262,35 @@ writing, since staging testing of this feature was skipped in favor of
 testing for real against prod (see the "no real SMS on staging" reasoning
 elsewhere in this doc).
 
+### 2b. Firebase Cloud Messaging (push notifications): a third instance of the same pattern
+
+`backend/app/integrations/push.py`'s `send_push_to_user()` calls
+`messaging.send_each_for_multicast()`, which authenticates to FCM's HTTP v1
+API as the runtime service account. Nobody had ever granted
+`backend-runtime@daawatey-prod` any Cloud Messaging role before push
+notifications existed, so the very first real invite sent after this
+feature shipped failed *silently* — the request itself still returned `201
+Created` (adding the recipient always succeeds regardless of whether the
+push does), and the only visible symptom was "no push arrived on the
+phone," with nothing in the logs to explain why until per-token
+success/failure logging was added to `send_push_to_user` (see its
+docstring/log lines) to make this diagnosable from logs alone next time.
+
+```bash
+gcloud projects add-iam-policy-binding daawatey-prod \
+  --member="serviceAccount:backend-runtime@daawatey-prod.iam.gserviceaccount.com" \
+  --role="roles/firebasecloudmessaging.admin"
+```
+
+Without it: FCM rejects every send with `Permission
+'cloudmessaging.messages.create' denied on resource
+'//cloudresourcemanager.googleapis.com/projects/daawatey-prod'` — caught and
+logged (`send_push_to_user` never raises, by design), not surfaced to the
+client at all, unlike #2/#2a above. Takes effect immediately, no redeploy
+needed. **Staging needs the equivalent grant on
+`backend-runtime@daawatey-staging.iam.gserviceaccount.com`** the first time
+push is actually exercised there — not yet done as of this writing.
+
 ### 3. Secrets: Google Secret Manager, not GitHub
 
 `DATABASE_URL`, `PULSEEM_API_KEY`, and `RESEND_API_KEY` live in Secret

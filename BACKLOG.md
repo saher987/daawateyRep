@@ -82,3 +82,48 @@ Deferred work — not urgent, tracked here so it doesn't get lost.
     really `https://daawatey.com`) — deferred, needs a native Capacitor
     plugin and an app-signing-hash-in-every-SMS setup that gets
     complicated once Play App Signing re-signs the app.
+
+## Push notifications
+
+- [x] **Real push (Android) — confirmed working end-to-end 2026-09-21.**
+  Live test (adding self as invitee) surfaced two real, separate bugs,
+  both fixed:
+  - `add_recipient`'s phone→account linking used an exact string match
+    (`models.User.phone == body.phone`); a format mismatch (e.g. "05..."
+    vs "+972 5...") silently failed to link the recipient to their real
+    account, so `send_push_to_user` never had a `linked_user` to push to
+    at all — the in-app notification still worked (separate email-based
+    fallback), masking the push failure. Fixed by extracting otp.py's
+    existing tolerant `_find_by_phone` into a shared `find_by_phone()` in
+    `pulseem.py` and using it in `add_recipient` too (commit `6a59403`).
+  - `backend-runtime@daawatey-prod` had no Cloud Messaging IAM role at
+    all — every FCM send was rejected with `cloudmessaging.messages.create
+    denied`, caught and logged by design (never surfaced to the client),
+    invisible until per-token send-outcome logging was added to
+    `send_push_to_user` (commit `9fb8e49`) made it diagnosable. Fixed via
+    `gcloud projects add-iam-policy-binding ... --role=roles/firebasecloudmessaging.admin`
+    (documented in BUSINESS_LOGIC.md §2b), no redeploy needed.
+
+  Still open:
+  - **Staging IAM grant.** `backend-runtime@daawatey-staging` needs the
+    same `roles/firebasecloudmessaging.admin` grant the first time push is
+    actually exercised there (not yet done — see BUSINESS_LOGIC.md §2b).
+  - **iOS push.** Deferred along with iOS phone-OTP/Universal Links — see
+    Mobile/Release above.
+
+## Infra
+
+- [ ] **Apex domain (`daawatey.com`, no `www`) — DNS fixed, cert still
+  provisioning as of 2026-09-21.** Was IONOS domain-forwarding (no real
+  DNS records, no valid TLS cert for the apex → `ERR_SSL_PROTOCOL_ERROR`).
+  Fixed: created a Cloud Run domain mapping for `daawatey.com` →
+  `daawatey-frontend`, replaced IONOS's forwarding-owned `A`/`AAAA`/TXT
+  records with the 4 `A` + 4 `AAAA` records Google's domain mapping
+  provided. `DomainRoutable: True` confirmed; Google's managed-cert
+  issuance (`CertificatePending`) was still in progress as of this
+  writing — check with
+  `gcloud beta run domain-mappings describe --domain=daawatey.com --region=us-central1 --project=daawatey-prod`
+  and look for `Ready: True`. Also had to add `https://daawatey.com`
+  to the `ALLOWED_ORIGINS` GitHub secret (prod environment) — CORS only
+  allowed `www.` before, causing a "Failed to fetch" on every API call
+  from the bare apex.
