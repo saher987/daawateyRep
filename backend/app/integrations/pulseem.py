@@ -11,6 +11,7 @@ import logging
 import os
 
 import httpx
+from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,24 @@ def to_international_phone(phone: str) -> str:
     if p.startswith("0"):
         return "972" + p[1:]
     return "972" + p
+
+
+def find_by_phone(db: Session, model, phone: str, *extra_filters):
+    """Match a row's phone column against `phone`, tolerating "05..." vs.
+    "+972 5..." vs. "972..." formatting differences. Tries an exact-string
+    match first (hits the column's index — cheap, and covers the common
+    case since most numbers get typed the same way twice) before falling
+    back to a full scan with normalization, which is O(rows) but only ever
+    runs when the fast path misses. `extra_filters` are ANDed into both
+    queries — e.g. excluding deactivated Users (see call sites)."""
+    exact = db.query(model).filter(model.phone == phone, *extra_filters).first()
+    if exact is not None:
+        return exact
+    normalized_phone = to_international_phone(phone)
+    for candidate in db.query(model).filter(model.phone.isnot(None), *extra_filters):
+        if to_international_phone(candidate.phone) == normalized_phone:
+            return candidate
+    return None
 
 
 def send_sms(phone: str, text: str, reference: str) -> bool:

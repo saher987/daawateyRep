@@ -18,7 +18,7 @@ from app import models, schemas
 from app.auth import get_app_user, require_role
 from app.db import get_db
 from app.integrations.push import send_push_to_user
-from app.integrations.pulseem import send_sms
+from app.integrations.pulseem import find_by_phone, send_sms
 from app.integrations.resend_email import send_email
 
 router = APIRouter(prefix="/api", tags=["events"])
@@ -358,7 +358,13 @@ def add_recipient(
 
     linked_user_id = body.user_id
     if not linked_user_id and body.phone:
-        matched = db.query(models.User).filter(models.User.phone == body.phone).first()
+        # Plain == would miss e.g. "050..." vs. the "972050..." format
+        # otp.py actually stores on users.phone — same tolerant match otp.py
+        # itself uses, needed here so a recipient typed in with a
+        # differently-formatted (but same) number still gets linked to
+        # their real account (Notification email fallback still works
+        # either way, but push and My Invitations' account link don't).
+        matched = find_by_phone(db, models.User, body.phone)
         if matched is not None:
             linked_user_id = matched.id
 
