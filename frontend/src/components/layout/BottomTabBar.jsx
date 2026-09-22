@@ -22,6 +22,9 @@ export default function BottomTabBar({ unreadCount = 0, userRole, isAuthenticate
     // actually shows.
     { path: "/events", icon: CalendarHeart, label: t.allEvents },
     { path: "/my-invitations", icon: Mail, label: t.myInvitations },
+    // Was regular-users-only — an admin/manager can also personally be
+    // hosting their own event, same reasoning as AppLayout.jsx's sidebar.
+    { path: "/my-event", icon: CalendarHeart, label: t.myEvent },
     { path: "/notifications", icon: Bell, label: t.notifications },
     { path: "/profile", icon: UserCircle, label: t.profile },
   ];
