@@ -24,8 +24,18 @@ function isAndroidBrowser() {
   return typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
 }
 
-export default function InstallAppBanner() {
-  const t = useT();
+export default function InstallAppBanner({ t: tProp } = {}) {
+  // useT() reads I18nContext, which tracks the signed-in user's
+  // preferred_language — meaningless on a pre-auth page like Login.jsx,
+  // which drives its own visible language via usePublicLanguage() instead
+  // (a separate localStorage-backed useState, not wired into that
+  // context). Callers on such a page pass their own `t` down instead of
+  // relying on this falling back to a context that can't see it — without
+  // this the banner silently stayed in whatever language the context
+  // last resolved to (Arabic, the default) even after the visible toggle
+  // switched the rest of the page to Hebrew.
+  const contextT = useT();
+  const t = tProp || contextT;
   const [dismissed, setDismissed] = useState(true);
 
   useEffect(() => {

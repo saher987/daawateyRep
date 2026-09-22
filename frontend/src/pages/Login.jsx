@@ -261,7 +261,7 @@ export function Login() {
           point: an Android visitor arriving here from a plain "get our
           app" QR code / link (not an invitation) had no other chance to
           see it, since / redirects straight here before any sign-in. */}
-      <InstallAppBanner />
+      <InstallAppBanner t={t} />
       {/* Phone OTP — the primary way in (2026-09 product decision, see
           BUSINESS_LOGIC.md): matches how a guest already exists in this
           system (a phone number on an invitation), avoids paying for an
