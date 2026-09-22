@@ -16,14 +16,18 @@ export default function BottomTabBar({ unreadCount = 0, userRole, isAuthenticate
 
   const adminTabs = [
     { path: "/dashboard", icon: LayoutDashboard, label: t.dashboard },
-    { path: "/events", icon: CalendarHeart, label: t.myInvitations },
-    { path: "/my-invitations", icon: Mail, label: t.ownedEventsLabel },
+    // Same fix as AppLayout.jsx's useNavItems: /events is system-wide event
+    // management, /my-invitations is this person's own received
+    // invitations — the labels were swapped relative to what each route
+    // actually shows.
+    { path: "/events", icon: CalendarHeart, label: t.allEvents },
+    { path: "/my-invitations", icon: Mail, label: t.myInvitations },
     { path: "/notifications", icon: Bell, label: t.notifications },
     { path: "/profile", icon: UserCircle, label: t.profile },
   ];
 
   const userTabs = [
-    { path: "/my-invitations", icon: Mail, label: t.ownedEventsLabel },
+    { path: "/my-invitations", icon: Mail, label: t.myInvitations },
     { path: "/my-event", icon: CalendarHeart, label: t.myEvent },
     { path: "/notifications", icon: Bell, label: t.notifications },
     { path: "/profile", icon: UserCircle, label: t.profile },

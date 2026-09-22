@@ -22,12 +22,14 @@ function useNavItems() {
   const isVenueOwner = user?.role === "venue_owner";
   return [
   { path: "/dashboard", icon: LayoutDashboard, label: t.dashboard, adminOnly: true },
-  // "My Invitations" (/events) before "Events I own" (/my-invitations) —
-  // invitations-received is the primary, everyday use case; the
-  // owned-events view is secondary, so it sits lower in the menu.
-  { path: "/events", icon: CalendarHeart, label: t.myInvitations, adminOnly: true },
+  // /events is admin/manager's system-wide event management (every event,
+  // with full stats/guest-list access) — was mislabeled t.myInvitations
+  // ("My Invitations"), which actually describes /my-invitations (the
+  // invitations a signed-in person personally received as a guest,
+  // regardless of their role elsewhere in the app).
+  { path: "/events", icon: CalendarHeart, label: t.allEvents, adminOnly: true },
   { path: "/my-event", icon: CalendarHeart, label: t.myEvent, userOnly: true },
-  { path: "/my-invitations", icon: Mail, label: t.ownedEventsLabel },
+  { path: "/my-invitations", icon: Mail, label: t.myInvitations },
   { path: "/planned-weddings", icon: Heart, label: isVenueOwner ? t.plannedWeddings : t.upcomingWeddings, venueOwner: true },
   { path: "/notifications", icon: Bell, label: t.notifications },
   { path: "/users", icon: ShieldCheck, label: t.users, privileged: true },
