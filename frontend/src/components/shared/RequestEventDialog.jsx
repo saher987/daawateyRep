@@ -13,10 +13,12 @@ const ADMIN_PHONE = "0545351842";
 export default function RequestEventDialog({ open, onOpenChange, user }) {
   const [title, setTitle] = useState("");
   const [details, setDetails] = useState("");
-  // Pre-filled from the profile when available, but always editable and
-  // always required — a saved profile phone shouldn't quietly stand in
-  // for someone actually confirming it's the right number to call.
-  const [phone, setPhone] = useState(user?.phone || "");
+  // Always starts empty — mandatory (both here and server-side, see
+  // EventRequestCreate.requester_phone), and deliberately not pre-filled
+  // from the profile: someone should actively type/confirm the number a
+  // human admin will actually call, not silently submit whatever's saved
+  // on their account.
+  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
@@ -50,7 +52,7 @@ export default function RequestEventDialog({ open, onOpenChange, user }) {
     if (!val) {
       setTitle("");
       setDetails("");
-      setPhone(user?.phone || "");
+      setPhone("");
       setSubmitted(false);
     }
     onOpenChange(val);
