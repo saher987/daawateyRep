@@ -98,6 +98,21 @@ def healthz() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/api/app-version")
+def app_version() -> dict[str, int | None]:
+    """Lets the native Android app tell "I'm running an old build" apart
+    from "I'm current" — Capacitor bundles the web build into the APK at
+    build time (see capacitor.config.ts: no server.url, so no live-reload
+    from the internet), so an installed app keeps running whatever JS was
+    bundled at its last update regardless of what's since been deployed
+    here. No auth (checked before sign-in even completes) and no DB —
+    just an env var bumped by hand each time a new Android build is
+    uploaded to Play Console; unset means the update-nudge banner simply
+    never shows, never a hard failure."""
+    raw = os.environ.get("ANDROID_LATEST_VERSION_CODE")
+    return {"android_version_code": int(raw) if raw else None}
+
+
 @app.get("/api/me", response_model=schemas.MeResponse)
 def me(user: models.User = Depends(get_app_user)) -> schemas.MeResponse:
     """The verified Firebase identity plus the app-level role/profile

@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Footer from "@/components/layout/Footer";
 import BottomTabBar from "@/components/layout/BottomTabBar";
 import InstallAppBanner from "@/components/shared/InstallAppBanner";
+import UpdateAvailableBanner from "@/components/shared/UpdateAvailableBanner";
 import useNavigationDirection from "@/hooks/useNavigationDirection";
 import { useT } from "@/lib/i18n";
 
@@ -315,6 +316,8 @@ export default function AppLayout() {
 
           {/* Android app install nudge — mobile web only, see InstallAppBanner.jsx */}
           <InstallAppBanner />
+          {/* Android app update nudge — native app only, see UpdateAvailableBanner.jsx */}
+          <UpdateAvailableBanner />
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={location.pathname}

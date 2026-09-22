@@ -85,6 +85,9 @@ jobs:
           if [ -n "${{ secrets.APP_URL }}" ]; then
             FLAGS="$FLAGS##APP_URL=${{ secrets.APP_URL }}"
           fi
+          if [ -n "${{ secrets.ANDROID_LATEST_VERSION_CODE }}" ]; then
+            FLAGS="$FLAGS##ANDROID_LATEST_VERSION_CODE=${{ secrets.ANDROID_LATEST_VERSION_CODE }}"
+          fi
           if [ -n "${{ secrets.RESEND_FROM_EMAIL }}" ]; then
             FLAGS="$FLAGS##RESEND_FROM_EMAIL=${{ secrets.RESEND_FROM_EMAIL }}"
           fi

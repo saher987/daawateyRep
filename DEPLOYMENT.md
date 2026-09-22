@@ -32,6 +32,7 @@ staging/prod credentials.
 | `VITE_FIREBASE_MESSAGING_SENDER_ID` | `742481007794` |
 | `VITE_FIREBASE_APP_ID` | from `daawatey-staging`'s web app config |
 | `VITE_FIREBASE_VAPID_KEY` | Firebase Console → Project Settings → Cloud Messaging → Web Push certificates → generate/copy the key pair (not sensitive, same visibility as the other `VITE_FIREBASE_*` values — web push registration in lib/push.js just silently no-ops without it) |
+| `ANDROID_LATEST_VERSION_CODE` | Optional. The `versionCode` of the most recently uploaded Android build (see `android/app/build.gradle` / the Play Console release you just submitted). Bump this by hand after every Play Console upload — it's what `UpdateAvailableBanner.jsx` compares an installed app's own version against to show the "update available" nudge. Unset means the banner never shows, never a failure. |
 
 ### 3. Add the equivalent secrets to the `prod` environment
 

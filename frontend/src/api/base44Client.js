@@ -297,6 +297,14 @@ const pushApi = {
   },
 }
 
+const appApi = {
+  // Public, no auth — UpdateAvailableBanner.jsx checks this before the
+  // native app necessarily has a signed-in session yet.
+  async getVersionInfo() {
+    return request('/api/app-version', { auth: false })
+  },
+}
+
 // --- functions.invoke ---------------------------------------------------
 
 // Reshapes the backend's flat, guest-safe PublicInvitationOut into the
@@ -454,4 +462,5 @@ export const base44 = {
   functions: functionsApi,
   integrations: integrationsApi,
   push: pushApi,
+  app: appApi,
 }
