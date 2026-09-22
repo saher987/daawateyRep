@@ -18,7 +18,7 @@ from app import models, schemas
 from app.auth import get_app_user, require_role
 from app.db import get_db
 from app.integrations.push import send_push_to_user
-from app.integrations.pulseem import find_by_phone, send_sms
+from app.integrations.pulseem import find_by_phone, send_sms, to_international_phone
 from app.integrations.resend_email import send_email
 
 router = APIRouter(prefix="/api", tags=["events"])
@@ -146,17 +146,34 @@ def list_my_invitations(
     Event row, since a guest recipient isn't necessarily an owner/manager
     of that event and shouldn't need to be to see their own invitation."""
     conditions = [models.InvitationRecipient.user_id == user.id]
-    if user.phone:
-        conditions.append(models.InvitationRecipient.phone == user.phone)
     if user.email:
         conditions.append(models.InvitationRecipient.email == user.email)
-    recipients = db.query(models.InvitationRecipient).filter(or_(*conditions)).all()
+    if user.phone:
+        conditions.append(models.InvitationRecipient.phone == user.phone)
+    recipients = {r.id: r for r in db.query(models.InvitationRecipient).filter(or_(*conditions)).all()}
+
+    # The exact phone == comparison above misses format differences (host
+    # typed "05..." while this account's phone is stored "+972 5..." from
+    # OTP verification, or vice versa) — same bug class fixed in
+    # add_recipient's own account-linking lookup. Without this fallback, a
+    # guest whose account phone format didn't happen to match at invite-
+    # creation time only ever saw their invitation *after* opening the
+    # personal link once (which does use tolerant matching, via otp.py) —
+    # exactly the "see it before opening the link" gap this closes.
+    if user.phone:
+        normalized = to_international_phone(user.phone)
+        for r in db.query(models.InvitationRecipient).filter(
+            models.InvitationRecipient.phone.isnot(None)
+        ):
+            if r.id not in recipients and to_international_phone(r.phone) == normalized:
+                recipients[r.id] = r
+
     return [
         schemas.MyInvitationOut(
             recipient=schemas.MyInvitationRecipientOut.model_validate(r),
             event=schemas.MyInvitationEventOut.model_validate(r.event),
         )
-        for r in recipients
+        for r in recipients.values()
         if r.event is not None
     ]
 
