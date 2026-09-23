@@ -292,6 +292,14 @@ class MyInvitationRecipientOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
+    # Missing here previously: every consumer of GET /api/my-invitations's
+    # recipient objects (MyInvitations.jsx, Events.jsx) reads r.event_id to
+    # cross-reference the matching event — silently always undefined
+    # without this, breaking both pages (My Invitations showed nothing at
+    # all; Events.jsx's regular-user "am I invited to this" check never
+    # matched anything either), independent of and pre-dating this
+    # session's phone-matching fixes to this same endpoint.
+    event_id: str
     personal_token: str
     rsvp_status: RsvpStatus
     rsvp_guests_count: int | None

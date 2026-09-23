@@ -17,33 +17,14 @@ export default function MyInvitations() {
   const [showRequestDialog, setShowRequestDialog] = useState(false);
 
   const { data: invitations = [], isLoading } = useQuery({
-    queryKey: ["my-invitations", user?.id, user?.phone, user?.email],
-    queryFn: async () => {
-      const fetches = [];
-      const phone = user?.data?.phone || user?.phone;
-      if (phone) fetches.push(base44.entities.InvitationRecipient.filter({ phone }));
-      if (user?.id) fetches.push(base44.entities.InvitationRecipient.filter({ user_id: user.id }));
-      if (!fetches.length) return [];
-
-      const results = await Promise.all(fetches);
-      const allRecipients = results.flat();
-      // Dedupe by id
-      const seen = new Set();
-      const recipients = allRecipients.filter(r => {
-        if (seen.has(r.id)) return false;
-        seen.add(r.id);
-        return true;
-      });
-      if (!recipients.length) return [];
-
-      const eventIds = [...new Set(recipients.map(r => r.event_id))];
-      const events = await Promise.all(
-        eventIds.map(id => base44.entities.Event.filter({ id }).then(r => r[0]).catch(() => null))
-      );
-      const eventMap = {};
-      events.forEach(e => e && (eventMap[e.id] = e));
-      return recipients.map(r => ({ recipient: r, event: eventMap[r.event_id] })).filter(x => x.event);
-    },
+    queryKey: ["my-invitations", user?.id],
+    // GET /api/my-invitations already matches by phone/email/linked
+    // user_id server-side (see events.py) and returns each recipient with
+    // its full event nested in the same response — no need to separately
+    // re-fetch each event by id here (the old approach also silently
+    // broke entirely once MyInvitationRecipientOut turned out to have no
+    // event_id field to cross-reference with).
+    queryFn: () => base44.myInvitations.list(),
     enabled: !!user,
   });
 

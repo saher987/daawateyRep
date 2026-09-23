@@ -297,6 +297,18 @@ const pushApi = {
   },
 }
 
+const myInvitationsApi = {
+  // GET /api/my-invitations already returns each recipient with its full
+  // event nested in one call — invitationRecipientsApi.filter() (used
+  // elsewhere for generic entity-shaped queries) discards that .event and
+  // only keeps .recipient, which is fine for callers that separately
+  // cross-reference an already-fetched events list, but MyInvitations.jsx
+  // needs the pairing itself, not a lossy projection of it.
+  async list() {
+    return request('/api/my-invitations')
+  },
+}
+
 const appApi = {
   // Public, no auth — UpdateAvailableBanner.jsx checks this before the
   // native app necessarily has a signed-in session yet.
@@ -463,4 +475,5 @@ export const base44 = {
   integrations: integrationsApi,
   push: pushApi,
   app: appApi,
+  myInvitations: myInvitationsApi,
 }
