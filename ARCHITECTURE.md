@@ -110,7 +110,7 @@ email/password path in `Login.tsx` stays available for test builds, gated by
 
 Decided once the actual entities (Base44 parity rebuild) made the shape of
 the data clear: relational, with real foreign keys, array columns
-(`owner_emails[]`), and aggregate/transactional queries that fit SQL much
+(`owner_phones[]`), and aggregate/transactional queries that fit SQL much
 better than Firestore. See `BUSINESS_LOGIC.md` for the full schema and
 reasoning. Migration scripts live in `/migrations` (Alembic), written to be
 run manually against Cloud SQL by you — never auto-applied on deploy.

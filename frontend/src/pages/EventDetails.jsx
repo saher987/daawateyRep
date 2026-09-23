@@ -90,10 +90,8 @@ export default function EventDetails() {
   if (!event) return <EmptyState title={t.eventNotFound} />;
 
   const isPrivileged = user?.role === "admin" || user?.role === "manager";
-  const isOwner = event.created_by === user?.email ||
-    event.owner_email === user?.email ||
-    (Array.isArray(event.owner_emails) && event.owner_emails.includes(user?.email));
-  const isEventManager = Array.isArray(event.manager_emails) && event.manager_emails.includes(user?.email);
+  const isOwner = Array.isArray(event.owner_phones) && event.owner_phones.includes(user?.phone);
+  const isEventManager = Array.isArray(event.manager_phones) && event.manager_phones.includes(user?.phone);
   // Can see RSVP details (stats + invitee list)
   const canSeeRsvpDetails = isPrivileged || isOwner || isEventManager;
   // Can access the event page at all (owner, invited, admin/manager)

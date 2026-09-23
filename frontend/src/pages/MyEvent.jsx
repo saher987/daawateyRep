@@ -296,19 +296,14 @@ export default function MyEvent() {
   const [selectedEvent, setSelectedEvent] = useState(null);
 
   const { data: events = [], isLoading } = useQuery({
-    queryKey: ["my-owned-events", user?.email],
-    queryFn: async () => {
-      const [byOwnerEmails, byOwnerEmail, byCreatedBy] = await Promise.all([
-        base44.entities.Event.filter({ owner_emails: user.email }),
-        base44.entities.Event.filter({ owner_email: user.email }),
-        base44.entities.Event.filter({ created_by: user.email }),
-      ]);
-      // Merge and deduplicate by id
-      const map = new Map();
-      [...byOwnerEmails, ...byOwnerEmail, ...byCreatedBy].forEach(e => map.set(e.id, e));
-      return Array.from(map.values());
-    },
-    enabled: !!user?.email,
+    queryKey: ["my-owned-events", user?.phone],
+    // GET /api/my-events already does this matching (by owner_phones OR
+    // manager_phones) server-side in one call — no need for the old
+    // triple-probe (owner_emails/owner_email/created_by all routed to the
+    // same endpoint anyway; created_by in particular was always a no-op,
+    // EventOut never actually returns that field).
+    queryFn: () => base44.entities.Event.filter({ owner_phones: user.phone }),
+    enabled: !!user?.phone,
   });
 
   if (isLoading) {

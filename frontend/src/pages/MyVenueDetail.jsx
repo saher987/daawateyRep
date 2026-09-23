@@ -42,7 +42,7 @@ export default function MyVenueDetail() {
     );
   }, [allEvents, venue]);
 
-  const hasAccess = venue && (isPrivileged || (Array.isArray(venue.owner_emails) && venue.owner_emails.includes(user?.email)));
+  const hasAccess = venue && (isPrivileged || (Array.isArray(venue.owner_phones) && venue.owner_phones.includes(user?.phone)));
 
   if (isLoading) {
     return <div className="flex items-center justify-center h-64"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;

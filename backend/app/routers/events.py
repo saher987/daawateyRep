@@ -25,7 +25,16 @@ router = APIRouter(prefix="/api", tags=["events"])
 
 
 def _is_owner_or_manager(event: models.Event, user: models.User) -> bool:
-    return user.email in event.owner_emails or user.email in event.manager_emails
+    # Normalize both sides — owner_phones/manager_phones are stored
+    # normalized (see create_event/update_event), but user.phone is
+    # whatever raw format was typed during OTP verification (see
+    # otp.py), so comparing it as-is would reintroduce the exact
+    # "05... never matches +972 5..." bug class this whole switch from
+    # email to phone was meant to close for good.
+    if not user.phone:
+        return False
+    normalized = to_international_phone(user.phone)
+    return normalized in event.owner_phones or normalized in event.manager_phones
 
 
 def _require_event_access(event: models.Event, user: models.User) -> None:
@@ -53,7 +62,14 @@ def create_event(
     db: Session = Depends(get_db),
 ) -> models.Event:
     """Flow A step 1: admin/manager creates an event; starts in `draft`."""
-    event = models.Event(**body.model_dump(), created_by_uid=user.firebase_uid)
+    data = body.model_dump()
+    # Store normalized so _is_owner_or_manager's own normalization of
+    # user.phone actually lands on an equal string, and so
+    # .any(to_international_phone(...)) SQL lookups (list_venue_events)
+    # work the same way without a per-row Python fallback scan.
+    data["owner_phones"] = [to_international_phone(p) for p in data["owner_phones"]]
+    data["manager_phones"] = [to_international_phone(p) for p in data["manager_phones"]]
+    event = models.Event(**data, created_by_uid=user.firebase_uid)
     db.add(event)
     db.commit()
     db.refresh(event)
@@ -89,9 +105,9 @@ def list_venue_events(
     venue_owner, VenueMonthCalendar on MyVenueDetail.jsx) — every active/
     draft event, scoped to the venues the caller can see. admin/manager get
     everything, same as the original's unrestricted query; venue_owner gets
-    only events at venues where they're listed in owner_emails, enforced
+    only events at venues where they're listed in owner_phones, enforced
     here server-side (the original relied on Base44's per-row RLS for this
-    — VenueSchedule.jsx's client-side `.filter(...)` by owner_emails was
+    — VenueSchedule.jsx's client-side `.filter(...)` by owner_phones was
     always a redundant belt-and-suspenders check against data Base44 had
     already scoped, not the actual enforcement).
 
@@ -106,7 +122,13 @@ def list_venue_events(
         models.Event.status.in_([models.EventStatus.active, models.EventStatus.draft])
     )
     if user.role == models.Role.venue_owner:
-        my_venues = db.query(models.Venue).filter(models.Venue.owner_emails.any(user.email)).all()
+        my_venues = []
+        if user.phone:
+            my_venues = (
+                db.query(models.Venue)
+                .filter(models.Venue.owner_phones.any(to_international_phone(user.phone)))
+                .all()
+            )
         if not my_venues:
             return []
         venue_ids = [v.id for v in my_venues]
@@ -201,6 +223,11 @@ def update_event(
     event = _get_event_or_404(db, event_id)
     _require_event_access(event, user)
     for field, value in body.model_dump(exclude_unset=True).items():
+        # Same normalization as create_event, for the same reason —
+        # otherwise an edit that only touches owner_phones/manager_phones
+        # could silently un-normalize a previously-correct entry.
+        if field in ("owner_phones", "manager_phones") and value is not None:
+            value = [to_international_phone(p) for p in value]
         setattr(event, field, value)
     db.commit()
     db.refresh(event)

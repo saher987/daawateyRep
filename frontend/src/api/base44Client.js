@@ -112,9 +112,9 @@ const eventsApi = {
       const event = await request(`/api/events/${query.id}`)
       return [event]
     }
-    if ('owner_emails' in query || 'owner_email' in query || 'created_by' in query) {
-      // MyEvent.jsx probes three legacy/current shapes for "events I own" —
-      // /api/my-events already covers all of them server-side in one call.
+    if ('owner_phones' in query) {
+      // MyEvent.jsx's "events I own" query — /api/my-events already does
+      // the owner_phones/manager_phones matching server-side.
       return request('/api/my-events')
     }
     if (

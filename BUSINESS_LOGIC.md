@@ -21,7 +21,7 @@ from that repo's `src/`, not rebuilt from scratch — see "Frontend port" below.
 `ARCHITECTURE.md` previously deferred this. Resolving it now because the
 spec's own entities are inherently relational:
 
-- `Event.owner_emails[]` / `manager_emails[]`, `Venue.owner_emails[]` — arrays
+- `Event.owner_phones[]` / `manager_phones[]`, `Venue.owner_phones[]` — arrays
   Postgres handles natively.
 - `InvitationRecipient.event_id` → `Event`, `.user_id` → `User` — real
   foreign keys, joined constantly (recipient lists, RSVP stats, CSV export).
@@ -68,9 +68,9 @@ Base44's `User` entity was built-in to the platform (roles, invite-by-email,
 |---|---|
 | `users` | `firebase_uid` (unique), `email`, `role`, `first_name`, `last_name`, `nickname`, `town`, `phone`, `preferred_language`, `last_login`, `photo_url`, timestamps |
 | `pending_invites` | `email`, `role`, `invited_by_uid`, `consumed_at` — **no Base44 equivalent**, this app's own replacement for `inviteUser` |
-| `events` | `title`/`title_ar`, `event_type` enum, `date`, inline `venue_name`/`venue_city`/`venue_address`/`venue_map_url` **plus** optional `venue_id` FK, `description`/`description_ar`, `invitation_greeting`/`invitation_greeting_he`, `cover_image_url`, `invitation_image_url`, `groom_name`, `bride_name`, `host_name`, `host_phone`, `status`, `max_guests`, `theme_color`, `owner_email` (legacy singular, display only), `owner_emails[]`, `manager_emails[]` |
+| `events` | `title`/`title_ar`, `event_type` enum, `date`, inline `venue_name`/`venue_city`/`venue_address`/`venue_map_url` **plus** optional `venue_id` FK, `description`/`description_ar`, `invitation_greeting`/`invitation_greeting_he`, `cover_image_url`, `invitation_image_url`, `groom_name`, `bride_name`, `host_name`, `host_phone`, `status`, `max_guests`, `theme_color`, `owner_phones[]`, `manager_phones[]` (phone-keyed since 2026-09 — see migrations/versions/0007; the old `owner_email`/`owner_emails[]`/`manager_emails[]` columns are still on prod as an unused safety net, not read by any code) |
 | `invitation_recipients` | `event_id` FK, `event_creator_id`, `user_id` FK nullable, `external_full_name`, `nickname`, name parts, `phone`, `email`, `personal_token` (unique), `status` enum, `first_opened_at`/`last_opened_at`/`open_count`, `phone_verified`/`verified_phone`, `rsvp_status` enum (incl. `maybe`), `rsvp_guests_count`, `rsvp_message`, `rsvp_date`, `guests_count`, `group_label`, `notes` |
-| `venues` | `name`, `city`, `address`, `max_guests`, `map_url`, `phone`, `image_url`, `notes`, `owner_emails[]` |
+| `venues` | `name`, `city`, `address`, `max_guests`, `map_url`, `phone`, `image_url`, `notes`, `owner_phones[]` (phone-keyed since 2026-09, same as events) |
 | `planned_weddings` | `owner_name`, `phone`, `date`, `city` |
 | `event_requests` | `title`, `details`, `requester_name`, `requester_phone`, `requester_email`, `requester_uid` (addition), `status` enum (incl. `in_review`), `admin_notes` |
 | `notifications` | `event_id` FK, `recipient_id` FK, `type` enum, `title`, `message`, `target_user_email`, `is_read` |
@@ -101,8 +101,8 @@ Base44's `User` entity was built-in to the platform (roles, invite-by-email,
 
 **Phase 2 (this commit)**: Events + Invitation Recipients — the backbone of
 Flow A/D: create event, list/get, add recipients (personal token generated
-server-side), activate (draft → active), list-mine (`owner_emails` /
-`manager_emails` match), RSVP stats.
+server-side), activate (draft → active), list-mine (`owner_phones` /
+`manager_phones` match), RSVP stats.
 
 **Phase 3 (next)**: Public invitation flow (Flow B) — `getInvitationByToken`
 as `GET /api/invitations/{token}` (no auth), `submitRsvp`, OTP
@@ -131,7 +131,7 @@ once the API underneath it is stable.
 | Request an event, manage own event as owner | ✅ | ✅ | ❌ | ✅ |
 
 Enforced via a `require_role(*roles)` FastAPI dependency, and per-row checks
-(`owner_emails`/`manager_emails` membership) inside route handlers where the
+(`owner_phones`/`manager_phones` membership) inside route handlers where the
 table above says "own only".
 
 ## Frontend port

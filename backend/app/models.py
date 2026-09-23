@@ -193,7 +193,14 @@ class Venue(Base):
     phone: Mapped[str | None] = mapped_column(String, nullable=True)
     image_url: Mapped[str | None] = mapped_column(String, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    owner_emails: Mapped[list[str]] = mapped_column(
+    # Phone, not email: matches every account regardless of how they signed
+    # in (phone-OTP accounts get a synthetic placeholder email — see
+    # models.User's own phone-uniqueness comment — so email was never a
+    # reliable identity to key ownership on). See migrations/versions/0007
+    # for the backfill from the old owner_emails this replaced; that old
+    # column is left in place on prod (unused by any code from here on) as
+    # a one-release safety net rather than dropped immediately.
+    owner_phones: Mapped[list[str]] = mapped_column(
         ARRAY(String), nullable=False, default=list
     )
     created_at: Mapped[datetime] = mapped_column(
@@ -242,14 +249,14 @@ class Event(Base):
     )
     max_guests: Mapped[int | None] = mapped_column(Integer, nullable=True)
     theme_color: Mapped[str] = mapped_column(String, nullable=False, default="#B8860B")
-    # owner_email is the original's legacy singular field, kept only for
-    # display/back-compat — owner_emails is what every permission check
-    # actually reads.
-    owner_email: Mapped[str | None] = mapped_column(String, nullable=True)
-    owner_emails: Mapped[list[str]] = mapped_column(
+    # Phone-based, same reasoning as Venue.owner_phones — replaces the old
+    # owner_email/owner_emails/manager_emails (email-keyed, unreliable now
+    # that phone-OTP accounts carry a synthetic placeholder email). See
+    # migrations/versions/0007 for the backfill.
+    owner_phones: Mapped[list[str]] = mapped_column(
         ARRAY(String), nullable=False, default=list
     )
-    manager_emails: Mapped[list[str]] = mapped_column(
+    manager_phones: Mapped[list[str]] = mapped_column(
         ARRAY(String), nullable=False, default=list
     )
     created_by_uid: Mapped[str] = mapped_column(String, nullable=False)

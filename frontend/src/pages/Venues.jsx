@@ -15,7 +15,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { CITY_KEYS, sortCityKeysForDisplay } from "@/lib/cities";
 import { useT } from "@/lib/i18n";
 
-const emptyForm = { name: "", city: "", address: "", max_guests: "", map_url: "", phone: "", notes: "", image_url: "", owner_emails: [] };
+const emptyForm = { name: "", city: "", address: "", max_guests: "", map_url: "", phone: "", notes: "", image_url: "", owner_phones: [] };
 
 function VenueOwnerManager({ venue, onUpdate }) {
   const [searchInput, setSearchInput] = useState("");
@@ -23,7 +23,7 @@ function VenueOwnerManager({ venue, onUpdate }) {
   const [searching, setSearching] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const owners = venue.owner_emails || [];
+  const owners = venue.owner_phones || [];
 
   const handleSearch = async (val) => {
     setSearchInput(val);
@@ -42,12 +42,12 @@ function VenueOwnerManager({ venue, onUpdate }) {
     setSearching(false);
   };
 
-  const addOwner = async (email) => {
-    const e = email.trim().toLowerCase();
-    if (!e) return;
-    if (owners.includes(e)) { toast({ title: "המייל כבר קיים ברשימה" }); return; }
+  const addOwner = async (phone) => {
+    const p = (phone || "").trim();
+    if (!p) return;
+    if (owners.includes(p)) { toast({ title: "מספר הטלפון כבר קיים ברשימה" }); return; }
     setLoading(true);
-    await base44.entities.Venue.update(venue.id, { owner_emails: [...owners, e] });
+    await base44.entities.Venue.update(venue.id, { owner_phones: [...owners, p] });
     onUpdate();
     setSearchInput("");
     setSearchResults([]);
@@ -55,9 +55,9 @@ function VenueOwnerManager({ venue, onUpdate }) {
     toast({ title: "בעל אולם נוסף בהצלחה" });
   };
 
-  const removeOwner = async (email) => {
+  const removeOwner = async (phone) => {
     setLoading(true);
-    await base44.entities.Venue.update(venue.id, { owner_emails: owners.filter(e => e !== email) });
+    await base44.entities.Venue.update(venue.id, { owner_phones: owners.filter(p => p !== phone) });
     onUpdate();
     setLoading(false);
   };
@@ -67,10 +67,10 @@ function VenueOwnerManager({ venue, onUpdate }) {
       <Label>בעלי האולם</Label>
       {owners.length > 0 && (
         <div className="space-y-1">
-          {owners.map(email => (
-            <div key={email} className="flex items-center justify-between bg-muted/50 rounded-lg px-3 py-1.5 text-sm">
-              <span dir="ltr">{email}</span>
-              <button type="button" onClick={() => removeOwner(email)} className="text-destructive hover:text-destructive/80 ml-2">
+          {owners.map(phone => (
+            <div key={phone} className="flex items-center justify-between bg-muted/50 rounded-lg px-3 py-1.5 text-sm">
+              <span dir="ltr">{phone}</span>
+              <button type="button" onClick={() => removeOwner(phone)} className="text-destructive hover:text-destructive/80 ml-2">
                 <UserMinus className="w-4 h-4" />
               </button>
             </div>
@@ -93,9 +93,10 @@ function VenueOwnerManager({ venue, onUpdate }) {
               <button
                 key={u.id}
                 type="button"
-                onClick={() => addOwner(u.email)}
-                disabled={loading}
-                className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-accent text-sm text-right transition-colors"
+                onClick={() => addOwner(u.phone)}
+                disabled={loading || !u.phone}
+                title={!u.phone ? "لا يمتلك هذا المستخدم رقم هاتف بعد" : undefined}
+                className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-accent text-sm text-right transition-colors disabled:opacity-40"
               >
                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                   <span className="text-xs font-semibold text-primary">{u.full_name?.[0] || "?"}</span>

@@ -60,7 +60,7 @@ export default function PlannedWeddings() {
   const myVenueCity = useMemo(() => {
     if (!isVenueOwner || !venues.length) return null;
     const myVenues = venues.filter(
-      (v) => Array.isArray(v.owner_emails) && v.owner_emails.includes(user?.email)
+      (v) => Array.isArray(v.owner_phones) && v.owner_phones.includes(user?.phone)
     );
     return myVenues.map((v) => v.city).find((c) => !!c) || null;
   }, [venues, user, isVenueOwner]);

@@ -30,8 +30,8 @@ function useNavItems() {
   { path: "/events", icon: CalendarHeart, label: t.allEvents, adminOnly: true },
   // Was userOnly — but an admin/manager can also personally be hosting
   // their own event (e.g. their own wedding), same as anyone else; the
-  // page itself already just filters by owner_email/owner_emails
-  // regardless of role, only the nav previously hid it from them.
+  // page itself already just filters by owner_phones regardless of
+  // role, only the nav previously hid it from them.
   { path: "/my-event", icon: CalendarHeart, label: t.myEvent },
   { path: "/my-invitations", icon: Mail, label: t.myInvitations },
   { path: "/planned-weddings", icon: Heart, label: isVenueOwner ? t.plannedWeddings : t.upcomingWeddings, venueOwner: true },

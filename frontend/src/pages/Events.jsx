@@ -107,13 +107,11 @@ export default function Events() {
   // Build the set of event IDs the user is invited to
   const invitedEventIds = new Set(myInvitations.map(r => r.event_id));
 
-  // Regular users see: events they own (owner_email) OR events they're invited to
+  // Regular users see: events they own (owner_phones) OR events they're invited to
   const visibleEvents = isPrivileged
     ? events
     : events.filter(e =>
-        e.owner_email === user?.email ||
-        e.created_by === user?.email ||
-        (Array.isArray(e.owner_emails) && e.owner_emails.includes(user?.email)) ||
+        (Array.isArray(e.owner_phones) && e.owner_phones.includes(user?.phone)) ||
         invitedEventIds.has(e.id)
       );
 

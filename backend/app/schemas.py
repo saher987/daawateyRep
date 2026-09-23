@@ -124,9 +124,8 @@ class EventCreate(BaseModel):
     host_phone: str | None = None
     max_guests: int | None = None
     theme_color: str = "#B8860B"
-    owner_email: str | None = None
-    owner_emails: list[str] = []
-    manager_emails: list[str] = []
+    owner_phones: list[str] = []
+    manager_phones: list[str] = []
 
 
 class EventUpdate(BaseModel):
@@ -151,9 +150,8 @@ class EventUpdate(BaseModel):
     host_phone: str | None = None
     max_guests: int | None = None
     theme_color: str | None = None
-    owner_email: str | None = None
-    owner_emails: list[str] | None = None
-    manager_emails: list[str] | None = None
+    owner_phones: list[str] | None = None
+    manager_phones: list[str] | None = None
 
 
 class EventOut(BaseModel):
@@ -182,9 +180,8 @@ class EventOut(BaseModel):
     status: EventStatus
     max_guests: int | None
     theme_color: str
-    owner_email: str | None
-    owner_emails: list[str]
-    manager_emails: list[str]
+    owner_phones: list[str]
+    manager_phones: list[str]
     created_at: datetime
 
 
@@ -248,7 +245,7 @@ class RecipientOut(BaseModel):
 class PublicInvitationOut(BaseModel):
     """What the public /i/:token page (Flow B) gets — deliberately not the
     full Event/InvitationRecipient rows, so a guest link can never leak
-    owner_emails, other recipients, etc. `recipient_id` IS included (unlike
+    owner_phones, other recipients, etc. `recipient_id` IS included (unlike
     everything else) because the OTP-linking step needs it — the original
     app's verifyOtpAndLink takes a recipientId, not a token."""
 
@@ -381,7 +378,7 @@ class VenueCreate(BaseModel):
     phone: str | None = None
     image_url: str | None = None
     notes: str | None = None
-    owner_emails: list[str] = []
+    owner_phones: list[str] = []
 
 
 class VenueUpdate(BaseModel):
@@ -393,7 +390,7 @@ class VenueUpdate(BaseModel):
     phone: str | None = None
     image_url: str | None = None
     notes: str | None = None
-    owner_emails: list[str] | None = None
+    owner_phones: list[str] | None = None
 
 
 class VenueOut(BaseModel):
@@ -408,7 +405,7 @@ class VenueOut(BaseModel):
     phone: str | None
     image_url: str | None
     notes: str | None
-    owner_emails: list[str]
+    owner_phones: list[str]
 
 
 class OtpSendRequest(BaseModel):

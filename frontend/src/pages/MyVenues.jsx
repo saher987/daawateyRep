@@ -1,7 +1,7 @@
 // Ported unchanged from the original Base44 app (zaffaf/src/pages/
 // MyVenues.jsx). Venue.list() goes through base44Client.js's shim to
 // GET /api/venues, scoped server-side to the caller's own venues for
-// venue_owner accounts — the `.filter(...)` by owner_emails below is a
+// venue_owner accounts — the `.filter(...)` by owner_phones below is a
 // redundant belt-and-suspenders check, same as in VenueSchedule.jsx.
 import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
@@ -25,7 +25,7 @@ export default function MyVenues() {
 
   const myVenues = useMemo(() => {
     if (user?.role === "admin" || user?.role === "manager") return venues;
-    return venues.filter(v => Array.isArray(v.owner_emails) && v.owner_emails.includes(user?.email));
+    return venues.filter(v => Array.isArray(v.owner_phones) && v.owner_phones.includes(user?.phone));
   }, [venues, user]);
 
   if (!isVenueOwner) {

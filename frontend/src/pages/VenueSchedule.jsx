@@ -3,7 +3,7 @@
 // both go through base44Client.js's shim now — /api/venue-events and
 // /api/venues respectively, both scoped server-side to the caller's own
 // venues for venue_owner accounts (see venues.py/events.py docstrings) — so
-// the `.filter(...)` by owner_emails below is a redundant belt-and-suspenders
+// the `.filter(...)` by owner_phones below is a redundant belt-and-suspenders
 // check against data that's already scoped, exactly like it was against
 // Base44's per-row RLS in the original.
 import React, { useState, useMemo } from "react";
@@ -39,7 +39,7 @@ export default function VenueSchedule() {
   // Filter venues this user owns (for venue_owner role)
   const myVenues = useMemo(() => {
     if (isAdmin) return venues;
-    return venues.filter(v => Array.isArray(v.owner_emails) && v.owner_emails.includes(user?.email));
+    return venues.filter(v => Array.isArray(v.owner_phones) && v.owner_phones.includes(user?.phone));
   }, [venues, user, isAdmin]);
 
   // Load events

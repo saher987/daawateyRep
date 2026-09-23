@@ -50,9 +50,9 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
         description: event.description || "",
         invitation_greeting: event.invitation_greeting || "",
       });
-      // Load existing owners from owner_emails
-      const existingEmails = event.owner_emails || (event.owner_email ? [event.owner_email] : []);
-      setOwners(existingEmails.map(e => ({ email: e, name: e, phone: "" })));
+      // Load existing owners from owner_phones
+      const existingPhones = event.owner_phones || [];
+      setOwners(existingPhones.map(p => ({ phone: p, name: p, email: "" })));
       // Pre-select venue if it matches one in the list
       setSelectedVenueId("__manual__");
     }
@@ -91,14 +91,15 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
       : await base44.entities.User.filter({ phone: ownerInput });
     if (users.length === 0) return;
     const u = users[0];
-    if (owners.find(o => o.email === u.email)) return;
-    setOwners(prev => [...prev, { email: u.email, name: u.full_name, phone: u.phone || "" }]);
+    const phone = u.phone || ownerInput;
+    if (owners.find(o => o.phone === phone)) return;
+    setOwners(prev => [...prev, { email: u.email, name: u.full_name, phone }]);
     setOwnerInput("");
     setOwnerLookupStatus(null);
     setOwnerLookupName("");
   };
 
-  const removeOwner = (email) => setOwners(prev => prev.filter(o => o.email !== email));
+  const removeOwner = (phone) => setOwners(prev => prev.filter(o => o.phone !== phone));
 
   const [notifying, setNotifying] = useState(false);
   const t = useT();
@@ -147,7 +148,7 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
     const data = { ...form };
     if (data.max_guests) data.max_guests = Number(data.max_guests);
     else delete data.max_guests;
-    data.owner_emails = owners.map(o => o.email);
+    data.owner_phones = owners.map(o => o.phone);
 
     // Check if date or venue changed
     const dateChanged = form.date && event.date &&
@@ -296,12 +297,12 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
             {owners.length > 0 && (
               <div className="space-y-2">
                 {owners.map(o => (
-                  <div key={o.email} className="flex items-center justify-between bg-success/10 rounded-xl px-4 py-2">
+                  <div key={o.phone} className="flex items-center justify-between bg-success/10 rounded-xl px-4 py-2">
                     <div>
                       <p className="text-sm font-medium">{o.name}</p>
-                      <p className="text-xs text-muted-foreground" dir="ltr">{o.email}</p>
+                      <p className="text-xs text-muted-foreground" dir="ltr">{o.phone}</p>
                     </div>
-                    <button type="button" onClick={() => removeOwner(o.email)}>
+                    <button type="button" onClick={() => removeOwner(o.phone)}>
                       <XIcon className="w-4 h-4 text-muted-foreground hover:text-destructive" />
                     </button>
                   </div>

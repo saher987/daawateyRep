@@ -97,15 +97,16 @@ export default function CreateEvent() {
       : await base44.entities.User.filter({ phone: ownerPhoneInput });
     if (users.length === 0) return;
     const u = users[0];
-    if (owners.find(o => o.email === u.email)) return; // already added
-    setOwners(prev => [...prev, { phone: u.phone || ownerPhoneInput, name: u.full_name, email: u.email }]);
+    const phone = u.phone || ownerPhoneInput;
+    if (owners.find(o => o.phone === phone)) return; // already added
+    setOwners(prev => [...prev, { phone, name: u.full_name, email: u.email }]);
     setOwnerPhoneInput("");
     setOwnerLookupStatus(null);
     setOwnerLookupName("");
   };
 
-  const removeOwner = (email) => {
-    setOwners(prev => prev.filter(o => o.email !== email));
+  const removeOwner = (phone) => {
+    setOwners(prev => prev.filter(o => o.phone !== phone));
   };
 
   const handleImageUpload = async (e) => {
@@ -139,9 +140,9 @@ export default function CreateEvent() {
     if (data.max_guests) data.max_guests = Number(data.max_guests);
     else delete data.max_guests;
     if (!isPrivileged) {
-      data.owner_emails = [user?.email];
+      data.owner_phones = [user?.phone];
     } else {
-      data.owner_emails = owners.map(o => o.email);
+      data.owner_phones = owners.map(o => o.phone);
     }
     mutation.mutate(data);
   };
@@ -221,12 +222,12 @@ export default function CreateEvent() {
               {owners.length > 0 && (
                 <div className="space-y-2">
                   {owners.map(o => (
-                    <div key={o.email} className="flex items-center justify-between bg-success/10 rounded-xl px-4 py-2">
+                    <div key={o.phone} className="flex items-center justify-between bg-success/10 rounded-xl px-4 py-2">
                       <div>
                         <p className="text-sm font-medium">{o.name}</p>
                         <p className="text-xs text-muted-foreground" dir="ltr">{o.phone}</p>
                       </div>
-                      <button type="button" onClick={() => removeOwner(o.email)}>
+                      <button type="button" onClick={() => removeOwner(o.phone)}>
                         <XIcon className="w-4 h-4 text-muted-foreground hover:text-destructive" />
                       </button>
                     </div>

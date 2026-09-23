@@ -1,7 +1,7 @@
 """Venues (Flow E backbone). Full venue management (my-venues, the venue
 calendar, venue-schedule) is Phase 4 — this is the minimal slice
 CreateEvent's venue picker needs: list/create/get, admin+manager write,
-same owner_emails per-row read rule as events use for their owners."""
+same owner_phones per-row read rule as events use for their owners."""
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.auth import get_app_user, require_role
 from app.db import get_db
+from app.integrations.pulseem import to_international_phone
 
 router = APIRouter(prefix="/api", tags=["venues"])
 
@@ -22,14 +23,16 @@ def list_venues(
     list). venue_owner sees only venues they're listed on — needed for
     MyVenues.jsx/VenueSchedule.jsx's venue selector — enforced here
     server-side rather than trusting those pages' own client-side
-    `.filter(...) by owner_emails` (kept in the ported pages too, but only
+    `.filter(...) by owner_phones` (kept in the ported pages too, but only
     as a redundant check, not the real boundary). Anyone else: 403."""
     if user.role in (models.Role.admin, models.Role.manager):
         return list(db.query(models.Venue).order_by(models.Venue.name).all())
     if user.role == models.Role.venue_owner:
+        if not user.phone:
+            return []
         return list(
             db.query(models.Venue)
-            .filter(models.Venue.owner_emails.any(user.email))
+            .filter(models.Venue.owner_phones.any(to_international_phone(user.phone)))
             .order_by(models.Venue.name)
             .all()
         )
@@ -42,7 +45,13 @@ def create_venue(
     _: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
     db: Session = Depends(get_db),
 ) -> models.Venue:
-    venue = models.Venue(**body.model_dump())
+    data = body.model_dump()
+    # Normalized at write time — same reasoning as events.py's
+    # create_event/update_event: keeps the .any(...) lookups above and
+    # get_venue's own membership check below reliable without needing a
+    # per-row Python fallback scan.
+    data["owner_phones"] = [to_international_phone(p) for p in data["owner_phones"]]
+    venue = models.Venue(**data)
     db.add(venue)
     db.commit()
     db.refresh(venue)
@@ -64,7 +73,8 @@ def get_venue(
 ) -> models.Venue:
     venue = _get_venue_or_404(db, venue_id)
     is_privileged = user.role in (models.Role.admin, models.Role.manager)
-    if not is_privileged and user.email not in venue.owner_emails:
+    owns_it = bool(user.phone) and to_international_phone(user.phone) in venue.owner_phones
+    if not is_privileged and not owns_it:
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Not authorized for this venue")
     return venue
 
@@ -80,6 +90,8 @@ def update_venue(
     edit their own venue's record, only to view its schedule/calendar."""
     venue = _get_venue_or_404(db, venue_id)
     for field, value in body.model_dump(exclude_unset=True).items():
+        if field == "owner_phones" and value is not None:
+            value = [to_international_phone(p) for p in value]
         setattr(venue, field, value)
     db.commit()
     db.refresh(venue)
