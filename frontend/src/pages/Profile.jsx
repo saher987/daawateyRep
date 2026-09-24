@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { CITY_KEYS, sortCityKeysForDisplay } from "@/lib/cities";
 import {
-  LogOut, Mail, Shield, Trash2, AlertTriangle, Save, Loader2, Users, Camera
+  LogOut, Mail, Shield, Trash2, AlertTriangle, Save, Loader2, Users, Camera, Phone, X
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -39,6 +39,30 @@ export default function Profile() {
   const [deleting, setDeleting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  // Non-blocking nudge for phone-less accounts (Apple/Google/email
+  // sign-ins that never had one) — phone stays optional app-wide (see
+  // models.py's profile_complete, changed 2026-09-24 for Apple App Review
+  // guideline 5.1.1), but it's still what actually powers invitation
+  // matching and event/venue ownership, so worth asking for without
+  // blocking anything. Dismiss is sticky per-device, not per-account: good
+  // enough for "stop asking on this phone/browser" and avoids a server
+  // round-trip for something this low-stakes.
+  const [phoneNudgeDismissed, setPhoneNudgeDismissed] = useState(() => {
+    try {
+      return localStorage.getItem("daawatey_phone_nudge_dismissed") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const dismissPhoneNudge = () => {
+    setPhoneNudgeDismissed(true);
+    try {
+      localStorage.setItem("daawatey_phone_nudge_dismissed", "1");
+    } catch {
+      // Private mode / blocked storage — the nudge just reappears next
+      // visit, not worth failing anything over.
+    }
+  };
   const [form, setForm] = useState({
     first_name: "",
     last_name: "",
@@ -180,6 +204,24 @@ export default function Profile() {
           {roleLabel[user?.role] || user?.role}
         </Badge>
       </div>
+
+      {!form.phone.trim() && !phoneNudgeDismissed && (
+        <div className="mb-4 flex items-start gap-3 bg-primary/5 border border-primary/20 rounded-xl px-4 py-3 text-sm">
+          <Phone className="w-5 h-5 flex-shrink-0 mt-0.5 text-primary" />
+          <div className="flex-1">
+            <p className="font-medium">{t.addPhoneNudgeTitle}</p>
+            <p className="text-muted-foreground mt-0.5">{t.addPhoneNudgeBody}</p>
+          </div>
+          <button
+            type="button"
+            onClick={dismissPhoneNudge}
+            aria-label={t.dismiss}
+            className="flex-shrink-0 text-muted-foreground hover:text-foreground"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Edit Form */}
       <Card className="p-6 mb-4 space-y-5">

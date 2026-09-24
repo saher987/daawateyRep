@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, Save, Search, CheckCircle, XCircle, UserPlus, X as XIcon } from "lucide-react";
+import { Loader2, Save, UserPlus, X as XIcon } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { useAuth } from "@/lib/AuthContext";
 import MobileSelect from "@/components/shared/MobileSelect";
@@ -27,9 +27,9 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
 
   const [form, setForm] = useState({});
   const [selectedVenueId, setSelectedVenueId] = useState("");
-  const [ownerInput, setOwnerInput] = useState("");
-  const [ownerLookupStatus, setOwnerLookupStatus] = useState(null);
-  const [ownerLookupName, setOwnerLookupName] = useState("");
+  const [ownerSearchInput, setOwnerSearchInput] = useState("");
+  const [ownerSearchResults, setOwnerSearchResults] = useState([]);
+  const [ownerSearching, setOwnerSearching] = useState(false);
   const [owners, setOwners] = useState([]);
 
   useEffect(() => {
@@ -66,37 +66,33 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
     }
   }, [venues, event]);
 
-  const handleOwnerLookup = async (value) => {
-    setOwnerInput(value);
-    setOwnerLookupStatus(null);
-    setOwnerLookupName("");
-    if (value.length < 5) return;
-    const isEmail = value.includes("@");
-    const users = isEmail
-      ? await base44.entities.User.filter({ email: value })
-      : await base44.entities.User.filter({ phone: value });
-    if (users.length > 0) {
-      setOwnerLookupStatus("found");
-      setOwnerLookupName(users[0].full_name);
-    } else {
-      setOwnerLookupStatus("not_found");
-    }
+  // Search by name, phone, or email — see CreateEvent.jsx's matching
+  // handler for why this replaced an exact-match-only lookup: it also
+  // silently stored a typed email string into owner_phones as a fake
+  // phone whenever the matched user had none on file.
+  const handleOwnerSearch = async (val) => {
+    setOwnerSearchInput(val);
+    if (val.trim().length < 2) { setOwnerSearchResults([]); return; }
+    setOwnerSearching(true);
+    const users = await base44.entities.User.list();
+    const q = val.trim().toLowerCase();
+    const filtered = users.filter(u =>
+      (u.full_name && u.full_name.toLowerCase().includes(q)) ||
+      (u.first_name && u.first_name.toLowerCase().includes(q)) ||
+      (u.last_name && u.last_name.toLowerCase().includes(q)) ||
+      (u.phone && u.phone.includes(q)) ||
+      (u.email && u.email.toLowerCase().includes(q))
+    );
+    setOwnerSearchResults(filtered.slice(0, 5));
+    setOwnerSearching(false);
   };
 
-  const addOwner = async () => {
-    if (ownerLookupStatus !== "found") return;
-    const isEmail = ownerInput.includes("@");
-    const users = isEmail
-      ? await base44.entities.User.filter({ email: ownerInput })
-      : await base44.entities.User.filter({ phone: ownerInput });
-    if (users.length === 0) return;
-    const u = users[0];
-    const phone = u.phone || ownerInput;
-    if (owners.find(o => o.phone === phone)) return;
-    setOwners(prev => [...prev, { email: u.email, name: u.full_name, phone }]);
-    setOwnerInput("");
-    setOwnerLookupStatus(null);
-    setOwnerLookupName("");
+  const addOwner = (u) => {
+    if (!u.phone) return;
+    if (owners.find(o => o.phone === u.phone)) return;
+    setOwners(prev => [...prev, { email: u.email, name: u.full_name, phone: u.phone }]);
+    setOwnerSearchInput("");
+    setOwnerSearchResults([]);
   };
 
   const removeOwner = (phone) => setOwners(prev => prev.filter(o => o.phone !== phone));
@@ -309,29 +305,41 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
                 ))}
               </div>
             )}
-            <div className="flex gap-2">
-              <div className="relative flex-1">
+            <div className="relative">
+              <div className="relative">
                 <Input
                   type="text"
-                  placeholder="05xxxxxxxx أو email@example.com"
-                  value={ownerInput}
-                  onChange={e => handleOwnerLookup(e.target.value)}
+                  placeholder={t.ownerSearchPlaceholder}
+                  value={ownerSearchInput}
+                  onChange={e => handleOwnerSearch(e.target.value)}
                   className="h-11 rounded-xl pl-10"
                   dir="ltr"
                 />
-                <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                  {ownerLookupStatus === "found" && <CheckCircle className="w-4 h-4 text-success" />}
-                  {ownerLookupStatus === "not_found" && <XCircle className="w-4 h-4 text-destructive" />}
-                  {!ownerLookupStatus && <Search className="w-4 h-4 text-muted-foreground" />}
-                </div>
+                {ownerSearching && (
+                  <Loader2 className="w-4 h-4 animate-spin absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                )}
               </div>
-              <Button type="button" variant="outline" className="h-11 rounded-xl gap-1" disabled={ownerLookupStatus !== "found"} onClick={addOwner}>
-                <UserPlus className="w-4 h-4" />
-                {t.addOwner}
-              </Button>
+              {ownerSearchResults.length > 0 && (
+                <div className="absolute top-full mt-1 w-full bg-card border border-border rounded-xl shadow-lg z-10 overflow-hidden">
+                  {ownerSearchResults.map(u => (
+                    <button
+                      key={u.id}
+                      type="button"
+                      onClick={() => addOwner(u)}
+                      disabled={!u.phone}
+                      title={!u.phone ? t.ownerNoPhoneHint : undefined}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-accent text-sm text-right transition-colors disabled:opacity-40"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{u.full_name}</p>
+                        <p className="text-xs text-muted-foreground truncate" dir="ltr">{u.phone || u.email}</p>
+                      </div>
+                      <UserPlus className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-            {ownerLookupStatus === "found" && <p className="text-sm text-success">{t.ownerFound} {ownerLookupName}</p>}
-            {ownerLookupStatus === "not_found" && <p className="text-sm text-destructive">{t.ownerNotFoundShort}</p>}
           </div>
 
           <div className="space-y-2">

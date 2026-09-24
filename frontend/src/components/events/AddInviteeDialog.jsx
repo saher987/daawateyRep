@@ -256,13 +256,20 @@ export default function AddInviteeDialog({ open, onOpenChange, eventId }) {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>{t.phoneOptional} <span className="text-muted-foreground text-xs font-normal">{t.nicknameOptionalHint}</span></Label>
+                <Label>{t.phoneOptional} <span className="text-muted-foreground text-xs font-normal">{t.phoneRecommendedHint}</span></Label>
                 <Input type="tel" placeholder="05xxxxxxxx" value={details.phone} onChange={set("phone")} className="h-11 rounded-xl text-base" dir="ltr" />
               </div>
               <div className="space-y-2">
-                <Label>{t.emailRequired} <span className="text-destructive">*</span> <span className="text-muted-foreground text-xs font-normal">{t.emailRequiredHint}</span></Label>
+                {/* Not actually mandatory on its own — canSubmitNew only
+                    requires *either* phone or email (see hasContact below).
+                    The label used to carry a "*" implying email alone was
+                    required, which contradicted that logic; dropped it and
+                    put the shared requirement in the note under both
+                    fields instead. */}
+                <Label>{t.emailRequired} <span className="text-muted-foreground text-xs font-normal">{t.emailRequiredHint}</span></Label>
                 <Input type="email" placeholder="example@email.com" value={details.email} onChange={set("email")} className="h-11 rounded-xl text-base" dir="ltr" />
               </div>
+              <p className="text-xs text-muted-foreground -mt-1">{t.contactRequired}</p>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>{t.groupLabel}</Label>
