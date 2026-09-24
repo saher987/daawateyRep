@@ -38,18 +38,37 @@ if (typeof window !== 'undefined') {
   console.info(`[daawatey] build ${BUILD_LABEL}\n${formatDiagnostics()}`)
 }
 
-// 2026-09: phone OTP is the only sign-in method shown now — Google/Apple
-// and email/password stay fully wired (handlers, imports, native plugin
-// config all still here) so flipping either back to true is the entire
-// re-enable, no rebuild of the feature itself. Not an env var: this is a
-// product decision, not a per-environment one.
+// 2026-09: phone OTP is the primary sign-in method — email/password stays
+// fully wired (handlers, imports, native plugin config all still here) so
+// flipping it back to true is the entire re-enable, no rebuild of the
+// feature itself. Not an env var: this is a product decision, not a
+// per-environment one.
 //
 // Email/password's original justification (simulators/device farms can't
 // run a real Google/Apple picker) no longer applies now that phone OTP —
 // also pickerless — is the default anyway; VITE_ALLOW_EMAIL_AUTH stays
 // wired for a possible future test-build use, just not consulted here.
 const allowEmailAuth = false
-const SHOW_SOCIAL_LOGIN = false
+
+// 2026-09-24: Apple App Review rejected iOS build 23 for two reasons —
+// guideline 5.1.1 (phone-only sign-in forces personal info that isn't
+// required for every use of the app) and guideline 2.1(a) (a crash when
+// tapping "Login with Google" on iPad, review device iPad Air 11" M3).
+// Split what was one SHOW_SOCIAL_LOGIN flag into two so they can be
+// re-enabled independently:
+// - Apple Sign-In back on: gives iOS a phone-free way in (satisfies
+//   5.1.1 — see models.py's profile_complete, which no longer requires
+//   phone either), and it's a separate native code path from Google's
+//   (handleAppleSignIn vs handleGoogleSignIn below) — untouched by
+//   whatever actually caused the Google-button crash.
+// - Google stays off everywhere until that crash is root-caused (no
+//   crash log/dSYM symbolication done yet — see handleGoogleSignIn's own
+//   notes on the two native paths it tries). Re-enabling it blind would
+//   just reproduce the exact 2.1(a) finding on the next review.
+const SHOW_GOOGLE_LOGIN = false
+const SHOW_APPLE_LOGIN = true
+const showAnySocialLogin =
+  SHOW_GOOGLE_LOGIN || (SHOW_APPLE_LOGIN && Capacitor.getPlatform() !== 'android')
 
 // Temporary, verbose diagnostic formatter — surfaces every field an error
 // might carry (native plugin errors often attach a `code` alongside
@@ -278,7 +297,7 @@ export function Login() {
         }}
       />
 
-      {SHOW_SOCIAL_LOGIN && (
+      {showAnySocialLogin && (
         <>
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
@@ -289,23 +308,25 @@ export function Login() {
             </div>
           </div>
 
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full h-12 text-sm font-medium mb-3"
-            onClick={handleGoogleSignIn}
-            disabled={googleBusy || busy || appleBusy}
-          >
-            <GoogleIcon className="w-5 h-5 mr-2" />
-            {googleBusy ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                {t.authConnecting}
-              </>
-            ) : (
-              t.authContinueWithGoogle
-            )}
-          </Button>
+          {SHOW_GOOGLE_LOGIN && (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full h-12 text-sm font-medium mb-3"
+              onClick={handleGoogleSignIn}
+              disabled={googleBusy || busy || appleBusy}
+            >
+              <GoogleIcon className="w-5 h-5 mr-2" />
+              {googleBusy ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  {t.authConnecting}
+                </>
+              ) : (
+                t.authContinueWithGoogle
+              )}
+            </Button>
+          )}
 
           {/* Apple's own guideline (not just App Store review — it's the
               actual HIG) is a solid black button, not an outlined one
@@ -314,7 +335,7 @@ export function Login() {
               offer third-party login, not something Android users would
               ever expect or need — and the plugin's Android support for it
               is unverified here. */}
-          {Capacitor.getPlatform() !== 'android' && (
+          {SHOW_APPLE_LOGIN && Capacitor.getPlatform() !== 'android' && (
             <Button
               type="button"
               className="w-full h-12 text-sm font-medium mb-6 bg-black text-white hover:bg-black/90"

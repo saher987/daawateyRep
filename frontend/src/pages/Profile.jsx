@@ -110,7 +110,10 @@ export default function Profile() {
       first_name: form.first_name,
       last_name: form.last_name,
       nickname: form.nickname,
-      phone: form.phone,
+      // Empty string, not null, would collide with any other account that
+      // also left phone blank — users.phone is unique, and Postgres treats
+      // two "" values as duplicates even though it allows multiple NULLs.
+      phone: form.phone.trim() ? form.phone.trim() : null,
       town: form.town,
       preferred_language: form.preferred_language,
       photo_url: form.photo_url,
@@ -118,7 +121,7 @@ export default function Profile() {
     setSaving(false);
     toast({ title: t.profileSaved, description: t.profileSavedDesc, duration: 3000 });
     await checkAppState?.();
-    if (wasIncomplete && form.first_name && form.last_name && form.nickname && form.town && form.phone) {
+    if (wasIncomplete && form.first_name && form.last_name && form.nickname && form.town) {
       navigate("/");
     }
   };
@@ -227,7 +230,7 @@ export default function Profile() {
         </div>
 
         <div className="space-y-2">
-          <Label>{t.phoneLabel} <span className="text-destructive">*</span></Label>
+          <Label>{t.phoneLabel} <span className="text-muted-foreground font-normal text-xs">{t.phoneOptionalHint}</span></Label>
           <Input
             value={form.phone}
             onChange={e => setForm(prev => ({ ...prev, phone: e.target.value }))}
@@ -271,7 +274,7 @@ export default function Profile() {
 
         <Button
           onClick={handleSave}
-          disabled={saving || !form.phone.trim()}
+          disabled={saving}
           className="w-full h-11 rounded-xl gap-2"
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}

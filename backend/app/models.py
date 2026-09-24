@@ -143,10 +143,15 @@ class User(Base):
         Profile.jsx's own save-completion check) both key off this exact
         field rather than re-deriving it — was nickname-less originally
         (spec §2, Flow G's first_name/last_name/town/phone), extended
-        2026-09 per explicit product requirement to also require nickname."""
-        return bool(
-            self.first_name and self.last_name and self.nickname and self.town and self.phone
-        )
+        2026-09 to also require nickname, then 2026-09-24 to drop phone
+        from the requirement entirely: Apple App Review rejected the iOS
+        build (guideline 5.1.1) for forcing every account through a gate
+        that demanded a phone number before the app was usable at all,
+        even for Apple/Google/email sign-ins that never had one to begin
+        with. Phone stays central to what it's actually needed for
+        (invitation matching, event/venue ownership — see the owner_phones
+        migration) without being a hard login-time requirement."""
+        return bool(self.first_name and self.last_name and self.nickname and self.town)
 
 
 class PendingInvite(Base):

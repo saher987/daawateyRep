@@ -73,10 +73,11 @@ export default function AppLayout() {
 
   // Profile completion check — user.profile_complete (backend, models.py)
   // is the single source of truth for which fields count (first/last
-  // name, nickname, town, phone); read from there rather than
-  // re-deriving the field list here too, so this can't drift out of sync
-  // with it the way it already had (nickname was missing from this exact
-  // check until 2026-09).
+  // name, nickname, town — phone deliberately dropped from this list
+  // 2026-09-24, see profile_complete's own docstring); read from there
+  // rather than re-deriving the field list here too, so this can't drift
+  // out of sync with it the way it already had (nickname was missing from
+  // this exact check until 2026-09).
   const isProfileIncomplete = user && isAuthenticated && !user.profile_complete;
 
   const isOnProfilePage = location.pathname === "/profile";
