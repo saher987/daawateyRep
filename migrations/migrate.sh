@@ -46,25 +46,47 @@ fi
 source .venv/bin/activate
 pip install -q -r requirements.txt
 
-./cloud-sql-proxy daawatey-prod:us-central1:daawatey-db --port 5432 &
+# 5433, not 5432 — a local Postgres install (common on dev machines) often
+# already owns 5432, and the Auth Proxy failing to bind while something
+# else answers on the same port is worse than a clean failure: the
+# readiness probe below can't tell "the proxy is up" from "some unrelated
+# service is up", so alembic would silently run against the wrong database.
+PROXY_PORT=5433
+
+# Fail fast, with a clear message, if even 5433 is somehow taken —
+# better than repeating the "connected to the wrong thing" failure mode
+# this port choice exists to avoid.
+if (exec 3<>/dev/tcp/127.0.0.1/$PROXY_PORT) 2>/dev/null; then
+  exec 3<&- 3>&-
+  echo "Something is already listening on 127.0.0.1:$PROXY_PORT — refusing to reuse it. Free that port or edit PROXY_PORT in this script." >&2
+  exit 1
+fi
+
+./cloud-sql-proxy daawatey-prod:us-central1:daawatey-db --port "$PROXY_PORT" &
 PROXY_PID=$!
 trap 'kill "$PROXY_PID" 2>/dev/null || true' EXIT
 
 echo "Waiting for the Auth Proxy to start listening..."
 for _ in $(seq 1 20); do
-  if (exec 3<>/dev/tcp/127.0.0.1/5432) 2>/dev/null; then
+  if (exec 3<>/dev/tcp/127.0.0.1/$PROXY_PORT) 2>/dev/null; then
     exec 3<&- 3>&-
     break
   fi
+  # The proxy process died (e.g. failed to bind) — no point waiting out
+  # the full timeout for a process that's already gone.
+  if ! kill -0 "$PROXY_PID" 2>/dev/null; then
+    echo "Auth Proxy process exited early — check its output above." >&2
+    exit 1
+  fi
   sleep 1
 done
-if ! (exec 3<>/dev/tcp/127.0.0.1/5432) 2>/dev/null; then
-  echo "Auth Proxy never started listening on 127.0.0.1:5432 — check its output above." >&2
+if ! (exec 3<>/dev/tcp/127.0.0.1/$PROXY_PORT) 2>/dev/null; then
+  echo "Auth Proxy never started listening on 127.0.0.1:$PROXY_PORT — check its output above." >&2
   exit 1
 fi
 exec 3<&- 3>&- 2>/dev/null || true
 
-export DATABASE_URL="postgresql+psycopg://${DB_USER}:${DB_PASSWORD}@127.0.0.1:5432/${DB_NAME}"
+export DATABASE_URL="postgresql+psycopg://${DB_USER}:${DB_PASSWORD}@127.0.0.1:${PROXY_PORT}/${DB_NAME}"
 echo "Running migrations against $ENVIRONMENT ($DB_NAME)..."
 alembic upgrade head
 echo
