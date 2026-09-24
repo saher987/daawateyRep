@@ -3,8 +3,34 @@
 Alembic migrations for the Cloud SQL (Postgres) database — see
 `../BUSINESS_LOGIC.md` for the schema and reasoning.
 
-**Nothing here is auto-applied on deploy.** You run these yourself, against
-Cloud SQL, whenever you're ready:
+**Nothing here is auto-applied on deploy.** You run these yourself,
+whenever you're ready, one of two ways:
+
+## Option A: GitHub Actions button (recommended)
+
+Repo → **Actions** tab → **Run DB Migration** workflow → **Run workflow** →
+choose `staging` or `prod` → **Run workflow**. Runs `alembic upgrade head`
+in CI using the same Workload Identity Federation auth as the `Deploy`
+workflow — no local proxy binary, no venv, no password typing. See
+`../DEPLOYMENT.md` for the one-time GCP setup this needs (done once, ever).
+
+## Option B: local script
+
+```bash
+cd migrations
+export DB_PASSWORD="..."     # daawatey_app's password (prod) or
+                              # daawatey_staging_app's (staging)
+./migrate.sh          # prod by default
+./migrate.sh staging  # or staging
+```
+
+Downloads/validates the Cloud SQL Auth Proxy, sets up the venv, starts the
+proxy, waits for it to actually be listening, runs `alembic upgrade head`,
+then tears the proxy down again — the whole manual dance in one command.
+Needs `gcloud auth application-default login` done once beforehand (the
+Auth Proxy's own credential, separate from `gcloud auth login`).
+
+## Option C: fully manual (what both of the above automate)
 
 ```bash
 cd migrations

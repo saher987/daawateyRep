@@ -1,0 +1,99 @@
+name: Run DB Migration
+
+# Manual only — never runs on push/deploy. Migrations are applied
+# deliberately, on their own schedule, same standing rule as the local
+# `alembic upgrade head` workflow this replaces (see migrations/README.md).
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to migrate"
+        type: choice
+        options:
+          - staging
+          - prod
+        required: true
+
+permissions:
+  contents: read
+  id-token: write # required for Workload Identity Federation — no key files
+
+env:
+  # Both environments' Cloud SQL instance and DATABASE_URL secrets live in
+  # daawatey-prod's Secret Manager — see deploy.yml's own SECRETS_PROJECT
+  # comment, same reasoning applies here.
+  SECRETS_PROJECT: daawatey-prod
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.DEPLOY_SA_EMAIL }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      # Reuses the exact same DATABASE_URL secret Cloud Run itself reads —
+      # never duplicated into a separate GitHub secret, so a password
+      # rotation (see BUSINESS_LOGIC.md "To rotate the DB password") only
+      # ever needs updating in one place. Its value is the Cloud-Run-style
+      # unix-socket URL (host=/cloudsql/...); the next step rewrites it to
+      # point at the Auth Proxy's local TCP listener instead, since this
+      # runner — unlike Cloud Run — has no /cloudsql socket directory.
+      - name: Fetch DATABASE_URL from Secret Manager
+        id: fetch-db-url
+        run: |
+          if [ "${{ inputs.environment }}" = "prod" ]; then
+            SECRET_NAME="database-url"
+          else
+            SECRET_NAME="database-url-staging"
+          fi
+          RAW=$(gcloud secrets versions access latest --secret="$SECRET_NAME" --project="${{ env.SECRETS_PROJECT }}")
+          echo "::add-mask::$RAW"
+          echo "raw=$RAW" >> "$GITHUB_OUTPUT"
+
+      - name: Start Cloud SQL Auth Proxy
+        run: |
+          curl -sSL -o cloud-sql-proxy \
+            https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.14.0/cloud-sql-proxy.linux.amd64
+          chmod +x cloud-sql-proxy
+          ./cloud-sql-proxy "${{ secrets.CLOUDSQL_CONNECTION_NAME }}" --port 5432 &
+          echo "Waiting for the Auth Proxy to start listening..."
+          for i in $(seq 1 20); do
+            if (exec 3<>/dev/tcp/127.0.0.1/5432) 2>/dev/null; then
+              exec 3<&- 3>&-
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Auth Proxy never started listening on 127.0.0.1:5432" >&2
+          exit 1
+
+      - name: Install migration dependencies
+        run: pip install -r migrations/requirements.txt
+
+      - name: Run alembic upgrade head
+        working-directory: migrations
+        env:
+          RAW_DATABASE_URL: ${{ steps.fetch-db-url.outputs.raw }}
+        run: |
+          # Read the secret from an env var, not shell-interpolated into
+          # source, so a password containing quotes/backslashes can't break
+          # (or inject into) the Python literal.
+          export DATABASE_URL=$(python3 -c "
+          import os
+          from urllib.parse import urlparse
+          raw = os.environ['RAW_DATABASE_URL'].replace('postgresql+psycopg://', 'http://', 1)
+          u = urlparse(raw)
+          print(f'postgresql+psycopg://{u.username}:{u.password}@127.0.0.1:5432{u.path}')
+          ")
+          alembic upgrade head
+          echo
+          echo "Now at:"
+          alembic current

@@ -133,3 +133,46 @@ gcloud run services describe daawatey-backend --region=us-central1 \
 
 Repo → **Actions** tab → **Deploy** workflow → **Run workflow** → choose
 `staging` or `prod` → **Run workflow**.
+
+## Running a migration
+
+Repo → **Actions** tab → **Run DB Migration** workflow → **Run workflow** →
+choose `staging` or `prod` → **Run workflow**. Runs `alembic upgrade head`
+in CI against Cloud SQL, the same auth as a deploy — no local Cloud SQL
+Auth Proxy or venv needed (see `migrations/README.md` for the local
+fallback). Still entirely manual, same standing rule as before: nothing
+runs automatically on deploy. **Run this before the corresponding backend
+deploy whenever a migration is pending** — deploying backend code that
+references a column the DB doesn't have yet breaks every request that
+touches it.
+
+### One-time setup for the migration workflow
+
+It reuses `DEPLOY_SA_EMAIL`/`WIF_PROVIDER`/`CLOUDSQL_CONNECTION_NAME` from
+the table above — nothing new to add to GitHub. It just needs two more IAM
+grants on the deploy service account, once per environment, so it can
+reach Cloud SQL and read the same `DATABASE_URL` secret Cloud Run itself
+reads (never duplicated into a separate GitHub secret):
+
+```bash
+# prod
+gcloud projects add-iam-policy-binding daawatey-prod \
+  --member="serviceAccount:github-deployer@daawatey-prod.iam.gserviceaccount.com" \
+  --role="roles/cloudsql.client"
+gcloud secrets add-iam-policy-binding database-url \
+  --project=daawatey-prod \
+  --member="serviceAccount:github-deployer@daawatey-prod.iam.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+
+# staging — its deployer SA needs the grant in daawatey-prod (that's where
+# the instance and both DATABASE_URL secrets actually live), same
+# cross-project pattern as backend-runtime@daawatey-staging in
+# BUSINESS_LOGIC.md
+gcloud projects add-iam-policy-binding daawatey-prod \
+  --member="serviceAccount:github-deployer@daawatey-staging.iam.gserviceaccount.com" \
+  --role="roles/cloudsql.client"
+gcloud secrets add-iam-policy-binding database-url-staging \
+  --project=daawatey-prod \
+  --member="serviceAccount:github-deployer@daawatey-staging.iam.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+```
