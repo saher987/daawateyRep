@@ -24,18 +24,28 @@ const AuthContext = createContext()
 // navigateToLogin), not how it's derived underneath — so pages didn't need
 // to change, only this file did.
 //
-// `appPublicSettings`/`isLoadingPublicSettings`/`authError` existed for a
-// Base44-platform concept (an app-level registration gate) this system
-// doesn't have — get_app_user always creates a row rather than rejecting a
+// `appPublicSettings`/`isLoadingPublicSettings` existed for a Base44-
+// platform concept (an app-level registration gate) this system doesn't
+// have — get_app_user always creates a row rather than rejecting a
 // sign-in, so there's no "not registered" state to represent. Kept as
 // always-false/null purely so components destructuring them (there
 // shouldn't be any left that rely on them being anything else) don't break.
+// `authError` used to be the same kind of permanent stub, but is real now
+// (2026-09-25) — see its own declaration below for why.
 export const AuthProvider = ({ children }) => {
   useDarkModeSync()
   const [firebaseUser, setFirebaseUser] = useState(null)
   const [user, setUser] = useState(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoadingAuth, setIsLoadingAuth] = useState(true)
+  // Was a permanent `null` stub (see this file's own header comment) —
+  // repurposed 2026-09-25 to actually hold /api/me's failure, since a
+  // Firebase sign-in (Apple/Google/phone-OTP, any of them) that succeeds
+  // but is then rejected by this app's own backend previously had zero
+  // visible symptom: refreshUser's catch only ever did console.error,
+  // which nobody testing on-device without a debugger attached can see.
+  // Login.jsx renders this.
+  const [authError, setAuthError] = useState(null)
   const hasRecordedLogin = useRef(false)
 
   // Shared by the initial auth-state listener below and checkAppState (the
@@ -50,10 +60,13 @@ export const AuthProvider = ({ children }) => {
       const me = await base44.auth.me()
       setUser(me)
       setIsAuthenticated(true)
+      setAuthError(null)
     } catch (error) {
       console.error('Fetching /api/me failed:', error)
       setUser(null)
       setIsAuthenticated(false)
+      const status = error?.status ? ` (${error.status})` : ''
+      setAuthError(`${error?.message || String(error)}${status}`)
     }
   }
 
@@ -90,7 +103,7 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated,
         isLoadingAuth,
         isLoadingPublicSettings: false,
-        authError: null,
+        authError,
         appPublicSettings: null,
         logout,
         navigateToLogin,

@@ -94,7 +94,7 @@ function describeError(err) {
 
 export function Login() {
   const navigate = useNavigate()
-  const { isAuthenticated, isLoadingAuth } = useAuth()
+  const { isAuthenticated, isLoadingAuth, authError } = useAuth()
   const [lang, setLang] = usePublicLanguage()
   const t = translations[lang]
   const [email, setEmail] = useState('')
@@ -362,6 +362,22 @@ export function Login() {
           className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm whitespace-pre-wrap break-words"
         >
           {error}
+        </div>
+      )}
+
+      {/* Covers the gap `error` above can't: a sign-in step (Apple/Google/
+          phone-OTP) can complete with no exception at all, but the
+          *following* async step — AuthContext's onAuthStateChanged firing
+          and resolving /api/me — happens entirely outside this page's own
+          try/catch. Before authError existed, that failure was previously
+          visible only via console.error, i.e. never, to anyone testing
+          on-device without a debugger attached (2026-09-25). */}
+      {!error && authError && (
+        <div
+          role="alert"
+          className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm whitespace-pre-wrap break-words"
+        >
+          {authError}
         </div>
       )}
 
