@@ -34,6 +34,42 @@ def _generate_code() -> str:
     return f"{random.randint(0, 999999):06d}"
 
 
+def _link_recipient(recipient: models.InvitationRecipient, user: models.User) -> None:
+    recipient.phone_verified = True
+    recipient.verified_phone = recipient.phone
+    recipient.user_id = user.id
+    if not user.first_name and not user.last_name:
+        if recipient.first_name:
+            user.first_name = recipient.first_name
+        if recipient.last_name:
+            user.last_name = recipient.last_name
+
+
+def link_pending_invitations(db: Session, user: models.User, phone: str) -> None:
+    """Links every InvitationRecipient row already on file under `phone` to
+    `user` — the same linking verify_otp does below on a phone-OTP login,
+    but callable from anywhere else a phone number gets attached to an
+    account after the fact (main.py's update_profile, for an Apple/Google/
+    email account that signed up with no phone at all — 2026-09-24, see
+    that call site's own comment for why this matters). Deliberately links
+    *every* matching recipient, not just one: verify_otp's own opportunistic
+    link only ever grabs a single row (find_by_phone's contract), which is
+    fine there because /my-invitations' own read is already phone-tolerant
+    regardless of whether user_id is set — but notify_event_update's
+    push/in-app notification strictly requires it, so an invitee with two
+    events under the same phone number needs both rows actually linked,
+    not just whichever one happened to be found first."""
+    normalized = to_international_phone(phone)
+    linked_ids = set()
+    for r in db.query(models.InvitationRecipient).filter(models.InvitationRecipient.phone == phone):
+        linked_ids.add(r.id)
+        _link_recipient(r, user)
+    for r in db.query(models.InvitationRecipient).filter(models.InvitationRecipient.phone.isnot(None)):
+        if r.id in linked_ids:
+            continue
+        if to_international_phone(r.phone) == normalized:
+            _link_recipient(r, user)
+
 
 @router.post("/otp/send", response_model=schemas.OtpSendResponse)
 def send_otp(body: schemas.OtpSendRequest, db: Session = Depends(get_db)) -> schemas.OtpSendResponse:

@@ -130,7 +130,8 @@ def update_profile(
 ) -> schemas.MeResponse:
     """Flow G step 3: replaces base44.auth.updateMe. PATCH semantics — only
     fields actually sent get updated (see ProfileUpdate's docstring for why)."""
-    for field, value in body.model_dump(exclude_unset=True).items():
+    fields = body.model_dump(exclude_unset=True)
+    for field, value in fields.items():
         setattr(user, field, value)
     try:
         db.commit()
@@ -145,6 +146,24 @@ def update_profile(
             status.HTTP_409_CONFLICT,
             detail="phone_already_in_use",
         ) from exc
+    # A phone set or changed here needs the same invitation-linking a
+    # phone-OTP login already does (otp.py's verify_otp) — otherwise an
+    # Apple/Google/email account that signed up with no phone (2026-09-24:
+    # phone stopped being required at login, for Apple App Review 5.1.1)
+    # and adds one later here stays a second, disconnected identity from
+    # whatever invitation(s) were sent to that phone number. See
+    # link_pending_invitations' own docstring for exactly what breaks
+    # without this — /my-invitations' own read is already phone-tolerant
+    # regardless, but notify_event_update's push/in-app notification is
+    # not, and strictly needs recipient.user_id set. Deliberately run
+    # *after* the commit above (not folded into it): the queries inside
+    # link_pending_invitations would otherwise trigger SQLAlchemy's
+    # autoflush on the still-uncommitted phone change, so a genuine
+    # uniqueness conflict could raise IntegrityError there instead of
+    # inside the try/except that's actually meant to catch it.
+    if fields.get("phone"):
+        otp.link_pending_invitations(db, user, fields["phone"])
+        db.commit()
     db.refresh(user)
     return _me_response(user)
 
