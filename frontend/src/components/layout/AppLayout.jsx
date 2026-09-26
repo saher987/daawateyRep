@@ -34,7 +34,12 @@ function useNavItems() {
   // role, only the nav previously hid it from them.
   { path: "/my-event", icon: CalendarHeart, label: t.myEvent },
   { path: "/my-invitations", icon: Mail, label: t.myInvitations },
-  { path: "/planned-weddings", icon: Heart, label: isVenueOwner ? t.plannedWeddings : t.upcomingWeddings, venueOwner: true },
+  // No privileged/venueOwner gate here — the page itself has no access
+  // restriction (PlannedWeddings.jsx only gates the add/edit/delete
+  // controls on isAdmin, not the page or its data), so hiding it from
+  // regular users was a nav-only restriction with no matching backend
+  // one. Regular users arguably care about this more than admins do.
+  { path: "/planned-weddings", icon: Heart, label: isVenueOwner ? t.plannedWeddings : t.upcomingWeddings },
   { path: "/notifications", icon: Bell, label: t.notifications },
   { path: "/users", icon: ShieldCheck, label: t.users, privileged: true },
   { path: "/venues", icon: MapPin, label: t.venues, privileged: true },

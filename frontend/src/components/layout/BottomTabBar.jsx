@@ -1,6 +1,6 @@
 import React, { startTransition } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, CalendarHeart, Bell, UserCircle, Mail, CalendarRange } from "lucide-react";
+import { LayoutDashboard, CalendarHeart, Bell, UserCircle, Mail, CalendarRange, Heart } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useT } from "@/lib/i18n";
 
@@ -32,6 +32,10 @@ export default function BottomTabBar({ unreadCount = 0, userRole, isAuthenticate
   const userTabs = [
     { path: "/my-invitations", icon: Mail, label: t.myInvitations },
     { path: "/my-event", icon: CalendarHeart, label: t.myEvent },
+    // Same fix as AppLayout.jsx's sidebar: the page itself has no access
+    // restriction for regular users, only the nav did. Added here (not
+    // just the desktop sidebar) since regular users are mostly on mobile.
+    { path: "/planned-weddings", icon: Heart, label: t.upcomingWeddings },
     { path: "/notifications", icon: Bell, label: t.notifications },
     { path: "/profile", icon: UserCircle, label: t.profile },
   ];
