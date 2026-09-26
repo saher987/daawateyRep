@@ -29,9 +29,11 @@ import { useT } from "@/lib/i18n";
 
 const DISMISS_KEY = "daawatey_install_banner_dismissed";
 const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.daawatey.app";
-// TODO: replace with the real App Store URL once known (numeric Apple ID,
-// not derivable from the bundle identifier the way the Play Store URL is).
-const APP_STORE_URL = "https://apps.apple.com/app/id0000000000";
+// Canonical form (no /il/ country segment or ?l=he language param) so it
+// redirects each visitor to their own region/language's App Store instead
+// of forcing everyone into Israel/Hebrew regardless of their own device
+// settings.
+const APP_STORE_URL = "https://apps.apple.com/app/id6807160850";
 
 function detectMobilePlatform() {
   if (typeof navigator === "undefined") return null;
