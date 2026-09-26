@@ -5,15 +5,14 @@
 // Instagram/LinkedIn/Pinterest/Airbnb all use for mobile-web visitors: a
 // slim, dismissible banner, never a blocking interstitial.
 //
-// 2026-09-26: extended from Android-only to also cover iOS — both stores
-// went live the same week, and this banner is now the *primary* answer
-// to "how does a QR code at the wedding venue get someone to install the
-// right app": one QR, pointing at daawatey.com, with this banner
-// auto-detecting the phone's OS and linking to the matching store —
-// deliberately not two separate QR codes, since an older guest who
-// scans the wrong platform's QR lands on a store page for an app they
-// can't install, which reads as broken. Auto-detection has no such
-// failure mode.
+// 2026-09-26: extended from Android-only to also cover iOS. This banner
+// is deliberately NOT what the wedding-venue QR codes point at, though —
+// a dismissible banner can be missed or dismissed by accident, which
+// matters a lot more for a one-shot physical QR code than for an organic
+// web visitor. GetApp.jsx (routed at /get) is the actual answer for that:
+// an instant, un-missable redirect with nothing to notice or dismiss.
+// This banner's job is the softer, ongoing nudge for anyone who's
+// already browsing the site through some other path.
 //
 // Only shown when all of:
 // - not already inside the native app (Capacitor.isNativePlatform())
@@ -26,27 +25,9 @@ import { Capacitor } from "@capacitor/core";
 import { Smartphone, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/i18n";
+import { PLAY_STORE_URL, APP_STORE_URL, detectMobilePlatform } from "@/lib/appStoreLinks";
 
 const DISMISS_KEY = "daawatey_install_banner_dismissed";
-const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.daawatey.app";
-// Canonical form (no /il/ country segment or ?l=he language param) so it
-// redirects each visitor to their own region/language's App Store instead
-// of forcing everyone into Israel/Hebrew regardless of their own device
-// settings.
-const APP_STORE_URL = "https://apps.apple.com/app/id6807160850";
-
-function detectMobilePlatform() {
-  if (typeof navigator === "undefined") return null;
-  const ua = navigator.userAgent;
-  if (/Android/i.test(ua)) return "android";
-  // iPadOS 13+ reports as "Macintosh" with touch support — the classic
-  // iPhone/iPod UA check alone misses iPads on modern iPadOS.
-  if (/iPhone|iPad|iPod/i.test(ua)) return "ios";
-  if (/Macintosh/i.test(ua) && typeof navigator.maxTouchPoints === "number" && navigator.maxTouchPoints > 1) {
-    return "ios";
-  }
-  return null;
-}
 
 export default function InstallAppBanner({ t: tProp } = {}) {
   // useT() reads I18nContext, which tracks the signed-in user's

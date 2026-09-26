@@ -8,6 +8,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import AppLayout from './components/layout/AppLayout'
 import PageNotFound from './lib/PageNotFound'
 import { Login } from './pages/Login'
+import GetApp from './pages/GetApp'
 import { Toaster } from './components/ui/toaster'
 import DeepLinkHandler from './components/DeepLinkHandler'
 import PushNotificationHandler from './components/PushNotificationHandler'
@@ -53,6 +54,7 @@ function App() {
             <PushNotificationHandler />
             <Routes>
               <Route path="/login" element={<Login />} />
+              <Route path="/get" element={<GetApp />} />
               <Route
                 path="/register"
                 element={
