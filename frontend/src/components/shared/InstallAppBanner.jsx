@@ -1,14 +1,24 @@
-// Nudges logged-in users already browsing the web app (Events, My
-// Invitations, ...) toward the native Android app — not the one-time
+// Nudges visitors browsing the web app (Login, Events, My Invitations,
+// ...) toward the native app for their platform — not the one-time
 // invitation-link guest, who should never see any app-install prompt
 // (see BUSINESS_LOGIC.md's Android section). This is the pattern
 // Instagram/LinkedIn/Pinterest/Airbnb all use for mobile-web visitors: a
 // slim, dismissible banner, never a blocking interstitial.
 //
+// 2026-09-26: extended from Android-only to also cover iOS — both stores
+// went live the same week, and this banner is now the *primary* answer
+// to "how does a QR code at the wedding venue get someone to install the
+// right app": one QR, pointing at daawatey.com, with this banner
+// auto-detecting the phone's OS and linking to the matching store —
+// deliberately not two separate QR codes, since an older guest who
+// scans the wrong platform's QR lands on a store page for an app they
+// can't install, which reads as broken. Auto-detection has no such
+// failure mode.
+//
 // Only shown when all of:
 // - not already inside the native app (Capacitor.isNativePlatform())
-// - the browser's user agent is Android (no point suggesting an Android
-//   app to an iPhone or desktop visitor — there's nothing to install)
+// - the browser's user agent is Android or iOS (no point suggesting an
+//   app to a desktop visitor — there's nothing to install)
 // - not previously dismissed (persisted in localStorage, so it doesn't
 //   nag again on every page load once closed)
 import React, { useEffect, useState } from "react";
@@ -19,9 +29,21 @@ import { useT } from "@/lib/i18n";
 
 const DISMISS_KEY = "daawatey_install_banner_dismissed";
 const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.daawatey.app";
+// TODO: replace with the real App Store URL once known (numeric Apple ID,
+// not derivable from the bundle identifier the way the Play Store URL is).
+const APP_STORE_URL = "https://apps.apple.com/app/id0000000000";
 
-function isAndroidBrowser() {
-  return typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
+function detectMobilePlatform() {
+  if (typeof navigator === "undefined") return null;
+  const ua = navigator.userAgent;
+  if (/Android/i.test(ua)) return "android";
+  // iPadOS 13+ reports as "Macintosh" with touch support — the classic
+  // iPhone/iPod UA check alone misses iPads on modern iPadOS.
+  if (/iPhone|iPad|iPod/i.test(ua)) return "ios";
+  if (/Macintosh/i.test(ua) && typeof navigator.maxTouchPoints === "number" && navigator.maxTouchPoints > 1) {
+    return "ios";
+  }
+  return null;
 }
 
 export default function InstallAppBanner({ t: tProp } = {}) {
@@ -36,20 +58,23 @@ export default function InstallAppBanner({ t: tProp } = {}) {
   // switched the rest of the page to Hebrew.
   const contextT = useT();
   const t = tProp || contextT;
-  const [dismissed, setDismissed] = useState(true);
+  const [platform, setPlatform] = useState(null);
 
   useEffect(() => {
     if (Capacitor.isNativePlatform()) return;
-    if (!isAndroidBrowser()) return;
+    const detected = detectMobilePlatform();
+    if (!detected) return;
     if (localStorage.getItem(DISMISS_KEY) === "1") return;
-    setDismissed(false);
+    setPlatform(detected);
   }, []);
 
-  if (dismissed) return null;
+  if (!platform) return null;
+
+  const storeUrl = platform === "ios" ? APP_STORE_URL : PLAY_STORE_URL;
 
   const dismiss = () => {
     localStorage.setItem(DISMISS_KEY, "1");
-    setDismissed(true);
+    setPlatform(null);
   };
 
   return (
@@ -60,7 +85,7 @@ export default function InstallAppBanner({ t: tProp } = {}) {
         <p className="text-xs text-muted-foreground">{t.installAppSubtitle}</p>
       </div>
       <Button size="sm" className="flex-shrink-0" asChild>
-        <a href={PLAY_STORE_URL} target="_blank" rel="noreferrer">
+        <a href={storeUrl} target="_blank" rel="noreferrer">
           {t.installAppCta}
         </a>
       </Button>
