@@ -18,7 +18,11 @@ import { base44 } from '@/api/base44Client'
  * never something the rest of the app should block or error on. */
 export async function requestAndRegisterPush() {
   if (Capacitor.isNativePlatform()) {
-    if (Capacitor.getPlatform() !== 'android') return // iOS push: later session, needs APNs setup first
+    // iOS gate removed 2026-09-28 — @capacitor/push-notifications exposes
+    // the same checkPermissions/requestPermissions/register API on both
+    // platforms; iOS was blocked only because the APNs side (entitlement +
+    // provisioning profile + Firebase's Apple config) wasn't set up yet,
+    // not because this code path itself needed to differ.
     const current = await PushNotifications.checkPermissions()
     let granted = current.receive === 'granted'
     if (!granted && current.receive !== 'denied') {

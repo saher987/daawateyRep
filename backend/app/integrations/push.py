@@ -44,6 +44,19 @@ def send_push_to_user(
         notification=messaging.Notification(title=title, body=body),
         data=data or {},
         tokens=tokens,
+        # FCM's bare `notification` block converts to APNs's `aps.alert`
+        # automatically, but doesn't set a sound — without this, a push
+        # that reaches an iOS device arrives silently (no sound, though it
+        # still shows in Notification Center), unlike Android, which does
+        # play its default sound with no extra config. content_available
+        # marks it a proper alert push (not a silent background one), so
+        # iOS is guaranteed to actually display it even if the app is
+        # backgrounded.
+        apns=messaging.APNSConfig(
+            payload=messaging.APNSPayload(
+                aps=messaging.Aps(sound="default", content_available=True)
+            )
+        ),
     )
     try:
         response = messaging.send_each_for_multicast(message)
