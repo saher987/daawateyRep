@@ -6,6 +6,14 @@
 	<array>
 		<string>Default</string>
 	</array>
+	<!-- "production", not "development" — this build is signed with the
+	     Apple Distribution certificate + "Daawatey App Store" provisioning
+	     profile (see ios-release-build.yml), which only grants the
+	     production APNs environment. The APNs Auth Key uploaded to Firebase
+	     (2026-09-28) is scoped to both Sandbox & Production, so it works
+	     with whichever environment the binary actually declares here. -->
+	<key>com.apple.developer.aps-environment</key>
+	<string>production</string>
 	<!-- The app never uses Game Center — this exists only because App
 	     Store Connect refused "Add for Review" with "You must add the
 	     com.apple.developer.game-center key in Xcode", despite Game
