@@ -109,6 +109,99 @@ function pill(slide, text, x, y, w, h, bg, fg, fs) {
     s.addNotes("هذه نظرة عامة على المسار كله. في الشرائح التالية سنمر على كل خطوة بالتفصيل.");
   }
 
+  // 2a. Login with phone number
+  {
+    const s = pres.addSlide();
+    s.background = { color: TINT };
+    title(s, "تسجيل الدخول: رقم الهاتف فقط", "بدون كلمة مرور وبدون بريد إلكتروني – خطوتان وتدخل");
+    const ph = [{ x: 3.75 }, { x: 0.6 }];
+    // screen 1: phone number
+    let sc = phone(s, ph[0].x, 1.8, 2.85, 5.45);
+    C(s, "مرحباً بك في دعوتي", { x: sc.x, y: sc.y + 0.25, w: sc.w, h: 0.4, fontSize: 13, bold: true, color: NAVY, margin: 0 });
+    await iconCircle(s, "FaPhoneAlt", sc.x + sc.w / 2 - 0.35, sc.y + 0.8, 0.7, GOLD, WHITE);
+    C(s, "التحقق من رقم هاتفك", { x: sc.x, y: sc.y + 1.65, w: sc.w, h: 0.35, fontSize: 11, bold: true, color: INK, margin: 0 });
+    s.addShape("roundRect", { x: sc.x + 0.2, y: sc.y + 2.1, w: sc.w - 0.4, h: 0.45, rectRadius: 0.08, fill: { color: WHITE }, line: { color: GOLD, width: 1.5 } });
+    s.addText("050-1234567", { x: sc.x + 0.2, y: sc.y + 2.1, w: sc.w - 0.4, h: 0.45, fontSize: 13, color: INK, align: "center", valign: "middle", fontFace: FONT, isTextBox: true, margin: 0 });
+    C(s, "سنرسل رمز تحقق مكوناً من 6 أرقام إلى رقمك", { x: sc.x + 0.15, y: sc.y + 2.65, w: sc.w - 0.3, h: 0.5, fontSize: 9, color: MUTED, margin: 0 });
+    pill(s, "إرسال رمز التحقق", sc.x + 0.2, sc.y + 3.3, sc.w - 0.4, 0.45, GOLD, WHITE, 11);
+    // arrow
+    s.addImage({ data: await icon("FaArrowLeft", GOLD), x: 3.47, y: 4.3, w: 0.3, h: 0.3 });
+    // screen 2: code
+    sc = phone(s, ph[1].x, 1.8, 2.85, 5.45);
+    C(s, "أدخل رمز التحقق", { x: sc.x, y: sc.y + 0.25, w: sc.w, h: 0.4, fontSize: 13, bold: true, color: NAVY, margin: 0 });
+    await iconCircle(s, "FaSms", sc.x + sc.w / 2 - 0.35, sc.y + 0.8, 0.7, NAVY, GOLD_L);
+    C(s, "وصلك برسالة SMS", { x: sc.x, y: sc.y + 1.65, w: sc.w, h: 0.35, fontSize: 11, color: MUTED, margin: 0 });
+    const digits = ["4", "8", "2", "7", "1", "5"], bw = 0.32, bg = 0.06;
+    const startX = sc.x + (sc.w - (6 * bw + 5 * bg)) / 2;
+    for (let i = 0; i < 6; i++) {
+      const x = startX + i * (bw + bg);
+      s.addShape("roundRect", { x, y: sc.y + 2.1, w: bw, h: 0.45, rectRadius: 0.06, fill: { color: WHITE }, line: { color: GOLD, width: 1.5 } });
+      s.addText(digits[i], { x, y: sc.y + 2.1, w: bw, h: 0.45, fontSize: 14, bold: true, color: INK, align: "center", valign: "middle", fontFace: FONT, isTextBox: true, margin: 0 });
+    }
+    pill(s, "تأكيد الرمز", sc.x + 0.2, sc.y + 3.3, sc.w - 0.4, 0.45, GOLD, WHITE, 11);
+    C(s, "إعادة إرسال الرمز", { x: sc.x, y: sc.y + 3.9, w: sc.w, h: 0.3, fontSize: 9, color: "1A6FD1", margin: 0 });
+    // right content
+    const rows = [
+      { ic: "FaMobileAlt", h: "1. يكتب رقم هاتفه", d: "ويضغط «إرسال رمز التحقق»" },
+      { ic: "FaSms", h: "2. يدخل الرمز الذي وصله", d: "رمز من 6 أرقام برسالة SMS – وهذا كل شيء" },
+      { ic: "FaLink", h: "دعواته تنتظره تلقائياً", d: "كل دعوة أُرسلت إلى هذا الرقم تظهر فوراً في «دعواتي»" },
+    ];
+    for (let i = 0; i < rows.length; i++) {
+      const y = 1.85 + i * 1.5;
+      card(s, 7.0, y, 5.73, 1.3, WHITE);
+      await iconCircle(s, rows[i].ic, 11.75, y + 0.23, 0.82, i === 2 ? GOLD : NAVY, i === 2 ? WHITE : GOLD_L);
+      T(s, rows[i].h, { x: 7.3, y: y + 0.18, w: 4.3, h: 0.45, fontSize: 19, bold: true, color: NAVY, margin: 0 });
+      T(s, rows[i].d, { x: 7.3, y: y + 0.66, w: 4.3, h: 0.55, fontSize: 14, color: MUTED, margin: 0 });
+    }
+    T(s, "على iPhone يمكن أيضاً الدخول عبر حساب Apple", { x: 7.0, y: 6.45, w: 5.73, h: 0.4, fontSize: 13, color: MUTED, margin: 0 });
+    s.addNotes("أسهل طريقة للدخول: رقم الهاتف فقط. يكتب الرقم، يصله رمز من 6 أرقام برسالة SMS، يدخله – وانتهى. لا حاجة لتذكر كلمة مرور. والأهم: لأن الدخول برقم الهاتف، كل الدعوات التي أُرسلت لهذا الرقم تظهر له تلقائياً. الأرقام في الصورة مثال فقط.");
+  }
+
+  // 2b. Profile
+  {
+    const s = pres.addSlide();
+    s.background = { color: WHITE };
+    title(s, "الملف الشخصي «حسابي»", "مرة واحدة فقط بعد الدخول الأول – ثم يفتح التطبيق كاملاً");
+    const sc = phone(s, 0.9, 1.75, 3.3, 5.55);
+    T(s, "حسابي", { x: sc.x + 0.2, y: sc.y + 0.1, w: sc.w - 0.4, h: 0.38, fontSize: 14, bold: true, color: NAVY, margin: 0 });
+    s.addShape("ellipse", { x: sc.x + sc.w / 2 - 0.35, y: sc.y + 0.5, w: 0.7, h: 0.7, fill: { color: GOLD_L }, line: { color: GOLD_L } });
+    s.addImage({ data: await icon("FaUser", GOLD), x: sc.x + sc.w / 2 - 0.2, y: sc.y + 0.65, w: 0.4, h: 0.4 });
+    const fields = [
+      { l: "الاسم الأول *", v: "أحمد" },
+      { l: "اسم العائلة *", v: "خطيب" },
+      { l: "البلد / المدينة *", v: "الناصرة" },
+      { l: "رقم الهاتف", v: "050-1234567" },
+    ];
+    for (let i = 0; i < fields.length; i++) {
+      const y = sc.y + 1.3 + i * 0.58;
+      T(s, fields[i].l, { x: sc.x + 0.2, y, w: sc.w - 0.4, h: 0.22, fontSize: 9, bold: true, color: MUTED, margin: 0 });
+      s.addShape("roundRect", { x: sc.x + 0.2, y: y + 0.23, w: sc.w - 0.4, h: 0.32, rectRadius: 0.06, fill: { color: WHITE }, line: { color: LINE } });
+      T(s, fields[i].v, { x: sc.x + 0.3, y: y + 0.23, w: sc.w - 0.6, h: 0.32, fontSize: 11, color: INK, valign: "middle", margin: 0 });
+    }
+    const ly = sc.y + 1.3 + 4 * 0.58;
+    T(s, "اللغة المفضلة", { x: sc.x + 0.2, y: ly, w: sc.w - 0.4, h: 0.22, fontSize: 9, bold: true, color: MUTED, margin: 0 });
+    const lw = (sc.w - 0.5) / 3;
+    pill(s, "العربية", sc.x + sc.w - 0.2 - lw, ly + 0.25, lw - 0.05, 0.3, NAVY, WHITE, 9);
+    pill(s, "עברית", sc.x + sc.w - 0.2 - 2 * lw, ly + 0.25, lw - 0.05, 0.3, TINT, INK, 9);
+    pill(s, "English", sc.x + 0.25, ly + 0.25, lw - 0.05, 0.3, TINT, INK, 9);
+    pill(s, "حفظ التغييرات", sc.x + 0.2, ly + 0.68, sc.w - 0.4, 0.42, GOLD, WHITE, 11);
+    // right content
+    const rows = [
+      { ic: "FaIdCard", h: "الاسم الأول، اسم العائلة والمدينة", d: "حقول إلزامية – بعد تعبئتها يمكن استخدام التطبيق" },
+      { ic: "FaPhoneAlt", h: "رقم الهاتف محفوظ تلقائياً", d: "من دخل برقم هاتفه لا يحتاج لكتابته مرة أخرى" },
+      { ic: "FaGlobe", h: "اللغة المفضلة", d: "العربية، العبرية أو الإنجليزية – التطبيق كله يتحول للغة المختارة" },
+      { ic: "FaCamera", h: "صورة شخصية ولقب", d: "اختياري – مثلاً: الحاج، الدكتور، الأستاذ" },
+    ];
+    for (let i = 0; i < rows.length; i++) {
+      const y = 1.8 + i * 1.3;
+      card(s, 4.9, y, 7.83, 1.12, TINT);
+      await iconCircle(s, rows[i].ic, 11.85, y + 0.19, 0.74, GOLD, WHITE);
+      T(s, rows[i].h, { x: 5.2, y: y + 0.14, w: 6.45, h: 0.42, fontSize: 18, bold: true, color: NAVY, margin: 0 });
+      T(s, rows[i].d, { x: 5.2, y: y + 0.58, w: 6.45, h: 0.42, fontSize: 14, color: MUTED, margin: 0 });
+    }
+    s.addNotes("بعد الدخول الأول، يطلب التطبيق إكمال الملف الشخصي: الاسم الأول، اسم العائلة والمدينة. رقم الهاتف موجود مسبقاً لأن الدخول تم به. يمكن أيضاً اختيار لغة التطبيق. الأسماء والأرقام في الصورة مثال فقط.");
+  }
+
   // 3. Request event
   {
     const s = pres.addSlide();
@@ -116,8 +209,8 @@ function pill(slide, text, x, y, w, h, bg, fg, fs) {
     title(s, "الخطوة 1: صاحب المناسبة يطلب فتح مناسبة", "من داخل التطبيق: صفحة «دعواتي» ← زر «طلب فتح مناسبة»");
     // right: how
     const rows = [
-      { ic: "FaMobileAlt", h: "يحمّل التطبيق ويسجّل", d: "برمز SMS على الهاتف، أو بحساب Google / Apple" },
-      { ic: "FaIdCard", h: "يكمل الملف الشخصي", d: "الاسم، البلد، ورقم الهاتف – بنفس الرقم الذي أعطاه للقاعة" },
+      { ic: "FaMobileAlt", h: "يحمّل التطبيق ويدخل برقم هاتفه", d: "رمز SMS يصل إلى الهاتف – بدون كلمة مرور"},
+      { ic: "FaIdCard", h: "يكمل الملف الشخصي", d: "الاسم والمدينة – ويدخل بنفس رقم الهاتف الذي أعطاه للقاعة" },
       { ic: "FaClipboardList", h: "يضغط «طلب فتح مناسبة»", d: "يكتب اسم المناسبة والتفاصيل ورقم هاتف للتواصل، ونحن نتواصل معه" },
     ];
     for (let i = 0; i < rows.length; i++) {
