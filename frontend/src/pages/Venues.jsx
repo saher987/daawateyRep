@@ -139,16 +139,22 @@ export default function Venues() {
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Venue.create(data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["venues"] }); closeDialog(); toast({ title: t.venueAdded }); },
+    // Was silently swallowed — the dialog just sat there with no feedback
+    // on a failed save (e.g. a 403/422 from the backend), which looked
+    // exactly like the button doing nothing at all.
+    onError: (e) => { toast({ title: t.addError, description: e?.message || t.addErrorDesc, variant: "destructive" }); },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Venue.update(id, data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["venues"] }); closeDialog(); toast({ title: t.venueUpdated }); },
+    onError: (e) => { toast({ title: t.addError, description: e?.message || t.addErrorDesc, variant: "destructive" }); },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.Venue.delete(id),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["venues"] }); toast({ title: t.venueDeleted }); },
+    onError: (e) => { toast({ title: t.addError, description: e?.message || t.addErrorDesc, variant: "destructive" }); },
   });
 
   const cities = useMemo(() => [...new Set(venues.map(v => v.city).filter(Boolean))], [venues]);
