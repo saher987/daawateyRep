@@ -296,10 +296,9 @@ function pill(slide, text, x, y, w, h, bg, fg, fs) {
     s.background = { color: WHITE };
     title(s, "الخطوة 4: المدعو يفتح الدعوة ويرد", null);
     const sc = phone(s, 0.9, 1.35, 3.1, 5.85);
-    // invitation image placeholder
-    s.addShape("roundRect", { x: sc.x + 0.12, y: sc.y + 0.12, w: sc.w - 0.24, h: 1.7, rectRadius: 0.12, fill: { color: GOLD_L }, line: { color: GOLD_L } });
-    s.addImage({ data: await icon("FaHeart", GOLD), x: sc.x + sc.w / 2 - 0.25, y: sc.y + 0.4, w: 0.5, h: 0.5 });
-    C(s, "صورة الدعوة", { x: sc.x + 0.12, y: sc.y + 1.05, w: sc.w - 0.24, h: 0.35, fontSize: 11, bold: true, color: NAVY, margin: 0 });
+    // invitation image
+    s.addShape("roundRect", { x: sc.x + 0.12, y: sc.y + 0.12, w: sc.w - 0.24, h: 1.7, rectRadius: 0.12, fill: { color: "0B2228" }, line: { color: "0B2228" } });
+    s.addImage({ path: "wedding-invitation.png", x: sc.x + sc.w / 2 - 0.612, y: sc.y + 0.12, w: 1.224, h: 1.7 });
     T(s, [
       { text: "حفل زفاف أحمد وسارة", options: { bold: true, fontSize: 13, color: NAVY, breakLine: true } },
       { text: "الجمعة · 20:00", options: { breakLine: true } },
