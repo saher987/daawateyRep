@@ -10,7 +10,7 @@ other header — that would let a client impersonate anyone.
 import logging
 import os
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import firebase_admin
 from fastapi import Depends, HTTPException, status
@@ -107,6 +107,18 @@ def get_app_user(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Account disabled",
             )
+        # Throttled to roughly once an hour per user rather than every
+        # single call — this dependency runs on nearly every protected
+        # endpoint, so writing on every request would mean a DB write per
+        # API call for every signed-in user, for a field that only ever
+        # needs "last seen recently" granularity, not per-request precision.
+        now = datetime.now(timezone.utc)
+        last_login = user.last_login
+        if last_login is not None and last_login.tzinfo is None:
+            last_login = last_login.replace(tzinfo=timezone.utc)
+        if last_login is None or now - last_login > timedelta(hours=1):
+            user.last_login = now
+            db.commit()
         return user
 
     invite = (
@@ -130,6 +142,7 @@ def get_app_user(
         email=email,
         role=role,
         phone=invite.phone if invite is not None else None,
+        last_login=datetime.now(timezone.utc),
     )
     db.add(user)
     if invite is not None:
@@ -147,7 +160,13 @@ def get_app_user(
         db.rollback()
         user = db.query(models.User).filter_by(firebase_uid=current.uid).one_or_none()
         if user is None:
-            user = models.User(firebase_uid=current.uid, email=email, role=role, phone=None)
+            user = models.User(
+                firebase_uid=current.uid,
+                email=email,
+                role=role,
+                phone=None,
+                last_login=datetime.now(timezone.utc),
+            )
             db.add(user)
             if invite is not None:
                 # Expired by the rollback above — reassigning transparently
