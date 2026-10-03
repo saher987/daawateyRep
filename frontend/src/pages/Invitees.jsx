@@ -42,7 +42,7 @@ export default function Invitees() {
       r.phone || "",
       rsvpLabel[r.rsvp_status] || r.rsvp_status || "",
       r.rsvp_status === "accepted" ? (r.rsvp_guests_count || r.guests_count || 1) : "",
-      r.rsvp_date ? format(new Date(r.rsvp_date), "yyyy/MM/dd") : "",
+      r.rsvp_date ? format(new Date(r.rsvp_date), "dd/MM/yyyy") : "",
     ]);
     const csvContent = "\uFEFF" + [headers, ...rows]
       .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))
@@ -138,7 +138,7 @@ export default function Invitees() {
                 {r.rsvp_status === "accepted" ? (r.rsvp_guests_count || r.guests_count || 1) : "—"}
               </div>
               <div className="md:col-span-2 text-sm text-muted-foreground">
-                {r.rsvp_date ? format(new Date(r.rsvp_date), "yyyy/MM/dd") : "—"}
+                {r.rsvp_date ? format(new Date(r.rsvp_date), "dd/MM/yyyy") : "—"}
               </div>
             </div>
           ))}

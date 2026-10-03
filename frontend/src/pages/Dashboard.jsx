@@ -156,7 +156,7 @@ export default function Dashboard() {
                         <div className="flex items-center gap-4 text-sm text-muted-foreground">
                           <span>{event.venue_name}</span>
                           {event.date && (
-                            <span>{format(new Date(event.date), "yyyy/MM/dd")}</span>
+                            <span>{format(new Date(event.date), "dd/MM/yyyy")}</span>
                           )}
                         </div>
                       </div>
