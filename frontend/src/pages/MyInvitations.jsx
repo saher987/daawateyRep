@@ -88,7 +88,7 @@ export default function MyInvitations() {
               {event.date && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5">
                   <Clock className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span>{format(new Date(event.date), "yyyy/MM/dd HH:mm")}</span>
+                  <span>{format(new Date(event.date), "dd/MM/yyyy HH:mm")}</span>
                 </div>
               )}
             </div>

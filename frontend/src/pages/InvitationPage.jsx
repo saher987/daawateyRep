@@ -221,7 +221,7 @@ export default function InvitationPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">{isHe ? "תאריך" : "التاريخ"}</p>
-                <p className="font-semibold text-lg">{event.date ? format(new Date(event.date), "yyyy/MM/dd") : "—"}</p>
+                <p className="font-semibold text-lg">{event.date ? format(new Date(event.date), "dd/MM/yyyy") : "—"}</p>
               </div>
             </div>
             <div className="flex items-center gap-4">

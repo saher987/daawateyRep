@@ -147,7 +147,7 @@ export default function EventDetails() {
             <div>
               <p className="text-sm text-muted-foreground">{t.dateLabel}</p>
               <p className="font-semibold">
-                {event.date ? format(new Date(event.date), "yyyy/MM/dd - HH:mm") : t.notSet}
+                {event.date ? format(new Date(event.date), "dd/MM/yyyy - HH:mm") : t.notSet}
               </p>
             </div>
           </div>

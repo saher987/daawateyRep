@@ -138,7 +138,7 @@ function EventControlPanel({ event }) {
       r.phone || "",
       rsvpLabel[r.rsvp_status] || "",
       r.rsvp_status === "accepted" ? (r.rsvp_guests_count || r.guests_count || 1) : "",
-      r.rsvp_date ? format(new Date(r.rsvp_date), "yyyy/MM/dd") : "",
+      r.rsvp_date ? format(new Date(r.rsvp_date), "dd/MM/yyyy") : "",
       r.rsvp_message || r.notes || "",
     ]);
     const csv = "\uFEFF" + [headers, ...rows]
@@ -276,7 +276,7 @@ function EventControlPanel({ event }) {
                     {r.rsvp_status === "accepted" ? (r.rsvp_guests_count || r.guests_count || 1) : "—"}
                   </div>
                   <div className="md:col-span-2 text-xs text-muted-foreground">
-                    {r.rsvp_date ? format(new Date(r.rsvp_date), "yyyy/MM/dd") : "—"}
+                    {r.rsvp_date ? format(new Date(r.rsvp_date), "dd/MM/yyyy") : "—"}
                   </div>
                 </div>
               ))}

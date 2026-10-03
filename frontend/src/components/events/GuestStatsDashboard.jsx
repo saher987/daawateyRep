@@ -51,7 +51,7 @@ function exportPendingToExcel(recipients, eventTitle, t) {
     r.town ? (t[r.town] || r.town) : "",
     r.group_label || "",
     r.open_count > 0 ? t.exportYes : t.exportNo,
-    r.last_opened_at ? format(new Date(r.last_opened_at), "yyyy/MM/dd HH:mm") : "",
+    r.last_opened_at ? format(new Date(r.last_opened_at), "dd/MM/yyyy HH:mm") : "",
   ]);
   const csvContent = [headers, ...rows]
     .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))
