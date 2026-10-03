@@ -72,6 +72,7 @@ function useEventTypeLabels() {
     birthday: t.birthday,
     graduation: t.graduation,
     corporate: t.corporate,
+    appreciation: t.appreciation,
     other: t.other,
   };
 }
