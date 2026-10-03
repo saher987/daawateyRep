@@ -138,6 +138,16 @@ export default function CreateEvent() {
     const data = { ...form };
     if (data.max_guests) data.max_guests = Number(data.max_guests);
     else delete data.max_guests;
+    // <input type="datetime-local">'s value has no timezone info at all —
+    // it's local wall-clock components only ("2026-09-18T15:30"). Sent
+    // as-is, the backend's `date: datetime` field parses it as a *naive*
+    // value, which Postgres then stores into the timezone-aware `date`
+    // column by assuming it's already UTC — silently shifting the actual
+    // moment by this browser's UTC offset. new Date(...) correctly
+    // interprets that same naive string as LOCAL time (per the JS date
+    // parsing spec), so converting through it to an ISO string here is
+    // what actually preserves "the wall-clock time the organizer typed."
+    if (data.date) data.date = new Date(data.date).toISOString();
     if (!isPrivileged) {
       data.owner_phones = [user?.phone];
     } else {

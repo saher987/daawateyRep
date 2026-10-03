@@ -146,13 +146,28 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
     else delete data.max_guests;
     data.owner_phones = owners.map(o => o.phone);
 
-    // Check if date or venue changed
+    // Check if date or venue changed — compare using form.date (still the
+    // raw local datetime-local string here) before it's converted below;
+    // new Date() on a naive "yyyy-MM-ddTHH:mm" string is correctly
+    // interpreted as local time per the JS date parsing spec, same as
+    // new Date(event.date) correctly parses the backend's timezone-aware
+    // ISO string, so both sides land on the same absolute instant for
+    // comparison regardless of this conversion.
     const dateChanged = form.date && event.date &&
       new Date(form.date).getTime() !== new Date(event.date).getTime();
     const venueChanged = form.venue_name !== (event.venue_name || "") ||
       form.venue_address !== (event.venue_address || "");
     const descriptionChanged = form.description !== (event.description || "");
     const shouldNotify = dateChanged || venueChanged || descriptionChanged;
+
+    // Same naive-local-string issue as CreateEvent.jsx's handleSubmit —
+    // sent as-is, the backend stores the typed wall-clock time as if it
+    // were already UTC, shifting the actual moment by this browser's
+    // UTC offset. This is the literal cause of Trello #17: an edited
+    // hour "not applying" was actually applying, just to the wrong
+    // absolute instant, so the next fetch displayed a different (and
+    // therefore seemingly-reverted) hour once reconverted to local time.
+    if (data.date) data.date = new Date(data.date).toISOString();
 
     mutation.mutate({ data, shouldNotify });
   };
