@@ -51,6 +51,7 @@ class EventType(str, enum.Enum):
     birthday = "birthday"
     graduation = "graduation"
     corporate = "corporate"
+    appreciation = "appreciation"
     other = "other"
 
 

@@ -33,6 +33,7 @@ export default function CreateEvent() {
     { value: "birthday", label: t.eventTypeBirthday },
     { value: "graduation", label: t.eventTypeGraduation },
     { value: "corporate", label: t.eventTypeCorporate },
+    { value: "appreciation", label: t.eventTypeAppreciation },
     { value: "other", label: t.eventTypeOther },
   ];
 

@@ -142,6 +142,7 @@ const translations = {
     birthday: "عيد ميلاد",
     graduation: "تخرج",
     corporate: "مؤتمر",
+    appreciation: "حفل شكر وتكريم",
     other: "أخرى",
 
     // MyInvitations
@@ -360,6 +361,7 @@ const translations = {
     eventTypeBirthday: "عيد ميلاد",
     eventTypeGraduation: "تخرج",
     eventTypeCorporate: "مؤتمر",
+    eventTypeAppreciation: "حفل شكر وتكريم",
     eventTypeOther: "أخرى",
 
     // EventDetails page
@@ -749,6 +751,7 @@ const translations = {
     birthday: "יום הולדת",
     graduation: "סיום לימודים",
     corporate: "כנס",
+    appreciation: "ערב הוקרה וכבוד",
     other: "אחר",
 
     // MyInvitations
@@ -967,6 +970,7 @@ const translations = {
     eventTypeBirthday: "יום הולדת",
     eventTypeGraduation: "סיום לימודים",
     eventTypeCorporate: "אירוע עסקי",
+    eventTypeAppreciation: "ערב הוקרה וכבוד",
     eventTypeOther: "אחר",
 
     // EventDetails page
