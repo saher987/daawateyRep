@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { CalendarHeart, MapPin, Clock, Heart, Sparkles, Check, X, ArrowRight, Loader2, CalendarPlus } from "lucide-react";
+import { CalendarHeart, MapPin, Clock, Heart, Sparkles, Check, X, ArrowRight, Loader2, CalendarPlus, Minus, Plus, Users } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import MapButtons from "@/components/shared/MapButtons";
@@ -9,6 +9,10 @@ import PhoneOtpLogin from "@/components/auth/PhoneOtpLogin";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { translations } from "@/lib/i18n";
+
+// Upper bound for the guest-count picker — just a sanity cap so a stray
+// tap-and-hold can't report an absurd number.
+const MAX_RSVP_GUESTS = 20;
 
 function getInvitationLang() {
   try {
@@ -22,6 +26,9 @@ export default function InvitationPage() {
   const queryClient = useQueryClient();
   const [rsvpDone, setRsvpDone] = useState(null); // "accepted" | "declined"
   const [changingRsvp, setChangingRsvp] = useState(false);
+  // null until the guest touches the picker — falls back to their previous
+  // answer, else however many the host invited them with.
+  const [guestsCount, setGuestsCount] = useState(null);
   const [loggedInUser, setLoggedInUser] = useState(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [otpModalOpen, setOtpModalOpen] = useState(false);
@@ -63,7 +70,7 @@ export default function InvitationPage() {
       await base44.functions.invoke('submitRsvp', {
         recipientId: data.recipient.id,
         rsvpStatus: status,
-        guestsCount: data.recipient.guests_count || 1,
+        guestsCount: selectedGuests,
       });
     },
     onSuccess: (_, status) => {
@@ -111,6 +118,7 @@ export default function InvitationPage() {
   };
   const alreadyResponded = (rsvpDone || recipient.rsvp_status === "accepted" || recipient.rsvp_status === "declined") && !changingRsvp;
   const finalStatus = rsvpDone || recipient.rsvp_status;
+  const selectedGuests = guestsCount ?? (recipient.rsvp_guests_count || recipient.guests_count || 1);
 
   const handleOtpVerified = () => {
     setOtpModalOpen(false);
@@ -289,6 +297,12 @@ export default function InvitationPage() {
                       ? (isHe ? "✅ אגיע" : "✅ سأحضر")
                       : (isHe ? "❌ לא אגיע" : "❌ لن أحضر")}
                   </h3>
+                  {finalStatus === "accepted" && (
+                    <p className="text-sm flex items-center justify-center gap-1.5">
+                      <Users className="w-4 h-4 text-muted-foreground" />
+                      {isHe ? "מספר המגיעים:" : "عدد الحضور:"} <span className="font-semibold">{selectedGuests}</span>
+                    </p>
+                  )}
                   <p className="text-sm text-muted-foreground">{isHe ? "תודה על תגובתך" : "شكراً لك على ردك"}</p>
 
                   <Button
@@ -307,6 +321,39 @@ export default function InvitationPage() {
               ) : (
                 <motion.div key="rsvp" initial={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
                   <h3 className="text-xl font-semibold text-center">{isHe ? "האם תגיע?" : "هل ستحضر؟"}</h3>
+                  {/* Guest count — only recorded with "سأحضر"; the backend
+                      zeroes it for a decline (events.py _apply_rsvp). */}
+                  <div className="flex items-center justify-between rounded-xl border border-border px-4 py-3">
+                    <span className="text-sm font-medium flex items-center gap-2">
+                      <Users className="w-4 h-4 text-muted-foreground" />
+                      {isHe ? "מספר המגיעים" : "عدد الحضور"}
+                    </span>
+                    <div className="flex items-center gap-3">
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        className="h-9 w-9 rounded-full"
+                        onClick={() => setGuestsCount(Math.max(1, selectedGuests - 1))}
+                        disabled={selectedGuests <= 1 || rsvpMutation.isPending}
+                        aria-label={isHe ? "הפחת" : "إنقاص"}
+                      >
+                        <Minus className="w-4 h-4" />
+                      </Button>
+                      <span className="w-6 text-center text-lg font-semibold tabular-nums">{selectedGuests}</span>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        className="h-9 w-9 rounded-full"
+                        onClick={() => setGuestsCount(Math.min(MAX_RSVP_GUESTS, selectedGuests + 1))}
+                        disabled={selectedGuests >= MAX_RSVP_GUESTS || rsvpMutation.isPending}
+                        aria-label={isHe ? "הוסף" : "زيادة"}
+                      >
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <Button
                       size="lg"

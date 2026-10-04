@@ -266,7 +266,7 @@ def notify_event_update(
         ) or (recipient.phone or recipient.email or "")
 
         if recipient.phone:
-            text = f"لحظرة {invitee_name}، تم تحديث تفاصيل مناسبة {event.title}. {invitation_link}"
+            text = f"حضرة {invitee_name}، تم تحديث تفاصيل مناسبة {event.title}. {invitation_link}"
             if send_sms(recipient.phone, text, reference=recipient.id):
                 sms_sent += 1
 
@@ -274,7 +274,7 @@ def notify_event_update(
             html = (
                 f'<div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; '
                 f'margin: 0 auto; padding: 20px;">'
-                f"<p>لحظرة {invitee_name}، تم تحديث تفاصيل مناسبة {event.title}.</p>"
+                f"<p>حضرة {invitee_name}، تم تحديث تفاصيل مناسبة {event.title}.</p>"
                 f'<p><a href="{invitation_link}" style="display: inline-block; background: '
                 f'{event.theme_color}; color: white; padding: 12px 24px; text-decoration: none; '
                 f'border-radius: 8px; margin: 16px 0;">عرض التفاصيل المحدثة</a></p>'
@@ -361,7 +361,7 @@ def _resolve_display_name(
     (e.g. "السيد ساهر خنيفس") when one was given. Used to prefer
     external_full_name outright, but AddInviteeDialog fills that for an
     existing user from full_name/first+last *without* the nickname — so
-    the SMS greeting dropped it ("لحظرة ساهر خنيفس"). Now the structured
+    the SMS greeting dropped it ("حضرة ساهر خنيفس"). Now the structured
     nickname/first/last wins whenever a first or last name exists;
     external_full_name is only the fallback, with the nickname prepended
     if it isn't already there."""
@@ -556,9 +556,9 @@ def _send_invitation(
 
     if recipient.phone:
         text = (
-            f"لحظرة {invitee_name}، {event.invitation_greeting} {invitation_link}"
+            f"حضرة {invitee_name}، {event.invitation_greeting} {invitation_link}"
             if event.invitation_greeting
-            else f"لحظرة {invitee_name}، تمت دعوتكم من {invitor_name} لحضور {event.title}. {invitation_link}"
+            else f"حضرة {invitee_name}، تمت دعوتكم من {invitor_name} لحضور {event.title}. {invitation_link}"
         )
         sent = send_sms(recipient.phone, text, reference=recipient.id) or sent
 
@@ -567,7 +567,7 @@ def _send_invitation(
         html = (
             f'<div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; '
             f'margin: 0 auto; padding: 20px;">'
-            f"<p>لحظرة {invitee_name}، {body_text}</p>"
+            f"<p>حضرة {invitee_name}، {body_text}</p>"
             f'<p><a href="{invitation_link}" style="display: inline-block; background: '
             f'{event.theme_color}; color: white; padding: 12px 24px; text-decoration: none; '
             f'border-radius: 8px; margin: 16px 0;">عرض الدعوة</a></p>'

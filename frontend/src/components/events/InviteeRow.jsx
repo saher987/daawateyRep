@@ -92,9 +92,9 @@ export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeti
   const shareViaWhatsapp = () => {
     if (!inviteUrl) return;
     const message = eventGreeting
-      ? `لحظرة ${displayName}، ${eventGreeting} ${inviteUrl}`
+      ? `حضرة ${displayName}، ${eventGreeting} ${inviteUrl}`
       : eventTitle
-      ? `لحظرة ${displayName}، تمت دعوتكم لحضور ${eventTitle}. ${inviteUrl}`
+      ? `حضرة ${displayName}، تمت دعوتكم لحضور ${eventTitle}. ${inviteUrl}`
       : inviteUrl;
     const waUrl = `https://wa.me/${recipient.phone ? toIntlPhone(recipient.phone) : ""}?text=${encodeURIComponent(message)}`;
     window.open(waUrl, "_blank", "noopener,noreferrer");
