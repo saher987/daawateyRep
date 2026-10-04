@@ -206,6 +206,7 @@ class RecipientCreate(BaseModel):
     # GuestStatsDashboard's totalGuests sum with no error anywhere.
     guests_count: int = Field(default=1, ge=1)
     group_label: str | None = None
+    town: str | None = None
     user_id: str | None = None
 
 
@@ -234,11 +235,9 @@ class RecipientOut(BaseModel):
     first_opened_at: datetime | None
     last_opened_at: datetime | None
     created_at: datetime
-    # Not a column on invitation_recipients itself — InvitationRecipient has
-    # no city field of its own, only whichever linked User account (if any)
-    # does. Populated by events.py's list_recipients via a batched lookup,
-    # not automatic from_attributes conversion (there's no `town` attribute
-    # on the ORM row to read).
+    # The linked User account's town when there is one, else the town the
+    # inviter typed in for an unregistered guest (invitation_recipients.town).
+    # Resolved by events.py's _attach_towns via a batched lookup.
     town: str | None = None
 
 

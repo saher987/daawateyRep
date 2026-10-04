@@ -433,6 +433,7 @@ def add_recipient(
         email=body.email,
         guests_count=body.guests_count,
         group_label=body.group_label,
+        town=body.town,
     )
     db.add(recipient)
     db.commit()
@@ -623,9 +624,10 @@ def resend_invitation(
 def _attach_towns(
     recipients: list[models.InvitationRecipient], db: Session
 ) -> list[schemas.RecipientOut]:
-    """RecipientOut.town comes from the linked User account, not a column
-    on invitation_recipients itself — one batched lookup for the whole list
-    instead of a query per row."""
+    """RecipientOut.town prefers the linked User account's town, falling back
+    to the recipient's own town (set by the inviter for an unregistered
+    guest) — one batched lookup for the whole list instead of a query per
+    row."""
     user_ids = {r.user_id for r in recipients if r.user_id}
     towns: dict[str, str | None] = {}
     if user_ids:
@@ -635,7 +637,7 @@ def _attach_towns(
             towns[uid] = town
     return [
         schemas.RecipientOut.model_validate(r).model_copy(
-            update={"town": towns.get(r.user_id)}
+            update={"town": towns.get(r.user_id) or r.town}
         )
         for r in recipients
     ]

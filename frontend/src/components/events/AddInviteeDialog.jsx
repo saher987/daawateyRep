@@ -5,12 +5,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+} from "@/components/ui/select";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Loader2, UserPlus, Search, UserCheck, ChevronRight } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import debounce from "lodash/debounce";
 import { useT } from "@/lib/i18n";
+import { useAuth } from "@/lib/AuthContext";
+import { CITY_KEYS, sortCityKeysForDisplay } from "@/lib/cities";
 import { useBackButton } from "@/hooks/useBackButton";
 
 const emptyDetails = {
@@ -21,6 +26,7 @@ const emptyDetails = {
   email: "",
   guests_count: "1",
   group_label: "",
+  town: "",
 };
 
 export default function AddInviteeDialog({ open, onOpenChange, eventId }) {
@@ -138,6 +144,7 @@ export default function AddInviteeDialog({ open, onOpenChange, eventId }) {
       eventId,
       guestsCount: Number(details.guests_count) || 1,
       groupLabel: details.group_label || null,
+      town: details.town || null,
     });
   };
 
@@ -151,6 +158,8 @@ export default function AddInviteeDialog({ open, onOpenChange, eventId }) {
   };
 
   const t = useT();
+  const { user } = useAuth();
+  const sortedCityKeys = sortCityKeysForDisplay(CITY_KEYS, t, user?.preferred_language || "ar");
   useBackButton({ isOpen: open, onClose: () => handleClose(false) });
   const hasContact = details.phone.trim() || details.email.trim();
   const hasName = details.first_name.trim() || details.last_name.trim();
@@ -281,6 +290,21 @@ export default function AddInviteeDialog({ open, onOpenChange, eventId }) {
                 <Input type="email" placeholder="example@email.com" value={details.email} onChange={set("email")} className="h-11 rounded-xl text-base" dir="ltr" />
               </div>
               <p className="text-xs text-muted-foreground -mt-1">{t.contactRequired}</p>
+              <div className="space-y-2">
+                <Label>{t.town} <span className="text-muted-foreground text-xs font-normal">({t.optional})</span></Label>
+                <Select value={details.town} onValueChange={v => setDetails(prev => ({ ...prev, town: v }))}>
+                  <SelectTrigger className="h-11 rounded-xl text-base">
+                    <SelectValue placeholder={t.town}>
+                      {details.town ? (t[details.town] || details.town) : null}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sortedCityKeys.map(key => (
+                      <SelectItem key={key} value={key}>{t[key] || key}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>{t.groupLabel}</Label>
