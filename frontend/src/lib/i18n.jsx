@@ -535,6 +535,7 @@ const translations = {
     // Cities
     jerusalem: "القدس",
     nazareth: "الناصرة",
+    nof_hagalil: "نوف هجاليل (الناصرة العليا)",
     haifa: "حيفا",
     jaffa: "يافا",
     acre: "عكا",
@@ -1144,6 +1145,7 @@ const translations = {
     // Cities
     jerusalem: "ירושלים",
     nazareth: "נצרת",
+    nof_hagalil: "נוף הגליל",
     haifa: "חיפה",
     jaffa: "יפו",
     acre: "עכו",
