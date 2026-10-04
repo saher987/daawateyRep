@@ -36,7 +36,9 @@ function EditEventDialog({ event, open, onOpenChange }) {
     title: event.title || "",
     venue_name: event.venue_name || "",
     venue_address: event.venue_address || "",
-    date: event.date ? event.date.slice(0, 16) : "",
+    // Shown as local wall-clock time. Was event.date.slice(0, 16), which
+    // pre-filled the UTC hour (3h early in Israel).
+    date: event.date ? format(new Date(event.date), "yyyy-MM-dd'T'HH:mm") : "",
     description: event.description || "",
     host_name: event.host_name || "",
     host_phone: event.host_phone || "",
@@ -87,7 +89,19 @@ function EditEventDialog({ event, open, onOpenChange }) {
             <Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="mt-1" rows={3} />
           </div>
           <div className="flex gap-2 pt-2">
-            <Button className="flex-1" onClick={() => mutation.mutate(form)} disabled={mutation.isPending}>
+            <Button
+              className="flex-1"
+              onClick={() => {
+                // datetime-local has no timezone; sent as-is the backend
+                // stored the typed hour as UTC, so 20:00 came back as 23:00
+                // (same fix as components/events/EditEventDialog.jsx).
+                const data = { ...form };
+                if (data.date) data.date = new Date(data.date).toISOString();
+                else delete data.date;
+                mutation.mutate(data);
+              }}
+              disabled={mutation.isPending}
+            >
               {mutation.isPending ? t.saving : t.saveChanges}
             </Button>
             <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>{t.cancel}</Button>
