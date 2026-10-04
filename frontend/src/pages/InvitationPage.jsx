@@ -140,7 +140,7 @@ export default function InvitationPage() {
   function MoreDetailsButton({ className, variant }) {
     const label = (
       <>
-        {isHe ? "פרטים נוספים" : "مزيد من التفاصيل"}
+        {isHe ? "לצפייה בהזמנה באפליקציית דעוותי" : "عرض دعوتك في تطبيق دعوتي"}
         <ArrowRight className="w-4 h-4" />
       </>
     );
@@ -314,8 +314,13 @@ export default function InvitationPage() {
                   </Button>
 
                   {/* More details CTA */}
-                  <div className="pt-2 border-t border-border">
+                  <div className="pt-2 border-t border-border space-y-2">
                     <MoreDetailsButton className="w-full h-12 rounded-xl gap-2" />
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {isHe
+                        ? "עקבו אחרי פרטי האירוע, התזכורות וכל ההזמנות שלכם במקום אחד. הכניסה עם מספר הטלפון בלבד."
+                        : "تابع تفاصيل المناسبة والتذكيرات وكل دعواتك في مكان واحد. الدخول برقم هاتفك فقط."}
+                    </p>
                   </div>
                 </motion.div>
               ) : (
@@ -384,7 +389,7 @@ export default function InvitationPage() {
                   <div className="border-t border-border pt-3">
                     <MoreDetailsButton
                       variant="ghost"
-                      className="w-full h-11 rounded-xl gap-2 text-muted-foreground"
+                      className="w-full h-11 rounded-xl gap-2 text-primary font-semibold"
                     />
                   </div>
                 </motion.div>
