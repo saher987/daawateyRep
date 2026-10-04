@@ -357,13 +357,22 @@ def _resolve_display_name(
     first_name: str | None,
     last_name: str | None,
 ) -> str | None:
-    """Same fallback chain the original used everywhere it needed a
-    recipient's display name: external_full_name first, else assembled
-    from nickname/first/last."""
+    """A recipient's display name, always led by their nickname/title
+    (e.g. "السيد ساهر خنيفس") when one was given. Used to prefer
+    external_full_name outright, but AddInviteeDialog fills that for an
+    existing user from full_name/first+last *without* the nickname — so
+    the SMS greeting dropped it ("لحظرة ساهر خنيفس"). Now the structured
+    nickname/first/last wins whenever a first or last name exists;
+    external_full_name is only the fallback, with the nickname prepended
+    if it isn't already there."""
+    nickname = (nickname or "").strip() or None
+    if first_name or last_name:
+        return " ".join(p for p in (nickname, first_name, last_name) if p)
     if external_full_name:
+        if nickname and not external_full_name.startswith(nickname):
+            return f"{nickname} {external_full_name}"
         return external_full_name
-    parts = [p for p in (nickname, first_name, last_name) if p]
-    return " ".join(parts) if parts else None
+    return nickname
 
 
 @router.post(

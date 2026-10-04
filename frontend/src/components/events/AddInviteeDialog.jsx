@@ -75,6 +75,9 @@ export default function AddInviteeDialog({ open, onOpenChange, eventId }) {
   const handleSelectUser = (user) => {
     setSelectedUser(user);
     setShowNewForm(false);
+    // Pre-fill with the user's own nickname; the inviter can change it
+    // (e.g. "السيد") — it's what leads the name in the SMS greeting.
+    setDetails(prev => ({ ...prev, nickname: user.nickname || "" }));
   };
 
   const handleAddNew = () => {
@@ -107,10 +110,12 @@ export default function AddInviteeDialog({ open, onOpenChange, eventId }) {
   });
 
   const submitExisting = () => {
+    const nickname = details.nickname.trim() || null;
+    const baseName = [selectedUser.first_name, selectedUser.last_name].filter(Boolean).join(' ') || selectedUser.full_name || "";
     mutation.mutate({
       userId: selectedUser.id,
-      externalFullName: selectedUser.full_name || `${selectedUser.first_name || ""} ${selectedUser.last_name || ""}`.trim(),
-      nickname: selectedUser.nickname || null,
+      externalFullName: [nickname, baseName].filter(Boolean).join(' '),
+      nickname,
       first_name: selectedUser.first_name || null,
       last_name: selectedUser.last_name || null,
       phone: selectedUser.phone || "",
@@ -122,7 +127,7 @@ export default function AddInviteeDialog({ open, onOpenChange, eventId }) {
 
   const submitNew = (e) => {
     e.preventDefault();
-    const fullName = [details.nickname, details.first_name, details.last_name].filter(Boolean).join(' ') || details.phone;
+    const fullName = [details.nickname.trim(), details.first_name, details.last_name].filter(Boolean).join(' ') || details.phone;
     mutation.mutate({
       externalFullName: fullName,
       nickname: details.nickname || null,
@@ -235,6 +240,12 @@ export default function AddInviteeDialog({ open, onOpenChange, eventId }) {
                 <p className="font-medium text-sm">{[selectedUser.nickname, selectedUser.first_name, selectedUser.last_name].filter(Boolean).join(' ') || selectedUser.full_name || selectedUser.phone}</p>
                 {selectedUser.phone && <p className="text-xs text-muted-foreground" dir="ltr">{selectedUser.phone}</p>}
               </div>
+            </div>
+          )}
+          {selectedUser && !showNewForm && (
+            <div className="space-y-2">
+              <Label>{t.nicknameOptional} <span className="text-muted-foreground text-xs font-normal">{t.nicknameOptionalHint}</span></Label>
+              <Input placeholder={t.nicknamePlaceholder2} value={details.nickname} onChange={set("nickname")} className="h-11 rounded-xl text-base" />
             </div>
           )}
 

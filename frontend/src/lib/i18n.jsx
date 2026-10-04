@@ -311,7 +311,7 @@ const translations = {
     addNewInvitee: "إضافة مدعو جديد",
     nicknameOptional: "اللقب",
     nicknameOptionalHint: "(اختياري)",
-    nicknamePlaceholder2: "الحاج، الشيخ، الدكتور...",
+    nicknamePlaceholder2: "السيد، الحاج، الشيخ، الدكتور...",
     firstNameRequired: "الاسم الأول",
     lastNameRequired: "اسم العائلة",
     phoneOptional: "رقم الهاتف",
