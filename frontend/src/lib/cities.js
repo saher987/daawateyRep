@@ -10,6 +10,9 @@
 export const CITY_KEYS = [
   // Galilee / North
   "nazareth",
+  // Explicit exception to the Arab-only rule above: large Arab population
+  // and requested by venues/users in the Nazareth area.
+  "nof_hagalil",
   "shfaram",
   "sakhnin",
   "arrabe",
