@@ -532,6 +532,26 @@ const translations = {
     termsOfUse: "شروط الاستخدام",
     footerRights: "منصة دعوتي — جميع الحقوق محفوظة",
 
+    // Import invitees (admin)
+    importInvitees: "استيراد مدعوين",
+    importInviteesTitle: "استيراد مدعوين من ملف",
+    importInviteesSubtitle: "حمّل ملف Excel وأرسل الدعوات واحدة تلو الأخرى",
+    importSelectEvent: "اختر المناسبة",
+    importFile: "ملف المدعوين",
+    importChooseFile: "اختر ملف ‎.xlsx",
+    importColumnsHint: "الأعمدة: nick name, first name, last name, phone, city, number of guests. المدينة الفارغة تُعتبر الناصرة.",
+    importLoaded: "تم تحميل {count} مدعوين",
+    importReadError: "تعذّرت قراءة الملف",
+    importProgress: "تم الإرسال: {sent} من {total}",
+    importPickEventFirst: "اختر مناسبة قبل إرسال الدعوات",
+    importSendInvitation: "إرسال دعوة",
+    importSending: "جارٍ الإرسال...",
+    importSent: "تم الإرسال",
+    importAlreadyInvited: "هذا المدعو موجود مسبقاً في المناسبة",
+    importNoPhone: "لا يوجد رقم هاتف",
+    importUnknownCity: "مدينة غير معروفة",
+    importSearch: "بحث",
+
     // Cities
     jerusalem: "القدس",
     nazareth: "الناصرة",
@@ -1142,6 +1162,26 @@ const translations = {
     // Footer
     termsOfUse: "תנאי שימוש",
     footerRights: "פלטפורמת דעוותי — כל הזכויות שמורות",
+
+    // Import invitees (admin)
+    importInvitees: "ייבוא מוזמנים",
+    importInviteesTitle: "ייבוא מוזמנים מקובץ",
+    importInviteesSubtitle: "טענו קובץ Excel ושלחו הזמנות אחת אחת",
+    importSelectEvent: "בחרו אירוע",
+    importFile: "קובץ מוזמנים",
+    importChooseFile: "בחרו קובץ ‎.xlsx",
+    importColumnsHint: "עמודות: nick name, first name, last name, phone, city, number of guests. עיר ריקה = נצרת.",
+    importLoaded: "נטענו {count} מוזמנים",
+    importReadError: "לא ניתן לקרוא את הקובץ",
+    importProgress: "נשלחו: {sent} מתוך {total}",
+    importPickEventFirst: "בחרו אירוע לפני שליחת ההזמנות",
+    importSendInvitation: "שליחת הזמנה",
+    importSending: "שולח...",
+    importSent: "נשלח",
+    importAlreadyInvited: "המוזמן כבר קיים באירוע",
+    importNoPhone: "אין מספר טלפון",
+    importUnknownCity: "עיר לא מוכרת",
+    importSearch: "חיפוש",
 
     // Cities
     jerusalem: "ירושלים",

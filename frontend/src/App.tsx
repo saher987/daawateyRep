@@ -24,6 +24,7 @@ const Profile = lazy(() => import('./pages/Profile'))
 const InvitationPage = lazy(() => import('./pages/InvitationPage'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Users = lazy(() => import('./pages/Users'))
+const ImportInvitees = lazy(() => import('./pages/ImportInvitees'))
 const EventRequests = lazy(() => import('./pages/EventRequests'))
 const PlannedWeddings = lazy(() => import('./pages/PlannedWeddings'))
 const Invitees = lazy(() => import('./pages/Invitees'))
@@ -127,6 +128,14 @@ function App() {
                     element={
                       <Suspense fallback={<PageSpinner />}>
                         <Dashboard />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="/import-invitees"
+                    element={
+                      <Suspense fallback={<PageSpinner />}>
+                        <ImportInvitees />
                       </Suspense>
                     }
                   />
