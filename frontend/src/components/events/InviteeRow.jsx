@@ -45,7 +45,7 @@ export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeti
   // wherever this page is actually being served from.
   const inviteUrl = token ? `${window.location.origin}/i/${token}` : null;
   const isLinked = !!recipient.user_id;
-  const displayName = [recipient.nickname, recipient.first_name, recipient.last_name].filter(Boolean).join(' ') || recipient.external_full_name || recipient.full_name || "—";
+  const displayName = [recipient.nickname, recipient.first_name, recipient.last_name, recipient.name_suffix].filter(Boolean).join(' ') || recipient.external_full_name || recipient.full_name || "—";
 
   const deleteMutation = useMutation({
     mutationFn: () => base44.entities.InvitationRecipient.delete(recipient.id),

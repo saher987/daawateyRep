@@ -324,6 +324,9 @@ class InvitationRecipient(Base):
     # CITY_KEYS key, optionally typed in by the inviter for a guest with no
     # account. A linked User's own town takes precedence (_attach_towns).
     town: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Words after the name in the greeting but not part of it, e.g.
+    # "وعائلته" / "وخطيبته" — "حضرة السيد فرنسيس صباح وعائلته".
+    name_suffix: Mapped[str | None] = mapped_column(String, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow

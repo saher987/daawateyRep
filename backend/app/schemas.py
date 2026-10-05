@@ -198,6 +198,7 @@ class RecipientCreate(BaseModel):
     nickname: str | None = None
     first_name: str | None = None
     last_name: str | None = None
+    name_suffix: str | None = None
     phone: str | None = None
     email: str | None = None
     # ge=1: AddInviteeDialog.jsx's guests_count input already enforces
@@ -219,6 +220,7 @@ class RecipientOut(BaseModel):
     nickname: str | None
     first_name: str | None
     last_name: str | None
+    name_suffix: str | None = None
     phone: str | None
     email: str | None
     personal_token: str

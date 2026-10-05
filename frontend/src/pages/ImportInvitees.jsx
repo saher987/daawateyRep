@@ -24,16 +24,17 @@ const DEFAULT_CITY = "nazareth";
 // Header names accepted per column (lower-cased, trimmed), so the import
 // works with the English headers of the template file as well as Arabic/
 // Hebrew ones. A sheet with none of them falls back to column order:
-// nickname, first name, last name, phone, city, number of guests.
+// nickname, first name, last name, suffix, phone, city, number of guests.
 const HEADER_ALIASES = {
   nickname: ["nick name", "nickname", "اللقب", "כינוי", "תואר"],
   first_name: ["first name", "الاسم الأول", "الاسم الاول", "שם פרטי"],
   last_name: ["last name", "اسم العائلة", "العائلة", "שם משפחה"],
+  name_suffix: ["suffix", "name suffix", "إضافة", "اضافة", "תוספת"],
   phone: ["phone", "الهاتف", "رقم الهاتف", "טלפון"],
   city: ["city", "town", "المدينة", "البلد", "עיר", "ישוב"],
   guests_count: ["number of guests", "guests", "العدد", "عدد المدعوين", "מספר אורחים"],
 };
-const FIELD_ORDER = ["nickname", "first_name", "last_name", "phone", "city", "guests_count"];
+const FIELD_ORDER = ["nickname", "first_name", "last_name", "name_suffix", "phone", "city", "guests_count"];
 
 // City cell (Arabic label, Hebrew label, or the key itself) → city key.
 const CITY_LOOKUP = (() => {
@@ -84,6 +85,7 @@ function parseRows(sheet) {
         nickname: clean(get("nickname")),
         first_name: clean(get("first_name")),
         last_name: clean(get("last_name")),
+        name_suffix: clean(get("name_suffix")),
         phone: normalizePhone(get("phone")),
         city: cityText ? CITY_LOOKUP.get(cityText) || null : DEFAULT_CITY,
         cityText,
@@ -164,12 +166,13 @@ export default function ImportInvitees() {
         nickname: row.nickname || undefined,
         first_name: row.first_name || undefined,
         last_name: row.last_name || undefined,
+        name_suffix: row.name_suffix || undefined,
         phone: row.phone,
         town: row.city || undefined,
         guestsCount: row.guests_count,
       });
       setSentIds((s) => new Set(s).add(row.id));
-      toast({ title: t.importSent, description: [row.nickname, row.first_name, row.last_name].filter(Boolean).join(" ") });
+      toast({ title: t.importSent, description: [row.nickname, row.first_name, row.last_name, row.name_suffix].filter(Boolean).join(" ") });
     } catch (err) {
       if (err.status === 409) {
         // Already a recipient of this event — it was sent before.
@@ -234,7 +237,7 @@ export default function ImportInvitees() {
             {visibleRows.map((row) => {
               const sent = isSent(row);
               const sending = sendingIds.has(row.id);
-              const name = [row.nickname, row.first_name, row.last_name].filter(Boolean).join(" ");
+              const name = [row.nickname, row.first_name, row.last_name, row.name_suffix].filter(Boolean).join(" ");
               return (
                 <Card
                   key={row.id}

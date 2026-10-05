@@ -262,7 +262,11 @@ def notify_event_update(
     for recipient in recipients:
         invitation_link = f"{app_url}/i/{recipient.personal_token}"
         invitee_name = _resolve_display_name(
-            recipient.external_full_name, recipient.nickname, recipient.first_name, recipient.last_name
+            recipient.external_full_name,
+            recipient.nickname,
+            recipient.first_name,
+            recipient.last_name,
+            recipient.name_suffix,
         ) or (recipient.phone or recipient.email or "")
 
         if recipient.phone:
@@ -356,6 +360,7 @@ def _resolve_display_name(
     nickname: str | None,
     first_name: str | None,
     last_name: str | None,
+    name_suffix: str | None = None,
 ) -> str | None:
     """A recipient's display name, always led by their nickname/title
     (e.g. "السيد ساهر خنيفس") when one was given. Used to prefer
@@ -364,15 +369,22 @@ def _resolve_display_name(
     the SMS greeting dropped it ("حضرة ساهر خنيفس"). Now the structured
     nickname/first/last wins whenever a first or last name exists;
     external_full_name is only the fallback, with the nickname prepended
-    if it isn't already there."""
+    if it isn't already there. name_suffix ("وعائلته") is appended last
+    either way."""
     nickname = (nickname or "").strip() or None
+    name_suffix = (name_suffix or "").strip() or None
     if first_name or last_name:
-        return " ".join(p for p in (nickname, first_name, last_name) if p)
-    if external_full_name:
+        name = " ".join(p for p in (nickname, first_name, last_name) if p)
+    elif external_full_name:
         if nickname and not external_full_name.startswith(nickname):
-            return f"{nickname} {external_full_name}"
-        return external_full_name
-    return nickname
+            name = f"{nickname} {external_full_name}"
+        else:
+            name = external_full_name
+    else:
+        name = nickname
+    if name and name_suffix:
+        return f"{name} {name_suffix}"
+    return name
 
 
 @router.post(
@@ -429,6 +441,7 @@ def add_recipient(
         nickname=body.nickname,
         first_name=body.first_name,
         last_name=body.last_name,
+        name_suffix=body.name_suffix,
         phone=body.phone,
         email=body.email,
         guests_count=body.guests_count,
@@ -545,7 +558,11 @@ def _send_invitation(
     invitation_link = f"{app_url}/i/{recipient.personal_token}"
 
     invitee_name = _resolve_display_name(
-        recipient.external_full_name, recipient.nickname, recipient.first_name, recipient.last_name
+        recipient.external_full_name,
+        recipient.nickname,
+        recipient.first_name,
+        recipient.last_name,
+        recipient.name_suffix,
     ) or (recipient.phone or recipient.email or "")
     invitor_name = (
         " ".join(p for p in (invited_by.nickname, invited_by.first_name, invited_by.last_name) if p)
@@ -706,6 +723,7 @@ def _to_public_invitation(recipient: models.InvitationRecipient) -> schemas.Publ
             recipient.nickname,
             recipient.first_name,
             recipient.last_name,
+            recipient.name_suffix,
         ),
         rsvp_status=recipient.rsvp_status,
         rsvp_guests_count=recipient.rsvp_guests_count,
