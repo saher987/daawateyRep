@@ -5,8 +5,7 @@ import { useT } from "@/lib/i18n";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  CalendarHeart, MapPin, Calendar, Users, Download,
-  CheckCircle2, XCircle, Clock, Pencil, ChevronDown, ChevronUp
+  CalendarHeart, MapPin, Calendar, Download, Pencil
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +18,7 @@ import { format } from "date-fns";
 import { ar, he } from "date-fns/locale";
 import { useToast } from "@/components/ui/use-toast";
 import { downloadFile } from "@/lib/downloadFile";
+import GuestStatsDashboard from "@/components/events/GuestStatsDashboard";
 
 // rsvpLabel is built dynamically using t inside components
 const rsvpColor = {
@@ -129,14 +129,6 @@ function EventControlPanel({ event }) {
     },
   });
 
-  const stats = {
-    total: recipients.length,
-    accepted: recipients.filter(r => r.rsvp_status === "accepted").length,
-    declined: recipients.filter(r => r.rsvp_status === "declined").length,
-    pending: recipients.filter(r => r.rsvp_status === "pending").length,
-    guests: recipients.filter(r => r.rsvp_status === "accepted").reduce((s, r) => s + (r.rsvp_guests_count || r.guests_count || 1), 0),
-  };
-
   const filtered = recipients.filter(r => {
     const matchFilter = filter === "all" || r.rsvp_status === filter;
     const matchSearch = !search ||
@@ -201,21 +193,8 @@ function EventControlPanel({ event }) {
         </CardContent>
       </Card>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: t.totalInviteesLabel, value: stats.total, icon: Users, color: "text-foreground" },
-          { label: t.confirmedAttendance, value: stats.accepted, icon: CheckCircle2, color: "text-success" },
-          { label: t.declinedAttendance, value: stats.declined, icon: XCircle, color: "text-destructive" },
-          { label: t.awaitingReplyLabel, value: stats.pending, icon: Clock, color: "text-warning" },
-        ].map(({ label, value, icon: Icon, color }) => (
-          <Card key={label} className="p-4 text-center">
-            <Icon className={`w-6 h-6 mx-auto mb-1 ${color}`} />
-            <p className={`text-2xl font-bold font-display ${color}`}>{value}</p>
-            <p className="text-xs text-muted-foreground mt-1">{label}</p>
-          </Card>
-        ))}
-      </div>
+      {/* Same stats dashboard (cards, charts, exports) the admin sees on EventDetails */}
+      <GuestStatsDashboard recipients={recipients} event={event} />
 
       {/* Guest List */}
       <Card>
@@ -277,7 +256,7 @@ function EventControlPanel({ event }) {
               {filtered.map(r => (
                 <div key={r.id} className="grid grid-cols-1 md:grid-cols-12 gap-1 md:gap-3 px-4 py-3 hover:bg-muted/20 transition-colors">
                   <div className="md:col-span-4">
-                    <p className="font-medium text-sm">{[r.nickname, r.first_name, r.last_name].filter(Boolean).join(' ') || r.external_full_name || r.full_name || "—"}</p>
+                    <p className="font-medium text-sm">{[r.nickname, r.first_name, r.last_name, r.name_suffix].filter(Boolean).join(' ') || r.external_full_name || r.full_name || "—"}</p>
                     {r.rsvp_message && <p className="text-xs text-muted-foreground mt-0.5 truncate">{r.rsvp_message}</p>}
                   </div>
                   <div className="md:col-span-3 text-sm text-muted-foreground" dir="ltr">{r.phone || "—"}</div>
