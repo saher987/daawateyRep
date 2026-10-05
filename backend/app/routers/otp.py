@@ -43,6 +43,8 @@ def _prefill_profile(user: models.User, recipient: models.InvitationRecipient) -
             user.first_name = recipient.first_name
         if recipient.last_name:
             user.last_name = recipient.last_name
+    if not user.nickname and recipient.nickname:
+        user.nickname = recipient.nickname
     if not user.town and recipient.town:
         user.town = recipient.town
 
