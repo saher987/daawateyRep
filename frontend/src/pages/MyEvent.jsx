@@ -25,8 +25,8 @@ import { recipientDisplayName } from "@/lib/recipientName";
 const rsvpColor = {
   accepted: "bg-success/10 text-success",
   declined: "bg-destructive/10 text-destructive",
-  pending: "bg-warning/10 text-warning",
-  maybe: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
+  pending: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
+  maybe: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
 };
 
 function EditEventDialog({ event, open, onOpenChange }) {

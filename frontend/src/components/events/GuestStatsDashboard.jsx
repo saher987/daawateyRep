@@ -11,8 +11,8 @@ import { recipientDisplayName } from "@/lib/recipientName";
 const COLORS = {
   accepted: "#22c55e",
   declined: "#ef4444",
-  pending:  "#f59e0b",
-  maybe:    "#0ea5e9",
+  pending:  "#eab308",
+  maybe:    "#f97316",
 };
 
 function exportToExcel(recipients, eventTitle, t) {
@@ -97,9 +97,9 @@ export default function GuestStatsDashboard({ recipients, event }) {
     { label: t.statsTotal,       value: stats.total,       color: "bg-muted/60",       text: "" },
     { label: t.statsAccepted,    value: stats.accepted,    color: "bg-success/10",     text: "text-success" },
     { label: t.statsDeclinedAll, value: stats.declined,    color: "bg-destructive/10", text: "text-destructive" },
-    { label: t.statsMaybe,       value: stats.maybe,       color: "bg-sky-500/10",     text: "text-sky-600 dark:text-sky-400" },
-    { label: t.statsPending,     value: stats.pending,     color: "bg-warning/10",     text: "text-warning" },
-    { label: t.statsTotalGuests, value: stats.totalGuests, color: "bg-primary/10",     text: "text-primary" },
+    { label: t.statsMaybe,       value: stats.maybe,       color: "bg-orange-500/10",  text: "text-orange-600 dark:text-orange-400" },
+    { label: t.statsPending,     value: stats.pending,     color: "bg-yellow-500/10",  text: "text-yellow-600 dark:text-yellow-400" },
+    { label: t.statsTotalGuests, value: stats.totalGuests, color: "bg-violet-500/10",  text: "text-violet-600 dark:text-violet-400" },
   ];
 
   return (

@@ -239,16 +239,16 @@ export default function Dashboard() {
               <p className="text-2xl font-bold font-display text-success">{stats.confirmed}</p>
               <p className="text-sm text-muted-foreground">{t.accepted}</p>
             </div>
-            <div className="text-center p-4 rounded-xl bg-warning/5">
-              <p className="text-2xl font-bold font-display text-warning">{stats.pending}</p>
+            <div className="text-center p-4 rounded-xl bg-yellow-500/5">
+              <p className="text-2xl font-bold font-display text-yellow-600 dark:text-yellow-400">{stats.pending}</p>
               <p className="text-sm text-muted-foreground">{t.pending}</p>
             </div>
             <div className="text-center p-4 rounded-xl bg-destructive/5">
               <p className="text-2xl font-bold font-display text-destructive">{stats.declined}</p>
               <p className="text-sm text-muted-foreground">{t.declined}</p>
             </div>
-            <div className="text-center p-4 rounded-xl bg-sky-500/5">
-              <p className="text-2xl font-bold font-display text-sky-600 dark:text-sky-400">{stats.maybe}</p>
+            <div className="text-center p-4 rounded-xl bg-orange-500/5">
+              <p className="text-2xl font-bold font-display text-orange-600 dark:text-orange-400">{stats.maybe}</p>
               <p className="text-sm text-muted-foreground">{t.statusMaybe}</p>
             </div>
           </div>
