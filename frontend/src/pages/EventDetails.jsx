@@ -214,6 +214,7 @@ export default function EventDetails() {
               { key: "all", label: t.filterAll, count: recipients.length },
               { key: "accepted", label: t.filterAccepted, count: recipients.filter(r => r.rsvp_status === "accepted").length },
               { key: "declined", label: t.filterDeclined, count: recipients.filter(r => r.rsvp_status === "declined").length },
+              { key: "maybe", label: t.filterMaybe, count: recipients.filter(r => r.rsvp_status === "maybe").length },
               { key: "opened_no_response", label: t.filterOpenedNoReply, count: recipients.filter(r => r.last_opened_at && r.rsvp_status === "pending").length },
               { key: "not_opened", label: t.filterNotOpened, count: recipients.filter(r => !r.last_opened_at).length },
             ];
@@ -222,6 +223,7 @@ export default function EventDetails() {
               if (inviteeFilter === "all") return true;
               if (inviteeFilter === "accepted") return r.rsvp_status === "accepted";
               if (inviteeFilter === "declined") return r.rsvp_status === "declined";
+              if (inviteeFilter === "maybe") return r.rsvp_status === "maybe";
               if (inviteeFilter === "opened_no_response") return r.last_opened_at && r.rsvp_status === "pending";
               if (inviteeFilter === "not_opened") return !r.last_opened_at;
               return true;

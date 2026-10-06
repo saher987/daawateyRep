@@ -60,6 +60,7 @@ export default function Dashboard() {
     confirmed: recipients.filter(r => r.rsvp_status === "accepted").length,
     pending: recipients.filter(r => r.rsvp_status === "pending").length,
     declined: recipients.filter(r => r.rsvp_status === "declined").length,
+    maybe: recipients.filter(r => r.rsvp_status === "maybe").length,
   };
 
   const recentEvents = events.slice(0, 5);
@@ -233,7 +234,7 @@ export default function Dashboard() {
       {stats.totalInvitees > 0 && (
         <Card className="p-6">
           <h2 className="text-lg font-semibold mb-4">{t.rsvpSummary}</h2>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="text-center p-4 rounded-xl bg-success/5">
               <p className="text-2xl font-bold font-display text-success">{stats.confirmed}</p>
               <p className="text-sm text-muted-foreground">{t.accepted}</p>
@@ -245,6 +246,10 @@ export default function Dashboard() {
             <div className="text-center p-4 rounded-xl bg-destructive/5">
               <p className="text-2xl font-bold font-display text-destructive">{stats.declined}</p>
               <p className="text-sm text-muted-foreground">{t.declined}</p>
+            </div>
+            <div className="text-center p-4 rounded-xl bg-sky-500/5">
+              <p className="text-2xl font-bold font-display text-sky-600 dark:text-sky-400">{stats.maybe}</p>
+              <p className="text-sm text-muted-foreground">{t.statusMaybe}</p>
             </div>
           </div>
         </Card>

@@ -34,7 +34,7 @@ export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeti
     pending: { label: t.statusPendingRsvp, className: "bg-warning/10 text-warning border-warning/30" },
     accepted: { label: t.statusAccepted, className: "bg-success/10 text-success border-success/30" },
     declined: { label: t.statusDeclined, className: "bg-destructive/10 text-destructive border-destructive/30" },
-    maybe: { label: t.statusMaybe, className: "bg-muted text-muted-foreground" },
+    maybe: { label: t.statusMaybe, className: "bg-sky-500/10 text-sky-600 dark:text-sky-400" },
   };
 
   const token = recipient.personal_token || recipient.invitation_token;

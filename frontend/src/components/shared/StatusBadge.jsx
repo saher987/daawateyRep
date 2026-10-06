@@ -6,7 +6,7 @@ const statusClasses = {
   pending: "bg-warning/10 text-warning border-warning/20",
   accepted: "bg-success/10 text-success border-success/20",
   declined: "bg-destructive/10 text-destructive border-destructive/20",
-  maybe: "bg-muted text-muted-foreground border-border",
+  maybe: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
   draft: "bg-muted text-muted-foreground border-border",
   active: "bg-success/10 text-success border-success/20",
   completed: "bg-primary/10 text-primary border-primary/20",

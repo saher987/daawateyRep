@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { CalendarHeart, MapPin, Clock, Heart, Sparkles, Check, X, ArrowRight, Loader2, CalendarPlus, Minus, Plus, Users } from "lucide-react";
+import { CalendarHeart, MapPin, Clock, Heart, Sparkles, Check, X, ArrowRight, Loader2, CalendarPlus, Minus, Plus, Users, HelpCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import MapButtons from "@/components/shared/MapButtons";
@@ -24,7 +24,7 @@ function getInvitationLang() {
 export default function InvitationPage() {
   const token = window.location.pathname.split("/i/")[1];
   const queryClient = useQueryClient();
-  const [rsvpDone, setRsvpDone] = useState(null); // "accepted" | "declined"
+  const [rsvpDone, setRsvpDone] = useState(null); // "accepted" | "declined" | "maybe"
   const [changingRsvp, setChangingRsvp] = useState(false);
   // null until the guest touches the picker — falls back to their previous
   // answer, else however many the host invited them with.
@@ -116,7 +116,7 @@ export default function InvitationPage() {
     });
     window.open(`https://calendar.google.com/calendar/render?${params.toString()}`, "_blank");
   };
-  const alreadyResponded = (rsvpDone || recipient.rsvp_status === "accepted" || recipient.rsvp_status === "declined") && !changingRsvp;
+  const alreadyResponded = (rsvpDone || ["accepted", "declined", "maybe"].includes(recipient.rsvp_status)) && !changingRsvp;
   const finalStatus = rsvpDone || recipient.rsvp_status;
   const selectedGuests = guestsCount ?? (recipient.rsvp_guests_count || recipient.guests_count || 1);
 
@@ -285,18 +285,27 @@ export default function InvitationPage() {
               {alreadyResponded ? (
                 <motion.div key="done" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center space-y-4">
                   <div className={`w-16 h-16 rounded-full mx-auto flex items-center justify-center ${
-                    finalStatus === "accepted" ? "bg-success/10" : "bg-destructive/10"
+                    finalStatus === "accepted" ? "bg-success/10" : finalStatus === "maybe" ? "bg-warning/10" : "bg-destructive/10"
                   }`}>
                     {finalStatus === "accepted"
                       ? <Check className="w-8 h-8 text-success" />
-                      : <X className="w-8 h-8 text-destructive" />
+                      : finalStatus === "maybe"
+                        ? <HelpCircle className="w-8 h-8 text-warning" />
+                        : <X className="w-8 h-8 text-destructive" />
                     }
                   </div>
                   <h3 className="text-xl font-semibold">
                     {finalStatus === "accepted"
                       ? (isHe ? "✅ אגיע" : "✅ سأحضر")
-                      : (isHe ? "❌ לא אגיע" : "❌ لن أحضر")}
+                      : finalStatus === "maybe"
+                        ? (isHe ? "🤔 עדיין לא בטוח/ה" : "🤔 غير متأكد بعد")
+                        : (isHe ? "❌ לא אגיע" : "❌ لن أحضر")}
                   </h3>
+                  {finalStatus === "maybe" && (
+                    <p className="text-sm text-muted-foreground">
+                      {isHe ? "אפשר לעדכן את התשובה בכל עת מהקישור הזה" : "يمكنك تحديث إجابتك في أي وقت من هذا الرابط"}
+                    </p>
+                  )}
                   {finalStatus === "accepted" && (
                     <p className="text-sm flex items-center justify-center gap-1.5">
                       <Users className="w-4 h-4 text-muted-foreground" />
@@ -384,6 +393,21 @@ export default function InvitationPage() {
                         : <X className="w-6 h-6" />
                       }
                       {isHe ? "לא אגיע" : "لن أحضر"}
+                    </Button>
+                    {/* Undecided — stored as rsvp_status "maybe"; the guest
+                        can come back to this link and change it later. */}
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="col-span-2 h-14 rounded-xl text-base gap-2 border-warning/40 text-warning hover:bg-warning/5"
+                      onClick={() => rsvpMutation.mutate("maybe")}
+                      disabled={rsvpMutation.isPending}
+                    >
+                      {rsvpMutation.isPending && rsvpMutation.variables === "maybe"
+                        ? <Loader2 className="w-5 h-5 animate-spin" />
+                        : <HelpCircle className="w-5 h-5" />
+                      }
+                      {isHe ? "עדיין לא בטוח/ה" : "غير متأكد"}
                     </Button>
                   </div>
                   <div className="border-t border-border pt-3">
