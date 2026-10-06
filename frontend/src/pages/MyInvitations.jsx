@@ -102,7 +102,7 @@ export default function MyInvitations() {
                   <X className="w-3 h-3" /> {t.notAttending}
                 </span>
               ) : recipient.rsvp_status === "maybe" ? (
-                <span className="text-xs font-medium text-sky-600 dark:text-sky-400 bg-sky-500/10 px-2 py-1 rounded-full">
+                <span className="text-xs font-medium text-orange-600 dark:text-orange-400 bg-orange-500/10 px-2 py-1 rounded-full">
                   {t.statusMaybe}
                 </span>
               ) : (

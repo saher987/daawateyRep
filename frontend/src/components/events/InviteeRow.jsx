@@ -31,10 +31,10 @@ export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeti
   const dateLocale = user?.preferred_language === "he" ? he : ar;
 
   const rsvpLabel = {
-    pending: { label: t.statusPendingRsvp, className: "bg-warning/10 text-warning border-warning/30" },
+    pending: { label: t.statusPendingRsvp, className: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/30" },
     accepted: { label: t.statusAccepted, className: "bg-success/10 text-success border-success/30" },
     declined: { label: t.statusDeclined, className: "bg-destructive/10 text-destructive border-destructive/30" },
-    maybe: { label: t.statusMaybe, className: "bg-sky-500/10 text-sky-600 dark:text-sky-400" },
+    maybe: { label: t.statusMaybe, className: "bg-orange-500/10 text-orange-600 dark:text-orange-400" },
   };
 
   const token = recipient.personal_token || recipient.invitation_token;
