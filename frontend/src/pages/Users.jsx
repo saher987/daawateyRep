@@ -98,17 +98,28 @@ export default function Users() {
     return parts[parts.length - 1];
   };
 
+  // Users from /api/users carry nickname/first_name/last_name but no
+  // full_name, so search and the family filter use those fields directly.
+  const displayName = (u) => [u.nickname, u.first_name, u.last_name].filter(Boolean).join(" ") || u.full_name || "";
+  // Phones are stored as 9725XXXXXXXX; compare the last 9 digits so typing
+  // either "0524..." or "9725..." (or any part of it) matches.
+  const phoneDigits = (p) => (p || "").replace(/\D/g, "").replace(/^(972|0)/, "");
+
   const filteredUsers = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const isPhoneQuery = /^[\d+\s-]+$/.test(q);
+    const qDigits = phoneDigits(q);
+    const family = filterFamily.trim().toLowerCase();
     return users.filter(u => {
       const matchesSearch =
-        !search ||
-        u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-        u.email?.toLowerCase().includes(search.toLowerCase()) ||
-        u.phone?.includes(search);
+        !q ||
+        [u.first_name, u.last_name, u.nickname, displayName(u), u.email]
+          .some(v => v && v.toLowerCase().includes(q)) ||
+        (isPhoneQuery && !!qDigits && phoneDigits(u.phone).includes(qDigits));
       const matchesTown = filterTown === "all" || u.town === filterTown;
       const matchesFamily =
-        !filterFamily ||
-        getFamilyName(u.full_name).toLowerCase().includes(filterFamily.toLowerCase());
+        !family ||
+        (u.last_name || getFamilyName(displayName(u))).toLowerCase().includes(family);
       return matchesSearch && matchesTown && matchesFamily;
     });
   }, [users, search, filterTown, filterFamily]);
@@ -234,7 +245,7 @@ export default function Users() {
           <Card key={u.id} className={`p-4 ${u.is_active === false ? "opacity-60" : ""}`}>
             <div className="flex items-start gap-4">
               <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <span className="text-base font-bold text-primary">{u.full_name?.[0] || "U"}</span>
+                <span className="text-base font-bold text-primary">{(u.first_name || u.full_name || "U")[0]}</span>
               </div>
 
               <div className="flex-1 min-w-0 space-y-1">
@@ -401,10 +412,10 @@ export default function Users() {
             <div className="space-y-4 mt-2">
               <div className="flex items-center gap-3 pb-3 border-b">
                 <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <span className="font-bold text-primary">{editingUser.full_name?.[0] || "U"}</span>
+                  <span className="font-bold text-primary">{(editingUser.first_name || editingUser.full_name || "U")[0]}</span>
                 </div>
                 <div>
-                  <p className="font-semibold">{editingUser.full_name}</p>
+                  <p className="font-semibold">{displayName(editingUser)}</p>
                   <p className="text-sm text-muted-foreground">{editingUser.email}</p>
                 </div>
               </div>
