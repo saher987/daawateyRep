@@ -494,6 +494,8 @@ const translations = {
     exportGuestList: "قائمة الضيوف",
     exportPendingBtn: "تصدير المنتظرين",
     exportOpenDate: "تاريخ الفتح",
+    exportContacted: "تم التواصل؟",
+    exportContactAnswer: "جواب المدعو",
     exportPendingSuffix: "قائمة المنتظرين",
 
     // EventRequests page
@@ -1101,6 +1103,8 @@ const translations = {
     exportGuestList: "רשימת אורחים",
     exportPendingBtn: "ייצוא ממתינים",
     exportOpenDate: "תאריך פתיחה",
+    exportContacted: "יצרנו קשר?",
+    exportContactAnswer: "תשובת המוזמן",
     exportPendingSuffix: "ממתינים לאישור",
 
     // EventRequests page

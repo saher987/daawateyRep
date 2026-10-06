@@ -43,7 +43,9 @@ function exportToExcel(recipients, eventTitle, t) {
 
 function exportPendingToExcel(recipients, eventTitle, t) {
   const pending = recipients.filter(r => r.rsvp_status === "pending" || !r.rsvp_status);
-  const headers = [t.colName, t.colPhone, t.email, t.colCity, t.groupLabel, t.exportOpened, t.exportOpenDate];
+  // The last two columns are left empty on purpose: the team calling
+  // pending invitees fills them in by hand and sends the sheet back.
+  const headers = [t.colName, t.colPhone, t.email, t.colCity, t.groupLabel, t.exportOpened, t.exportOpenDate, t.exportContacted, t.exportContactAnswer];
   const rows = pending.map(r => [
     [r.nickname, r.first_name, r.last_name].filter(Boolean).join(" ") || r.external_full_name || r.full_name || "",
     r.phone || "",
@@ -52,6 +54,8 @@ function exportPendingToExcel(recipients, eventTitle, t) {
     r.group_label || "",
     r.open_count > 0 ? t.exportYes : t.exportNo,
     r.last_opened_at ? format(new Date(r.last_opened_at), "yyyy/MM/dd HH:mm") : "",
+    "",
+    "",
   ]);
   const csvContent = [headers, ...rows]
     .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))
