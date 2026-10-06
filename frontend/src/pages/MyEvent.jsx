@@ -19,6 +19,7 @@ import { ar, he } from "date-fns/locale";
 import { useToast } from "@/components/ui/use-toast";
 import { downloadFile } from "@/lib/downloadFile";
 import GuestStatsDashboard from "@/components/events/GuestStatsDashboard";
+import { recipientDisplayName } from "@/lib/recipientName";
 
 // rsvpLabel is built dynamically using t inside components
 const rsvpColor = {
@@ -132,7 +133,7 @@ function EventControlPanel({ event }) {
   const filtered = recipients.filter(r => {
     const matchFilter = filter === "all" || r.rsvp_status === filter;
     const matchSearch = !search ||
-      (r.external_full_name || r.full_name || "").includes(search) ||
+      recipientDisplayName(r).includes(search) ||
       (r.phone || "").includes(search);
     return matchFilter && matchSearch;
   });
@@ -140,7 +141,7 @@ function EventControlPanel({ event }) {
   const exportCSV = () => {
     const headers = [t.name, t.phone, t.status, t.guests, t.replyDate, "ملاحظات"];
     const rows = filtered.map(r => [
-      r.external_full_name || r.full_name || "",
+      recipientDisplayName(r),
       r.phone || "",
       rsvpLabel[r.rsvp_status] || "",
       r.rsvp_status === "accepted" ? (r.rsvp_guests_count || r.guests_count || 1) : "",
@@ -256,7 +257,7 @@ function EventControlPanel({ event }) {
               {filtered.map(r => (
                 <div key={r.id} className="grid grid-cols-1 md:grid-cols-12 gap-1 md:gap-3 px-4 py-3 hover:bg-muted/20 transition-colors">
                   <div className="md:col-span-4">
-                    <p className="font-medium text-sm">{[r.nickname, r.first_name, r.last_name, r.name_suffix].filter(Boolean).join(' ') || r.external_full_name || r.full_name || "—"}</p>
+                    <p className="font-medium text-sm">{recipientDisplayName(r) || "—"}</p>
                     {r.rsvp_message && <p className="text-xs text-muted-foreground mt-0.5 truncate">{r.rsvp_message}</p>}
                   </div>
                   <div className="md:col-span-3 text-sm text-muted-foreground" dir="ltr">{r.phone || "—"}</div>
