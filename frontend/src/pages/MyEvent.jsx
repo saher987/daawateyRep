@@ -26,7 +26,7 @@ const rsvpColor = {
   accepted: "bg-success/10 text-success",
   declined: "bg-destructive/10 text-destructive",
   pending: "bg-warning/10 text-warning",
-  maybe: "bg-muted text-muted-foreground",
+  maybe: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
 };
 
 function EditEventDialog({ event, open, onOpenChange }) {
@@ -220,6 +220,7 @@ function EventControlPanel({ event }) {
                 { key: "all", label: t.all },
                 { key: "accepted", label: t.accepted },
                 { key: "declined", label: t.declined },
+                { key: "maybe", label: t.statusMaybe },
                 { key: "pending", label: t.pending },
               ].map(f => (
                 <button
