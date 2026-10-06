@@ -9,6 +9,7 @@ import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
 import { useT } from "@/lib/i18n";
 import { useAuth } from "@/lib/AuthContext";
+import { recipientDisplayName } from "@/lib/recipientName";
 
 // wa.me wants digits-only international format, no "+". Same normalization
 // rule as the backend's to_international_phone (pulseem.py) so a guest's
@@ -45,7 +46,7 @@ export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeti
   // wherever this page is actually being served from.
   const inviteUrl = token ? `${window.location.origin}/i/${token}` : null;
   const isLinked = !!recipient.user_id;
-  const displayName = [recipient.nickname, recipient.first_name, recipient.last_name, recipient.name_suffix].filter(Boolean).join(' ') || recipient.external_full_name || recipient.full_name || "—";
+  const displayName = recipientDisplayName(recipient) || "—";
 
   const deleteMutation = useMutation({
     mutationFn: () => base44.entities.InvitationRecipient.delete(recipient.id),

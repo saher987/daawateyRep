@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { downloadFile } from "@/lib/downloadFile";
+import { recipientDisplayName } from "@/lib/recipientName";
 
 const COLORS = {
   accepted: "#22c55e",
@@ -15,7 +16,7 @@ const COLORS = {
 
 function exportToExcel(recipients, eventTitle, t) {
   const rows = recipients.map(r => ({
-    [t.colName]: r.external_full_name || r.full_name || "",
+    [t.colName]: recipientDisplayName(r),
     [t.colPhone]: r.phone || "",
     [t.email]: r.email || "",
     [t.colStatus]: r.rsvp_status === "accepted" ? t.statsAccepted : r.rsvp_status === "declined" ? t.statsDeclined : t.statsPending,
@@ -45,7 +46,7 @@ function exportPendingToExcel(recipients, eventTitle, t) {
   const pending = recipients.filter(r => r.rsvp_status === "pending" || !r.rsvp_status);
   const headers = [t.colName, t.colPhone, t.email, t.colCity, t.groupLabel, t.exportOpened, t.exportOpenDate];
   const rows = pending.map(r => [
-    [r.nickname, r.first_name, r.last_name].filter(Boolean).join(" ") || r.external_full_name || r.full_name || "",
+    recipientDisplayName(r),
     r.phone || "",
     r.email || "",
     r.town ? (t[r.town] || r.town) : "",
