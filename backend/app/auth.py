@@ -149,14 +149,6 @@ def get_app_user(
         invite.consumed_at = datetime.now(timezone.utc)
     try:
         db.commit()
-        if user.phone:
-            # Admin-invited account created with a phone: link the
-            # invitations already sent to that number, same as an OTP
-            # login or a Profile phone save would.
-            from app.routers.otp import link_pending_invitations
-
-            link_pending_invitations(db, user, user.phone)
-            db.commit()
     except IntegrityError:
         # Two different collisions land here: (a) two concurrent
         # first-requests from the same brand-new account both tried to

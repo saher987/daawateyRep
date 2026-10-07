@@ -91,17 +91,9 @@ def update_user(
     target = db.get(models.User, user_id)
     if target is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="User not found")
-    fields = body.model_dump(exclude_unset=True)
-    for field, value in fields.items():
+    for field, value in body.model_dump(exclude_unset=True).items():
         setattr(target, field, value)
     db.commit()
-    if fields.get("phone"):
-        # An admin setting/changing a user's phone links the invitations
-        # already sent to that number (same as update_profile does).
-        from app.routers.otp import link_pending_invitations
-
-        link_pending_invitations(db, target, fields["phone"])
-        db.commit()
     db.refresh(target)
     return target
 
