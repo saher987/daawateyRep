@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Copy, Check, Trash2, ExternalLink, UserCheck, UserX, Eye, Clock, Send, Loader2, MessageCircle } from "lucide-react";
+import { Copy, Check, Trash2, ExternalLink, UserCheck, UserX, Eye, Clock, Send, Loader2, MessageCircle, Users } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ar, he } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -123,8 +123,14 @@ export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeti
           >
             {isLinked ? t.statusResponded : t.statusPendingRsvp}
           </Badge>
-          <Badge variant="outline" className={`text-xs px-2 py-0 ${rsvp.className}`}>
+          <Badge variant="outline" className={`text-xs px-2 py-0 gap-1 ${rsvp.className}`}>
             {rsvp.label}
+            {/* How many are coming — only meaningful for an accepted RSVP */}
+            {recipient.rsvp_status === "accepted" && (
+              <span className="inline-flex items-center gap-0.5 font-semibold">
+                · <Users className="w-3 h-3" /> {recipient.rsvp_guests_count || recipient.guests_count || 1}
+              </span>
+            )}
           </Badge>
         </div>
         <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground flex-wrap">
