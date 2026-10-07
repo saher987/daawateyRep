@@ -5,7 +5,7 @@ import { useT } from "@/lib/i18n";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  CalendarHeart, MapPin, Calendar, Download, Pencil
+  CalendarHeart, MapPin, Calendar, Download, Pencil, Users
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -263,11 +263,18 @@ function EventControlPanel({ event }) {
                   </div>
                   <div className="md:col-span-3 text-sm text-muted-foreground" dir="ltr">{r.phone || "—"}</div>
                   <div className="md:col-span-2">
-                    <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${rsvpColor[r.rsvp_status] || ""}`}>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${rsvpColor[r.rsvp_status] || ""}`}>
                       {rsvpLabel[r.rsvp_status] || r.rsvp_status}
+                      {/* Guest count inside the badge on mobile, where the
+                          separate column below has no header to explain it */}
+                      {r.rsvp_status === "accepted" && (
+                        <span className="md:hidden inline-flex items-center gap-0.5 font-semibold">
+                          · <Users className="w-3 h-3" /> {r.rsvp_guests_count || r.guests_count || 1}
+                        </span>
+                      )}
                     </span>
                   </div>
-                  <div className="md:col-span-1 text-sm text-center">
+                  <div className="hidden md:block md:col-span-1 text-sm text-center">
                     {r.rsvp_status === "accepted" ? (r.rsvp_guests_count || r.guests_count || 1) : "—"}
                   </div>
                   <div className="md:col-span-2 text-xs text-muted-foreground">

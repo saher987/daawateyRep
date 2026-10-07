@@ -399,6 +399,9 @@ const translations = {
     statusAccepted: "مؤكد الحضور",
     statusDeclined: "اعتذر",
     statusMaybe: "غير متأكد",
+    // InviteeRow badge: is this guest linked to an app account
+    appLoggedIn: "دخل التطبيق",
+    appNotLoggedIn: "لم يدخل التطبيق",
     statusDraft: "مسودة",
     statusActive: "نشط",
     statusCompleted: "مكتمل",
@@ -1032,6 +1035,8 @@ const translations = {
     statusAccepted: "אישר הגעה",
     statusDeclined: "התנצל",
     statusMaybe: "לא בטוח/ה",
+    appLoggedIn: "נכנס/ה לאפליקציה",
+    appNotLoggedIn: "לא נכנס/ה לאפליקציה",
     statusDraft: "טיוטה",
     statusActive: "פעיל",
     statusCompleted: "הושלם",
