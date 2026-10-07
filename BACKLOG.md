@@ -113,6 +113,24 @@ Deferred work — not urgent, tracked here so it doesn't get lost.
 
 ## Guests / Invitations
 
+- [ ] **Ship the invitation↔account linking fix (code ready, not merged).**
+  Reported 2026-10-07: guest "السيد جريس ارمانيوس" (0533472177) showed
+  "لم يدخل التطبيق" in the guest list although he exists in Users. Cause:
+  `verify_otp` linked only *one* invitation per phone-OTP login
+  (`find_by_phone` returns the first row), so a guest invited to several
+  events had the others left unlinked. Fixed on branch
+  `claude/wonderful-sagan-ctua8n` (commit `101fe65`):
+  - `verify_otp` now calls `link_pending_invitations` (links all rows).
+  - Same linking when an admin sets a user's phone (`PUT /api/users/{id}`)
+    and when an admin-invited account with a phone is first created.
+  - Migration `0013_relink_recipients_by_phone` backfills existing
+    unlinked rows to their *active* account by normalized phone (fills
+    missing links only; tested on a throwaway DB).
+
+  To ship, in this order: merge to `main` → run **Run DB Migration**
+  (prod) → **Deploy** (prod). Afterwards check جريس ارمانيوس shows
+  "دخل التطبيق".
+
 - [ ] **Post-event thank-you message to guests who accepted.** Requested
   2026-10-07, deliberately deferred (started, then reverted before any
   commit). Scope as requested:
