@@ -121,7 +121,7 @@ export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeti
             variant="outline"
             className={`text-xs px-2 py-0 ${isLinked ? "bg-success/10 text-success border-success/30" : "bg-muted text-muted-foreground"}`}
           >
-            {isLinked ? t.statusResponded : t.statusPendingRsvp}
+            {isLinked ? t.appLoggedIn : t.appNotLoggedIn}
           </Badge>
           <Badge variant="outline" className={`text-xs px-2 py-0 gap-1 ${rsvp.className}`}>
             {rsvp.label}
