@@ -43,6 +43,11 @@ export const CITY_KEYS = [
   "reineh",
   "tur_an",
   "kabul",
+  // Golan Heights
+  "majdal_shams",
+  "buqata",
+  "masade",
+  "ein_qiniyye",
   // Triangle (Central Israel)
   "tayibe",
   "qalansawe",
