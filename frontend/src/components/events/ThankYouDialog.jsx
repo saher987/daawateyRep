@@ -3,17 +3,17 @@ import { MessageCircle } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { base44 } from "@/api/base44Client";
 import { useT } from "@/lib/i18n";
 import { useBackButton } from "@/hooks/useBackButton";
-import { fillThankYouMessage, openThankYouInWhatsapp, SUFFIX_SUGGESTIONS } from "@/lib/thankYouMessage";
+import { buildThankYouMessage, openThankYouInWhatsapp } from "@/lib/thankYouMessage";
+import SuffixPicker from "@/components/events/SuffixPicker";
 
 // Opened from the heart button on an accepted invitee. Shows the filled-in
-// thank-you message before it goes out, and lets the sender pick this
-// guest's [suffix] ("وعائلته", "وزوجته"…), which is saved on the recipient
-// so the next thank-you remembers it.
+// thank-you message before it goes out. Invitees added before the suffix
+// field existed can get one here ("وعائلته", "وزوجته"…); it's saved on the
+// recipient, so their [target_string] is complete from then on.
 export default function ThankYouDialog({ open, onOpenChange, recipient, template, eventId }) {
   const t = useT();
   const queryClient = useQueryClient();
@@ -26,7 +26,7 @@ export default function ThankYouDialog({ open, onOpenChange, recipient, template
 
   if (!recipient || !template) return null;
 
-  const usesSuffix = template.includes("[suffix]");
+  const usesSuffix = template.includes("[suffix]") || template.includes("[target_string]");
   const withSuffix = { ...recipient, name_suffix: suffix.trim() };
 
   const send = () => {
@@ -52,36 +52,12 @@ export default function ThankYouDialog({ open, onOpenChange, recipient, template
           <DialogTitle>{t.sendThankYou}</DialogTitle>
         </DialogHeader>
 
-        {usesSuffix && (
-          <div className="space-y-2">
-            <Label>{t.suffixLabel}</Label>
-            <Input
-              value={suffix}
-              onChange={e => setSuffix(e.target.value)}
-              placeholder={t.suffixPlaceholder}
-              className="h-11 rounded-xl text-base"
-            />
-            <div className="flex flex-wrap gap-1.5">
-              {SUFFIX_SUGGESTIONS.map(s => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setSuffix(s)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                    suffix.trim() === s ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"
-                  }`}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        {usesSuffix && <SuffixPicker value={suffix} onChange={setSuffix} />}
 
         <div className="space-y-2">
           <Label>{t.thankYouPreview}</Label>
           <div className="rounded-xl border bg-muted/30 p-3 text-sm whitespace-pre-wrap" dir="auto">
-            {fillThankYouMessage(template, withSuffix)}
+            {buildThankYouMessage(template, withSuffix)}
           </div>
         </div>
 
