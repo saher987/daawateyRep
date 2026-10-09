@@ -212,6 +212,10 @@ class RecipientCreate(BaseModel):
     user_id: str | None = None
 
 
+class RecipientUpdate(BaseModel):
+    name_suffix: str | None = None
+
+
 class RecipientOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -221,6 +225,7 @@ class RecipientOut(BaseModel):
     nickname: str | None
     first_name: str | None
     last_name: str | None
+    name_suffix: str | None = None
     phone: str | None
     email: str | None
     personal_token: str

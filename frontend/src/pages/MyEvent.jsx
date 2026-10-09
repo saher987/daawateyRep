@@ -19,7 +19,7 @@ import { format } from "date-fns";
 import { ar, he } from "date-fns/locale";
 import { useToast } from "@/components/ui/use-toast";
 import { downloadFile } from "@/lib/downloadFile";
-import { openThankYouInWhatsapp } from "@/lib/thankYouMessage";
+import ThankYouDialog from "@/components/events/ThankYouDialog";
 
 // rsvpLabel is built dynamically using t inside components
 const rsvpColor = {
@@ -107,6 +107,7 @@ function EditEventDialog({ event, open, onOpenChange }) {
 
 function EventControlPanel({ event }) {
   const [showEdit, setShowEdit] = useState(false);
+  const [thanksRecipient, setThanksRecipient] = useState(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const t = useT();
@@ -289,7 +290,7 @@ function EventControlPanel({ event }) {
                         variant="ghost"
                         size="icon"
                         className="h-7 w-7"
-                        onClick={() => openThankYouInWhatsapp(event.thank_you_message, r)}
+                        onClick={() => setThanksRecipient(r)}
                         title={t.sendThankYou}
                       >
                         <Heart className="w-4 h-4 text-primary" />
@@ -304,6 +305,13 @@ function EventControlPanel({ event }) {
       </Card>
 
       <EditEventDialog event={event} open={showEdit} onOpenChange={setShowEdit} />
+      <ThankYouDialog
+        open={!!thanksRecipient}
+        onOpenChange={open => { if (!open) setThanksRecipient(null); }}
+        recipient={thanksRecipient}
+        template={event.thank_you_message}
+        eventId={event.id}
+      />
     </div>
   );
 }

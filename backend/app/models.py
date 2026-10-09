@@ -302,6 +302,9 @@ class InvitationRecipient(Base):
     nickname: Mapped[str | None] = mapped_column(String, nullable=True)
     first_name: Mapped[str | None] = mapped_column(String, nullable=True)
     last_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    # e.g. "وعائلته" / "وزوجته" — fills the [suffix] placeholder in the
+    # event's thank-you message (frontend/src/lib/thankYouMessage.js).
+    name_suffix: Mapped[str | None] = mapped_column(String, nullable=True)
     phone: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     email: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     personal_token: Mapped[str] = mapped_column(String, nullable=False, default=_token)

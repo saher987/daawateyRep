@@ -9,10 +9,12 @@ import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
 import { useT } from "@/lib/i18n";
 import { useAuth } from "@/lib/AuthContext";
-import { toIntlPhone, openThankYouInWhatsapp } from "@/lib/thankYouMessage";
+import { toIntlPhone } from "@/lib/thankYouMessage";
+import ThankYouDialog from "@/components/events/ThankYouDialog";
 
 export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeting, thankYouMessage, canResend = false }) {
   const [copied, setCopied] = useState(false);
+  const [showThanks, setShowThanks] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const t = useT();
@@ -152,7 +154,7 @@ export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeti
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => openThankYouInWhatsapp(thankYouMessage, recipient)}
+            onClick={() => setShowThanks(true)}
             title={t.sendThankYou}
           >
             <Heart className="w-4 h-4 text-primary" />
@@ -182,6 +184,13 @@ export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeti
           <Trash2 className="w-4 h-4" />
         </Button>
       </div>
+      <ThankYouDialog
+        open={showThanks}
+        onOpenChange={setShowThanks}
+        recipient={recipient}
+        template={thankYouMessage}
+        eventId={eventId}
+      />
     </div>
   );
 }

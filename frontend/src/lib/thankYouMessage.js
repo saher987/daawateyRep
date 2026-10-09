@@ -2,7 +2,10 @@
 // for one invitee and opens it in WhatsApp. Placeholders are written in
 // square brackets, e.g. "يا [nick_name] [first_name]، شكراً…".
 
-export const THANK_YOU_PLACEHOLDERS = ["nick_name", "first_name", "last_name", "full_name"];
+export const THANK_YOU_PLACEHOLDERS = ["nick_name", "first_name", "last_name", "full_name", "suffix"];
+
+// Quick picks for [suffix] in ThankYouDialog — free text is allowed too.
+export const SUFFIX_SUGGESTIONS = ["وعائلته", "وعائلتها", "وزوجته", "وزوجها", "وخطيبته", "وخطيبها"];
 
 // wa.me wants digits-only international format, no "+". Same normalization
 // rule as the backend's to_international_phone (pulseem.py) so a guest's
@@ -28,6 +31,7 @@ export function fillThankYouMessage(template, recipient) {
     first_name: recipient.first_name || fullName,
     last_name: recipient.last_name || "",
     full_name: fullName,
+    suffix: recipient.name_suffix || "",
   };
   return template
     .replace(/\[(\w+)\]/g, (match, key) => (key in values ? values[key] : match))
