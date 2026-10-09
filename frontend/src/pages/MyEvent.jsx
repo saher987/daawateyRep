@@ -312,7 +312,6 @@ function EventControlPanel({ event }) {
         onOpenChange={open => { if (!open) setThanksRecipient(null); }}
         recipient={thanksRecipient}
         template={event.thank_you_message}
-        eventId={event.id}
       />
     </div>
   );

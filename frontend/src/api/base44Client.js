@@ -408,12 +408,6 @@ const functionHandlers = {
   async notifyEventUpdate({ eventId }) {
     return request(`/api/events/${eventId}/notify-update`, { method: 'POST' })
   },
-  async setRecipientNameSuffix({ recipientId, nameSuffix }) {
-    return request(`/api/invitation-recipients/${recipientId}`, {
-      method: 'PATCH',
-      body: { name_suffix: nameSuffix },
-    })
-  },
   async sendThankYouSms({ recipientId, message }) {
     return request(`/api/invitation-recipients/${recipientId}/send-thanks`, {
       method: 'POST',
