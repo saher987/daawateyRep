@@ -116,6 +116,7 @@ class EventCreate(BaseModel):
     description_ar: str | None = None
     invitation_greeting: str | None = None
     invitation_greeting_he: str | None = None
+    thank_you_message: str | None = None
     cover_image_url: str | None = None
     invitation_image_url: str | None = None
     groom_name: str | None = None
@@ -142,6 +143,7 @@ class EventUpdate(BaseModel):
     description_ar: str | None = None
     invitation_greeting: str | None = None
     invitation_greeting_he: str | None = None
+    thank_you_message: str | None = None
     cover_image_url: str | None = None
     invitation_image_url: str | None = None
     groom_name: str | None = None
@@ -171,6 +173,7 @@ class EventOut(BaseModel):
     description_ar: str | None
     invitation_greeting: str | None
     invitation_greeting_he: str | None
+    thank_you_message: str | None
     cover_image_url: str | None
     invitation_image_url: str | None
     groom_name: str | None
@@ -209,6 +212,10 @@ class RecipientCreate(BaseModel):
     group_label: str | None = None
     town: str | None = None
     user_id: str | None = None
+
+
+class RecipientUpdate(BaseModel):
+    name_suffix: str | None = None
 
 
 class RecipientOut(BaseModel):

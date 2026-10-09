@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="fonts.css">
+<style>
+  :root {
+    --bg1: #0f2f36; --bg2: #08191e;
+    --gold: #c9a24a; --gold-d: #8f6a22; --gold-l: #ecd593;
+    --ivory: #fbf6ea; --ink: #13343b; --muted: #6b5a3a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1080px; height: 1500px; }
+  body {
+    background: radial-gradient(ellipse at 50% 35%, var(--bg1), var(--bg2) 75%);
+    font-family: "Amiri", serif; color: var(--ink);
+    position: relative; overflow: hidden;
+  }
+  svg.layer { position: absolute; inset: 0; }
+  .content {
+    position: absolute; left: 150px; right: 150px; top: 315px; bottom: 120px;
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+  }
+  .opening { font-size: 30px; color: var(--gold-d); }
+  .host { font-size: 34px; font-weight: 700; margin-top: 20px; line-height: 1.45; }
+  .host span { display: block; font-weight: 400; font-size: 32px; color: var(--muted); }
+  .names {
+    font-family: "Aref Ruqaa", serif; font-weight: 700;
+    margin-top: 18px; line-height: 1.05;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .name {
+    font-size: 118px;
+    background: linear-gradient(180deg, #a77d2c 0%, #e2c26f 45%, #8f6a22 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    padding: 0 20px;
+  }
+  .and {
+    font-size: 56px; color: var(--ink); margin: -8px 0 -4px;
+    display: flex; align-items: center; gap: 22px;
+  }
+  .and::before, .and::after {
+    content: ""; width: 120px; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold));
+  }
+  .and::after { transform: scaleX(-1); }
+  .bride-parent { font-size: 30px; color: var(--muted); margin-top: 6px; }
+  .date {
+    margin-top: 30px; display: flex; align-items: center; justify-content: center;
+    border-top: 2px solid var(--gold); border-bottom: 2px solid var(--gold);
+    padding: 14px 0; width: 640px;
+  }
+  .date > div { flex: 1; font-size: 32px; font-weight: 700; }
+  .date .day { font-family: "Reem Kufi", sans-serif; font-weight: 500; font-size: 84px; line-height: 1; color: var(--ink); }
+  .date .mid { border-left: 2px solid var(--gold); border-right: 2px solid var(--gold); padding: 4px 0; }
+  .date .mid small { display: block; font-size: 28px; font-weight: 400; color: var(--muted); margin-top: 4px; }
+  .venue { margin-top: 24px; font-size: 36px; font-weight: 700; display: flex; align-items: center; gap: 12px; }
+  .venue svg { width: 30px; height: 30px; }
+  .city { font-size: 28px; color: var(--muted); }
+  .orn { margin-top: auto; width: 380px; height: 30px; }
+  .closing { margin-top: 6px; font-size: 34px; color: var(--gold-d); font-weight: 700; }
+  .blessing { font-family: "Aref Ruqaa", serif; font-size: 34px; color: var(--ink); margin-top: 4px; }
+</style>
+</head>
+<body>
+<svg class="layer" viewBox="0 0 1080 1500" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- 8-point star tessellation -->
+    <pattern id="stars" width="90" height="90" patternUnits="userSpaceOnUse">
+      <g fill="none" stroke="#c9a24a" stroke-opacity="0.13" stroke-width="1.2" transform="translate(45 45)">
+        <rect x="-18" y="-18" width="36" height="36"/>
+        <rect x="-18" y="-18" width="36" height="36" transform="rotate(45)"/>
+        <circle r="6"/>
+      </g>
+      <path d="M0 0 L22 0 M90 0 L68 0 M0 90 L22 90 M90 90 L68 90 M0 0 L0 22 M0 90 L0 68 M90 0 L90 22 M90 90 L90 68"
+            stroke="#c9a24a" stroke-opacity="0.08" stroke-width="1"/>
+    </pattern>
+    <linearGradient id="goldG" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8f6a22"/><stop offset=".45" stop-color="#ecd593"/>
+      <stop offset=".7" stop-color="#c9a24a"/><stop offset="1" stop-color="#8f6a22"/>
+    </linearGradient>
+    <radialGradient id="ivoryG" cx=".5" cy=".4" r=".75">
+      <stop offset="0" stop-color="#fffdf6"/><stop offset="1" stop-color="#f3ead3"/>
+    </radialGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#000" flood-opacity=".45"/>
+    </filter>
+    <!-- one floral corner (top-left orientation) -->
+    <g id="corner" fill="none" stroke="url(#goldG)" stroke-width="2.4" stroke-linecap="round">
+      <path d="M8 150 C8 70 70 8 150 8"/>
+      <path d="M24 150 C24 82 82 24 150 24" stroke-width="1.2"/>
+      <path d="M40 120 C60 90 90 60 120 40"/>
+      <path d="M58 98 C50 80 54 64 70 58 C74 74 70 88 58 98 Z" fill="url(#goldG)" stroke="none"/>
+      <path d="M98 58 C80 50 64 54 58 70 C74 74 88 70 98 58 Z" fill="url(#goldG)" stroke="none"/>
+      <path d="M120 40 C130 30 146 30 156 38 C146 46 130 48 120 40 Z" fill="url(#goldG)" stroke="none"/>
+      <path d="M40 120 C30 130 30 146 38 156 C46 146 48 130 40 120 Z" fill="url(#goldG)" stroke="none"/>
+      <circle cx="44" cy="44" r="7" fill="url(#goldG)" stroke="none"/>
+      <circle cx="44" cy="44" r="14" stroke-width="1.2"/>
+    </g>
+    <g id="star8">
+      <rect x="-20" y="-20" width="40" height="40" fill="url(#goldG)"/>
+      <rect x="-20" y="-20" width="40" height="40" fill="url(#goldG)" transform="rotate(45)"/>
+      <circle r="9" fill="#fbf6ea"/><circle r="4.5" fill="#c9a24a"/>
+    </g>
+  </defs>
+
+  <rect width="1080" height="1500" fill="url(#stars)"/>
+
+  <!-- outer frame -->
+  <rect x="30" y="30" width="1020" height="1440" fill="none" stroke="url(#goldG)" stroke-width="3"/>
+  <rect x="44" y="44" width="992" height="1412" fill="none" stroke="#c9a24a" stroke-opacity=".55" stroke-width="1"/>
+  <use href="#corner" x="38" y="38"/>
+  <use href="#corner" transform="translate(1042 38) scale(-1 1)"/>
+  <use href="#corner" transform="translate(38 1462) scale(1 -1)"/>
+  <use href="#corner" transform="translate(1042 1462) scale(-1 -1)"/>
+
+  <!-- hanging lanterns -->
+  <g stroke="#c9a24a" stroke-width="1.5" fill="url(#goldG)">
+    <line x1="232" y1="44" x2="232" y2="150"/>
+    <path d="M220 150 h24 l8 14 -8 46 h-24 l-8 -46z"/>
+    <path d="M226 210 h12 l-6 16z"/>
+    <line x1="848" y1="44" x2="848" y2="150"/>
+    <path d="M836 150 h24 l8 14 -8 46 h-24 l-8 -46z"/>
+    <path d="M842 210 h12 l-6 16z"/>
+  </g>
+  <g fill="#fbf6ea" fill-opacity=".85">
+    <path d="M226 166 h12 l3 8 -3 28 h-12 l-3 -28z"/>
+    <path d="M842 166 h12 l3 8 -3 28 h-12 l-3 -28z"/>
+  </g>
+
+  <!-- arch panel (pointed arch) -->
+  <path id="arch" filter="url(#shadow)"
+        d="M120 1400 V420 C120 300 300 230 540 120 C780 230 960 300 960 420 V1400 Z"
+        fill="url(#ivoryG)"/>
+  <path d="M120 1400 V420 C120 300 300 230 540 120 C780 230 960 300 960 420 V1400 Z"
+        fill="none" stroke="url(#goldG)" stroke-width="4"/>
+  <path d="M138 1382 V424 C138 312 312 246 540 141 C768 246 942 312 942 424 V1382 Z"
+        fill="none" stroke="#c9a24a" stroke-width="1.3"/>
+  <!-- small scallops along the arch inner line -->
+  <g fill="none" stroke="#c9a24a" stroke-opacity=".5" stroke-width="1.2">
+    <path d="M300 300 q20 -30 40 -10 M380 262 q20 -30 40 -10 M460 224 q20 -30 40 -10"/>
+    <path d="M780 300 q-20 -30 -40 -10 M700 262 q-20 -30 -40 -10 M620 224 q-20 -30 -40 -10"/>
+  </g>
+
+  <use href="#star8" x="540" y="206"/>
+
+</svg>
+
+<div class="content">
+  <div class="opening">بقلوبٍ يملؤها الفرح والسرور</div>
+  <div class="host">يتشرّف السيد سمير أحمد خطيب وعائلته
+    <span>بدعوتكم لمشاركتهم فرحة زفاف نجلهم</span>
+  </div>
+  <div class="names">
+    <div class="name">أحمد</div>
+    <div class="and"><span style="position:relative;top:-16px">و</span></div>
+    <div class="name">سارة</div>
+  </div>
+  <div class="bride-parent">كريمة السيد خالد محمود حسن</div>
+
+  <div class="date">
+    <div>الجمعة</div>
+    <div class="mid"><div class="day">16</div><small>أكتوبر 2026</small></div>
+    <div>الساعة الثامنة<br>مساءً</div>
+  </div>
+
+  <div class="venue">
+    <svg viewBox="0 0 24 24"><path fill="#8f6a22" d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>
+    قاعة اللؤلؤة للأفراح
+  </div>
+  <div class="city">الناصرة</div>
+
+  <svg class="orn" viewBox="-190 -15 380 30"><g fill="none" stroke="#b08a3a" stroke-width="2"><path d="M-170 0 H-40 M40 0 H170"/></g><path d="M-40 0 C-30 -14 -12 -14 0 0 C12 -14 30 -14 40 0 C30 14 12 14 0 0 C-12 14 -30 14 -40 0 Z" fill="#c9a24a"/><circle cx="-180" r="5" fill="#c9a24a"/><circle cx="180" r="5" fill="#c9a24a"/></svg>
+  <div class="closing">بحضوركم تكتمل فرحتنا</div>
+  <div class="blessing">دام الله أفراحكم</div>
+</div>
+</body>
+</html>

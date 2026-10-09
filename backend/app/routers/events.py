@@ -621,6 +621,25 @@ def delete_recipient(
     db.commit()
 
 
+@router.patch("/invitation-recipients/{recipient_id}", response_model=schemas.RecipientOut)
+def update_recipient(
+    recipient_id: str,
+    body: schemas.RecipientUpdate,
+    user: models.User = Depends(get_app_user),
+    db: Session = Depends(get_db),
+) -> models.InvitationRecipient:
+    """Saves the [suffix] chosen in the thank-you dialog (ThankYouDialog.jsx)
+    so the next thank-you to this guest remembers it. Same access rule as
+    delete_recipient above."""
+    recipient = _get_recipient_or_404(db, recipient_id)
+    _require_event_access(recipient.event, user)
+    if "name_suffix" in body.model_fields_set:
+        recipient.name_suffix = (body.name_suffix or "").strip() or None
+    db.commit()
+    db.refresh(recipient)
+    return recipient
+
+
 @router.post("/invitation-recipients/{recipient_id}/resend")
 def resend_invitation(
     recipient_id: str,
