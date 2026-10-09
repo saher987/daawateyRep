@@ -642,14 +642,14 @@ def resend_invitation(
 def send_thanks(
     recipient_id: str,
     body: schemas.ThankYouSend,
-    user: models.User = Depends(get_app_user),
+    _: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
     db: Session = Depends(get_db),
 ) -> dict:
     """ThankYouDialog.jsx's send button: SMS the event's thank-you message,
-    already filled in for this guest, to an invitee who accepted. Same
-    access rule as resend_invitation above."""
+    already filled in for this guest, to an invitee who accepted. Admin/
+    manager only — event owners don't get the button (EventDetails.jsx
+    passes canResend={isPrivileged}), and each send is a paid SMS."""
     recipient = _get_recipient_or_404(db, recipient_id)
-    _require_event_access(recipient.event, user)
     if recipient.rsvp_status != models.RsvpStatus.accepted:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Thank-you is only sent to guests who accepted")
     if not recipient.phone:
