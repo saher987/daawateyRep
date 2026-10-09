@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { CalendarHeart, MapPin, Clock, Heart, Sparkles, Check, X, ArrowRight, Loader2, CalendarPlus } from "lucide-react";
+import { CalendarHeart, MapPin, Clock, Heart, Sparkles, Check, X, ArrowRight, Loader2, CalendarPlus, Minus, Plus, Users, HelpCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import MapButtons from "@/components/shared/MapButtons";
@@ -9,6 +9,10 @@ import PhoneOtpLogin from "@/components/auth/PhoneOtpLogin";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { translations } from "@/lib/i18n";
+
+// Upper bound for the guest-count picker — just a sanity cap so a stray
+// tap-and-hold can't report an absurd number.
+const MAX_RSVP_GUESTS = 20;
 
 function getInvitationLang() {
   try {
@@ -20,8 +24,11 @@ function getInvitationLang() {
 export default function InvitationPage() {
   const token = window.location.pathname.split("/i/")[1];
   const queryClient = useQueryClient();
-  const [rsvpDone, setRsvpDone] = useState(null); // "accepted" | "declined"
+  const [rsvpDone, setRsvpDone] = useState(null); // "accepted" | "declined" | "maybe"
   const [changingRsvp, setChangingRsvp] = useState(false);
+  // null until the guest touches the picker — falls back to their previous
+  // answer, else however many the host invited them with.
+  const [guestsCount, setGuestsCount] = useState(null);
   const [loggedInUser, setLoggedInUser] = useState(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [otpModalOpen, setOtpModalOpen] = useState(false);
@@ -63,7 +70,7 @@ export default function InvitationPage() {
       await base44.functions.invoke('submitRsvp', {
         recipientId: data.recipient.id,
         rsvpStatus: status,
-        guestsCount: data.recipient.guests_count || 1,
+        guestsCount: selectedGuests,
       });
     },
     onSuccess: (_, status) => {
@@ -109,8 +116,9 @@ export default function InvitationPage() {
     });
     window.open(`https://calendar.google.com/calendar/render?${params.toString()}`, "_blank");
   };
-  const alreadyResponded = (rsvpDone || recipient.rsvp_status === "accepted" || recipient.rsvp_status === "declined") && !changingRsvp;
+  const alreadyResponded = (rsvpDone || ["accepted", "declined", "maybe"].includes(recipient.rsvp_status)) && !changingRsvp;
   const finalStatus = rsvpDone || recipient.rsvp_status;
+  const selectedGuests = guestsCount ?? (recipient.rsvp_guests_count || recipient.guests_count || 1);
 
   const handleOtpVerified = () => {
     setOtpModalOpen(false);
@@ -132,7 +140,7 @@ export default function InvitationPage() {
   function MoreDetailsButton({ className, variant }) {
     const label = (
       <>
-        {isHe ? "פרטים נוספים" : "مزيد من التفاصيل"}
+        {isHe ? "לצפייה בהזמנה באפליקציית דעוותי" : "عرض دعوتك في تطبيق دعوتي"}
         <ArrowRight className="w-4 h-4" />
       </>
     );
@@ -221,7 +229,7 @@ export default function InvitationPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">{isHe ? "תאריך" : "التاريخ"}</p>
-                <p className="font-semibold text-lg">{event.date ? format(new Date(event.date), "yyyy/MM/dd") : "—"}</p>
+                <p className="font-semibold text-lg">{event.date ? format(new Date(event.date), "dd/MM/yyyy") : "—"}</p>
               </div>
             </div>
             <div className="flex items-center gap-4">
@@ -277,18 +285,33 @@ export default function InvitationPage() {
               {alreadyResponded ? (
                 <motion.div key="done" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center space-y-4">
                   <div className={`w-16 h-16 rounded-full mx-auto flex items-center justify-center ${
-                    finalStatus === "accepted" ? "bg-success/10" : "bg-destructive/10"
+                    finalStatus === "accepted" ? "bg-success/10" : finalStatus === "maybe" ? "bg-warning/10" : "bg-destructive/10"
                   }`}>
                     {finalStatus === "accepted"
                       ? <Check className="w-8 h-8 text-success" />
-                      : <X className="w-8 h-8 text-destructive" />
+                      : finalStatus === "maybe"
+                        ? <HelpCircle className="w-8 h-8 text-warning" />
+                        : <X className="w-8 h-8 text-destructive" />
                     }
                   </div>
                   <h3 className="text-xl font-semibold">
                     {finalStatus === "accepted"
                       ? (isHe ? "✅ אגיע" : "✅ سأحضر")
-                      : (isHe ? "❌ לא אגיע" : "❌ لن أحضر")}
+                      : finalStatus === "maybe"
+                        ? (isHe ? "🤔 עדיין לא בטוח/ה" : "🤔 غير متأكد بعد")
+                        : (isHe ? "❌ לא אגיע" : "❌ لن أحضر")}
                   </h3>
+                  {finalStatus === "maybe" && (
+                    <p className="text-sm text-muted-foreground">
+                      {isHe ? "אפשר לעדכן את התשובה בכל עת מהקישור הזה" : "يمكنك تحديث إجابتك في أي وقت من هذا الرابط"}
+                    </p>
+                  )}
+                  {finalStatus === "accepted" && (
+                    <p className="text-sm flex items-center justify-center gap-1.5">
+                      <Users className="w-4 h-4 text-muted-foreground" />
+                      {isHe ? "מספר המגיעים:" : "عدد الحضور:"} <span className="font-semibold">{selectedGuests}</span>
+                    </p>
+                  )}
                   <p className="text-sm text-muted-foreground">{isHe ? "תודה על תגובתך" : "شكراً لك على ردك"}</p>
 
                   <Button
@@ -300,13 +323,51 @@ export default function InvitationPage() {
                   </Button>
 
                   {/* More details CTA */}
-                  <div className="pt-2 border-t border-border">
+                  <div className="pt-2 border-t border-border space-y-2">
                     <MoreDetailsButton className="w-full h-12 rounded-xl gap-2" />
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {isHe
+                        ? "עקבו אחרי פרטי האירוע, התזכורות וכל ההזמנות שלכם במקום אחד. הכניסה עם מספר הטלפון בלבד."
+                        : "تابع تفاصيل المناسبة والتذكيرات وكل دعواتك في مكان واحد. الدخول برقم هاتفك فقط."}
+                    </p>
                   </div>
                 </motion.div>
               ) : (
                 <motion.div key="rsvp" initial={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
                   <h3 className="text-xl font-semibold text-center">{isHe ? "האם תגיע?" : "هل ستحضر؟"}</h3>
+                  {/* Guest count — only recorded with "سأحضر"; the backend
+                      zeroes it for a decline (events.py _apply_rsvp). */}
+                  <div className="flex items-center justify-between rounded-xl border border-border px-4 py-3">
+                    <span className="text-sm font-medium flex items-center gap-2">
+                      <Users className="w-4 h-4 text-muted-foreground" />
+                      {isHe ? "מספר המגיעים" : "عدد الحضور"}
+                    </span>
+                    <div className="flex items-center gap-3">
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        className="h-9 w-9 rounded-full"
+                        onClick={() => setGuestsCount(Math.max(1, selectedGuests - 1))}
+                        disabled={selectedGuests <= 1 || rsvpMutation.isPending}
+                        aria-label={isHe ? "הפחת" : "إنقاص"}
+                      >
+                        <Minus className="w-4 h-4" />
+                      </Button>
+                      <span className="w-6 text-center text-lg font-semibold tabular-nums">{selectedGuests}</span>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        className="h-9 w-9 rounded-full"
+                        onClick={() => setGuestsCount(Math.min(MAX_RSVP_GUESTS, selectedGuests + 1))}
+                        disabled={selectedGuests >= MAX_RSVP_GUESTS || rsvpMutation.isPending}
+                        aria-label={isHe ? "הוסף" : "زيادة"}
+                      >
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <Button
                       size="lg"
@@ -333,11 +394,26 @@ export default function InvitationPage() {
                       }
                       {isHe ? "לא אגיע" : "لن أحضر"}
                     </Button>
+                    {/* Undecided — stored as rsvp_status "maybe"; the guest
+                        can come back to this link and change it later. */}
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="col-span-2 h-14 rounded-xl text-base gap-2 border-warning/40 text-warning hover:bg-warning/5"
+                      onClick={() => rsvpMutation.mutate("maybe")}
+                      disabled={rsvpMutation.isPending}
+                    >
+                      {rsvpMutation.isPending && rsvpMutation.variables === "maybe"
+                        ? <Loader2 className="w-5 h-5 animate-spin" />
+                        : <HelpCircle className="w-5 h-5" />
+                      }
+                      {isHe ? "עדיין לא בטוח/ה" : "غير متأكد"}
+                    </Button>
                   </div>
                   <div className="border-t border-border pt-3">
                     <MoreDetailsButton
                       variant="ghost"
-                      className="w-full h-11 rounded-xl gap-2 text-muted-foreground"
+                      className="w-full h-11 rounded-xl gap-2 text-primary font-semibold"
                     />
                   </div>
                 </motion.div>

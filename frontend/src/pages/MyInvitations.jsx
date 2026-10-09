@@ -88,7 +88,7 @@ export default function MyInvitations() {
               {event.date && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5">
                   <Clock className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span>{format(new Date(event.date), "yyyy/MM/dd HH:mm")}</span>
+                  <span>{format(new Date(event.date), "dd/MM/yyyy HH:mm")}</span>
                 </div>
               )}
             </div>
@@ -100,6 +100,10 @@ export default function MyInvitations() {
               ) : recipient.rsvp_status === "declined" ? (
                 <span className="flex items-center gap-1 text-xs font-medium text-destructive bg-destructive/10 px-2 py-1 rounded-full">
                   <X className="w-3 h-3" /> {t.notAttending}
+                </span>
+              ) : recipient.rsvp_status === "maybe" ? (
+                <span className="text-xs font-medium text-orange-600 dark:text-orange-400 bg-orange-500/10 px-2 py-1 rounded-full">
+                  {t.statusMaybe}
                 </span>
               ) : (
                 <span className="text-xs font-medium text-warning bg-warning/10 px-2 py-1 rounded-full">

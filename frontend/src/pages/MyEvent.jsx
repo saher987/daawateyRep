@@ -5,8 +5,7 @@ import { useT } from "@/lib/i18n";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  CalendarHeart, MapPin, Calendar, Users, Download,
-  CheckCircle2, XCircle, Clock, Pencil, ChevronDown, ChevronUp, Heart
+  CalendarHeart, MapPin, Calendar, Download, Pencil, Users, Heart
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,14 +18,16 @@ import { format } from "date-fns";
 import { ar, he } from "date-fns/locale";
 import { useToast } from "@/components/ui/use-toast";
 import { downloadFile } from "@/lib/downloadFile";
+import GuestStatsDashboard from "@/components/events/GuestStatsDashboard";
+import { recipientDisplayName } from "@/lib/recipientName";
 import ThankYouDialog from "@/components/events/ThankYouDialog";
 
 // rsvpLabel is built dynamically using t inside components
 const rsvpColor = {
   accepted: "bg-success/10 text-success",
   declined: "bg-destructive/10 text-destructive",
-  pending: "bg-warning/10 text-warning",
-  maybe: "bg-muted text-muted-foreground",
+  pending: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
+  maybe: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
 };
 
 function EditEventDialog({ event, open, onOpenChange }) {
@@ -37,7 +38,9 @@ function EditEventDialog({ event, open, onOpenChange }) {
     title: event.title || "",
     venue_name: event.venue_name || "",
     venue_address: event.venue_address || "",
-    date: event.date ? event.date.slice(0, 16) : "",
+    // Shown as local wall-clock time. Was event.date.slice(0, 16), which
+    // pre-filled the UTC hour (3h early in Israel).
+    date: event.date ? format(new Date(event.date), "yyyy-MM-dd'T'HH:mm") : "",
     description: event.description || "",
     host_name: event.host_name || "",
     host_phone: event.host_phone || "",
@@ -94,7 +97,19 @@ function EditEventDialog({ event, open, onOpenChange }) {
             <Textarea value={form.thank_you_message} onChange={e => setForm(f => ({ ...f, thank_you_message: e.target.value }))} className="mt-1" rows={4} placeholder={t.thankYouPlaceholder} />
           </div>
           <div className="flex gap-2 pt-2">
-            <Button className="flex-1" onClick={() => mutation.mutate(form)} disabled={mutation.isPending}>
+            <Button
+              className="flex-1"
+              onClick={() => {
+                // datetime-local has no timezone; sent as-is the backend
+                // stored the typed hour as UTC, so 20:00 came back as 23:00
+                // (same fix as components/events/EditEventDialog.jsx).
+                const data = { ...form };
+                if (data.date) data.date = new Date(data.date).toISOString();
+                else delete data.date;
+                mutation.mutate(data);
+              }}
+              disabled={mutation.isPending}
+            >
               {mutation.isPending ? t.saving : t.saveChanges}
             </Button>
             <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>{t.cancel}</Button>
@@ -123,18 +138,10 @@ function EventControlPanel({ event }) {
     },
   });
 
-  const stats = {
-    total: recipients.length,
-    accepted: recipients.filter(r => r.rsvp_status === "accepted").length,
-    declined: recipients.filter(r => r.rsvp_status === "declined").length,
-    pending: recipients.filter(r => r.rsvp_status === "pending").length,
-    guests: recipients.filter(r => r.rsvp_status === "accepted").reduce((s, r) => s + (r.rsvp_guests_count || r.guests_count || 1), 0),
-  };
-
   const filtered = recipients.filter(r => {
     const matchFilter = filter === "all" || r.rsvp_status === filter;
     const matchSearch = !search ||
-      (r.external_full_name || r.full_name || "").includes(search) ||
+      recipientDisplayName(r).includes(search) ||
       (r.phone || "").includes(search);
     return matchFilter && matchSearch;
   });
@@ -142,11 +149,11 @@ function EventControlPanel({ event }) {
   const exportCSV = () => {
     const headers = [t.name, t.phone, t.status, t.guests, t.replyDate, "ملاحظات"];
     const rows = filtered.map(r => [
-      r.external_full_name || r.full_name || "",
+      recipientDisplayName(r),
       r.phone || "",
       rsvpLabel[r.rsvp_status] || "",
       r.rsvp_status === "accepted" ? (r.rsvp_guests_count || r.guests_count || 1) : "",
-      r.rsvp_date ? format(new Date(r.rsvp_date), "yyyy/MM/dd") : "",
+      r.rsvp_date ? format(new Date(r.rsvp_date), "dd/MM/yyyy") : "",
       r.rsvp_message || r.notes || "",
     ]);
     const csv = "\uFEFF" + [headers, ...rows]
@@ -195,21 +202,8 @@ function EventControlPanel({ event }) {
         </CardContent>
       </Card>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: t.totalInviteesLabel, value: stats.total, icon: Users, color: "text-foreground" },
-          { label: t.confirmedAttendance, value: stats.accepted, icon: CheckCircle2, color: "text-success" },
-          { label: t.declinedAttendance, value: stats.declined, icon: XCircle, color: "text-destructive" },
-          { label: t.awaitingReplyLabel, value: stats.pending, icon: Clock, color: "text-warning" },
-        ].map(({ label, value, icon: Icon, color }) => (
-          <Card key={label} className="p-4 text-center">
-            <Icon className={`w-6 h-6 mx-auto mb-1 ${color}`} />
-            <p className={`text-2xl font-bold font-display ${color}`}>{value}</p>
-            <p className="text-xs text-muted-foreground mt-1">{label}</p>
-          </Card>
-        ))}
-      </div>
+      {/* Same stats dashboard (cards, charts, exports) the admin sees on EventDetails */}
+      <GuestStatsDashboard recipients={recipients} event={event} />
 
       {/* Guest List */}
       <Card>
@@ -234,6 +228,7 @@ function EventControlPanel({ event }) {
                 { key: "all", label: t.all },
                 { key: "accepted", label: t.accepted },
                 { key: "declined", label: t.declined },
+                { key: "maybe", label: t.statusMaybe },
                 { key: "pending", label: t.pending },
               ].map(f => (
                 <button
@@ -271,20 +266,27 @@ function EventControlPanel({ event }) {
               {filtered.map(r => (
                 <div key={r.id} className="grid grid-cols-1 md:grid-cols-12 gap-1 md:gap-3 px-4 py-3 hover:bg-muted/20 transition-colors">
                   <div className="md:col-span-4">
-                    <p className="font-medium text-sm">{[r.nickname, r.first_name, r.last_name].filter(Boolean).join(' ') || r.external_full_name || r.full_name || "—"}</p>
+                    <p className="font-medium text-sm">{recipientDisplayName(r) || "—"}</p>
                     {r.rsvp_message && <p className="text-xs text-muted-foreground mt-0.5 truncate">{r.rsvp_message}</p>}
                   </div>
                   <div className="md:col-span-3 text-sm text-muted-foreground" dir="ltr">{r.phone || "—"}</div>
                   <div className="md:col-span-2">
-                    <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${rsvpColor[r.rsvp_status] || ""}`}>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${rsvpColor[r.rsvp_status] || ""}`}>
                       {rsvpLabel[r.rsvp_status] || r.rsvp_status}
+                      {/* Guest count inside the badge on mobile, where the
+                          separate column below has no header to explain it */}
+                      {r.rsvp_status === "accepted" && (
+                        <span className="md:hidden inline-flex items-center gap-0.5 font-semibold">
+                          · <Users className="w-3 h-3" /> {r.rsvp_guests_count || r.guests_count || 1}
+                        </span>
+                      )}
                     </span>
                   </div>
-                  <div className="md:col-span-1 text-sm text-center">
+                  <div className="hidden md:block md:col-span-1 text-sm text-center">
                     {r.rsvp_status === "accepted" ? (r.rsvp_guests_count || r.guests_count || 1) : "—"}
                   </div>
                   <div className="md:col-span-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                    <span>{r.rsvp_date ? format(new Date(r.rsvp_date), "yyyy/MM/dd") : "—"}</span>
+                    <span>{r.rsvp_date ? format(new Date(r.rsvp_date), "dd/MM/yyyy") : "—"}</span>
                     {r.rsvp_status === "accepted" && event.thank_you_message && r.phone && (
                       <Button
                         variant="ghost"

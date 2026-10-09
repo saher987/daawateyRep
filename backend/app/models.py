@@ -51,6 +51,7 @@ class EventType(str, enum.Enum):
     birthday = "birthday"
     graduation = "graduation"
     corporate = "corporate"
+    appreciation = "appreciation"
     other = "other"
 
 
@@ -302,9 +303,6 @@ class InvitationRecipient(Base):
     nickname: Mapped[str | None] = mapped_column(String, nullable=True)
     first_name: Mapped[str | None] = mapped_column(String, nullable=True)
     last_name: Mapped[str | None] = mapped_column(String, nullable=True)
-    # e.g. "وعائلته" / "وزوجته" — fills the [suffix] placeholder in the
-    # event's thank-you message (frontend/src/lib/thankYouMessage.js).
-    name_suffix: Mapped[str | None] = mapped_column(String, nullable=True)
     phone: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     email: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     personal_token: Mapped[str] = mapped_column(String, nullable=False, default=_token)
@@ -326,6 +324,12 @@ class InvitationRecipient(Base):
     rsvp_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     guests_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     group_label: Mapped[str | None] = mapped_column(String, nullable=True)
+    # CITY_KEYS key, optionally typed in by the inviter for a guest with no
+    # account. A linked User's own town takes precedence (_attach_towns).
+    town: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Words after the name in the greeting but not part of it, e.g.
+    # "وعائلته" / "وخطيبته" — "حضرة السيد فرنسيس صباح وعائلته".
+    name_suffix: Mapped[str | None] = mapped_column(String, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow

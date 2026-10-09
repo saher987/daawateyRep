@@ -262,11 +262,15 @@ def notify_event_update(
     for recipient in recipients:
         invitation_link = f"{app_url}/i/{recipient.personal_token}"
         invitee_name = _resolve_display_name(
-            recipient.external_full_name, recipient.nickname, recipient.first_name, recipient.last_name
+            recipient.external_full_name,
+            recipient.nickname,
+            recipient.first_name,
+            recipient.last_name,
+            recipient.name_suffix,
         ) or (recipient.phone or recipient.email or "")
 
         if recipient.phone:
-            text = f"لحظرة {invitee_name}، تم تحديث تفاصيل مناسبة {event.title}. {invitation_link}"
+            text = f"حضرة {invitee_name}، تم تحديث تفاصيل مناسبة {event.title}. {invitation_link}"
             if send_sms(recipient.phone, text, reference=recipient.id):
                 sms_sent += 1
 
@@ -274,7 +278,7 @@ def notify_event_update(
             html = (
                 f'<div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; '
                 f'margin: 0 auto; padding: 20px;">'
-                f"<p>لحظرة {invitee_name}، تم تحديث تفاصيل مناسبة {event.title}.</p>"
+                f"<p>حضرة {invitee_name}، تم تحديث تفاصيل مناسبة {event.title}.</p>"
                 f'<p><a href="{invitation_link}" style="display: inline-block; background: '
                 f'{event.theme_color}; color: white; padding: 12px 24px; text-decoration: none; '
                 f'border-radius: 8px; margin: 16px 0;">عرض التفاصيل المحدثة</a></p>'
@@ -356,14 +360,31 @@ def _resolve_display_name(
     nickname: str | None,
     first_name: str | None,
     last_name: str | None,
+    name_suffix: str | None = None,
 ) -> str | None:
-    """Same fallback chain the original used everywhere it needed a
-    recipient's display name: external_full_name first, else assembled
-    from nickname/first/last."""
-    if external_full_name:
-        return external_full_name
-    parts = [p for p in (nickname, first_name, last_name) if p]
-    return " ".join(parts) if parts else None
+    """A recipient's display name, always led by their nickname/title
+    (e.g. "السيد ساهر خنيفس") when one was given. Used to prefer
+    external_full_name outright, but AddInviteeDialog fills that for an
+    existing user from full_name/first+last *without* the nickname — so
+    the SMS greeting dropped it ("حضرة ساهر خنيفس"). Now the structured
+    nickname/first/last wins whenever a first or last name exists;
+    external_full_name is only the fallback, with the nickname prepended
+    if it isn't already there. name_suffix ("وعائلته") is appended last
+    either way."""
+    nickname = (nickname or "").strip() or None
+    name_suffix = (name_suffix or "").strip() or None
+    if first_name or last_name:
+        name = " ".join(p for p in (nickname, first_name, last_name) if p)
+    elif external_full_name:
+        if nickname and not external_full_name.startswith(nickname):
+            name = f"{nickname} {external_full_name}"
+        else:
+            name = external_full_name
+    else:
+        name = nickname
+    if name and name_suffix:
+        return f"{name} {name_suffix}"
+    return name
 
 
 @router.post(
@@ -420,10 +441,12 @@ def add_recipient(
         nickname=body.nickname,
         first_name=body.first_name,
         last_name=body.last_name,
+        name_suffix=body.name_suffix,
         phone=body.phone,
         email=body.email,
         guests_count=body.guests_count,
         group_label=body.group_label,
+        town=body.town,
     )
     db.add(recipient)
     db.commit()
@@ -535,7 +558,11 @@ def _send_invitation(
     invitation_link = f"{app_url}/i/{recipient.personal_token}"
 
     invitee_name = _resolve_display_name(
-        recipient.external_full_name, recipient.nickname, recipient.first_name, recipient.last_name
+        recipient.external_full_name,
+        recipient.nickname,
+        recipient.first_name,
+        recipient.last_name,
+        recipient.name_suffix,
     ) or (recipient.phone or recipient.email or "")
     invitor_name = (
         " ".join(p for p in (invited_by.nickname, invited_by.first_name, invited_by.last_name) if p)
@@ -547,9 +574,9 @@ def _send_invitation(
 
     if recipient.phone:
         text = (
-            f"لحظرة {invitee_name}، {event.invitation_greeting} {invitation_link}"
+            f"حضرة {invitee_name}، {event.invitation_greeting} {invitation_link}"
             if event.invitation_greeting
-            else f"لحظرة {invitee_name}، تمت دعوتكم من {invitor_name} لحضور {event.title}. {invitation_link}"
+            else f"حضرة {invitee_name}، تمت دعوتكم من {invitor_name} لحضور {event.title}. {invitation_link}"
         )
         sent = send_sms(recipient.phone, text, reference=recipient.id) or sent
 
@@ -558,7 +585,7 @@ def _send_invitation(
         html = (
             f'<div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; '
             f'margin: 0 auto; padding: 20px;">'
-            f"<p>لحظرة {invitee_name}، {body_text}</p>"
+            f"<p>حضرة {invitee_name}، {body_text}</p>"
             f'<p><a href="{invitation_link}" style="display: inline-block; background: '
             f'{event.theme_color}; color: white; padding: 12px 24px; text-decoration: none; '
             f'border-radius: 8px; margin: 16px 0;">عرض الدعوة</a></p>'
@@ -633,9 +660,10 @@ def resend_invitation(
 def _attach_towns(
     recipients: list[models.InvitationRecipient], db: Session
 ) -> list[schemas.RecipientOut]:
-    """RecipientOut.town comes from the linked User account, not a column
-    on invitation_recipients itself — one batched lookup for the whole list
-    instead of a query per row."""
+    """RecipientOut.town prefers the linked User account's town, falling back
+    to the recipient's own town (set by the inviter for an unregistered
+    guest) — one batched lookup for the whole list instead of a query per
+    row."""
     user_ids = {r.user_id for r in recipients if r.user_id}
     towns: dict[str, str | None] = {}
     if user_ids:
@@ -645,7 +673,7 @@ def _attach_towns(
             towns[uid] = town
     return [
         schemas.RecipientOut.model_validate(r).model_copy(
-            update={"town": towns.get(r.user_id)}
+            update={"town": towns.get(r.user_id) or r.town}
         )
         for r in recipients
     ]
@@ -714,6 +742,7 @@ def _to_public_invitation(recipient: models.InvitationRecipient) -> schemas.Publ
             recipient.nickname,
             recipient.first_name,
             recipient.last_name,
+            recipient.name_suffix,
         ),
         rsvp_status=recipient.rsvp_status,
         rsvp_guests_count=recipient.rsvp_guests_count,

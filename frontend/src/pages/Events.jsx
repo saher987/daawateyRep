@@ -48,7 +48,7 @@ function EventCard({ event, isPast = false }) {
             {event.date && (
               <div className="flex items-center gap-2">
                 <CalendarHeart className="w-4 h-4 flex-shrink-0" />
-                <span>{format(new Date(event.date), "yyyy/MM/dd - HH:mm")}</span>
+                <span>{format(new Date(event.date), "dd/MM/yyyy - HH:mm")}</span>
               </div>
             )}
             {(event.groom_name || event.bride_name) && (
@@ -72,6 +72,7 @@ function useEventTypeLabels() {
     birthday: t.birthday,
     graduation: t.graduation,
     corporate: t.corporate,
+    appreciation: t.appreciation,
     other: t.other,
   };
 }

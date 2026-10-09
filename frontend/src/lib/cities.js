@@ -10,6 +10,11 @@
 export const CITY_KEYS = [
   // Galilee / North
   "nazareth",
+  // Explicit exceptions to the Arab-only rule above, requested by
+  // venues/users: mixed cities with Arab populations.
+  "nof_hagalil",
+  "haifa",
+  "maalot",
   "shfaram",
   "sakhnin",
   "arrabe",
@@ -38,6 +43,11 @@ export const CITY_KEYS = [
   "reineh",
   "tur_an",
   "kabul",
+  // Golan Heights
+  "majdal_shams",
+  "buqata",
+  "masade",
+  "ein_qiniyye",
   // Triangle (Central Israel)
   "tayibe",
   "qalansawe",

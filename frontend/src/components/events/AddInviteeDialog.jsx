@@ -5,12 +5,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+} from "@/components/ui/select";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Loader2, UserPlus, Search, UserCheck, ChevronRight } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import debounce from "lodash/debounce";
 import { useT } from "@/lib/i18n";
+import { useAuth } from "@/lib/AuthContext";
+import { CITY_KEYS, sortCityKeysForDisplay } from "@/lib/cities";
 import { useBackButton } from "@/hooks/useBackButton";
 
 const emptyDetails = {
@@ -21,6 +26,7 @@ const emptyDetails = {
   email: "",
   guests_count: "1",
   group_label: "",
+  town: "",
 };
 
 export default function AddInviteeDialog({ open, onOpenChange, eventId }) {
@@ -75,6 +81,9 @@ export default function AddInviteeDialog({ open, onOpenChange, eventId }) {
   const handleSelectUser = (user) => {
     setSelectedUser(user);
     setShowNewForm(false);
+    // Pre-fill with the user's own nickname; the inviter can change it
+    // (e.g. "السيد") — it's what leads the name in the SMS greeting.
+    setDetails(prev => ({ ...prev, nickname: user.nickname || "" }));
   };
 
   const handleAddNew = () => {
@@ -107,10 +116,12 @@ export default function AddInviteeDialog({ open, onOpenChange, eventId }) {
   });
 
   const submitExisting = () => {
+    const nickname = details.nickname.trim() || null;
+    const baseName = [selectedUser.first_name, selectedUser.last_name].filter(Boolean).join(' ') || selectedUser.full_name || "";
     mutation.mutate({
       userId: selectedUser.id,
-      externalFullName: selectedUser.full_name || `${selectedUser.first_name || ""} ${selectedUser.last_name || ""}`.trim(),
-      nickname: selectedUser.nickname || null,
+      externalFullName: [nickname, baseName].filter(Boolean).join(' '),
+      nickname,
       first_name: selectedUser.first_name || null,
       last_name: selectedUser.last_name || null,
       phone: selectedUser.phone || "",
@@ -122,7 +133,7 @@ export default function AddInviteeDialog({ open, onOpenChange, eventId }) {
 
   const submitNew = (e) => {
     e.preventDefault();
-    const fullName = [details.nickname, details.first_name, details.last_name].filter(Boolean).join(' ') || details.phone;
+    const fullName = [details.nickname.trim(), details.first_name, details.last_name].filter(Boolean).join(' ') || details.phone;
     mutation.mutate({
       externalFullName: fullName,
       nickname: details.nickname || null,
@@ -133,6 +144,7 @@ export default function AddInviteeDialog({ open, onOpenChange, eventId }) {
       eventId,
       guestsCount: Number(details.guests_count) || 1,
       groupLabel: details.group_label || null,
+      town: details.town || null,
     });
   };
 
@@ -146,6 +158,8 @@ export default function AddInviteeDialog({ open, onOpenChange, eventId }) {
   };
 
   const t = useT();
+  const { user } = useAuth();
+  const sortedCityKeys = sortCityKeysForDisplay(CITY_KEYS, t, user?.preferred_language || "ar");
   useBackButton({ isOpen: open, onClose: () => handleClose(false) });
   const hasContact = details.phone.trim() || details.email.trim();
   const hasName = details.first_name.trim() || details.last_name.trim();
@@ -237,6 +251,12 @@ export default function AddInviteeDialog({ open, onOpenChange, eventId }) {
               </div>
             </div>
           )}
+          {selectedUser && !showNewForm && (
+            <div className="space-y-2">
+              <Label>{t.nicknameOptional} <span className="text-muted-foreground text-xs font-normal">{t.nicknameOptionalHint}</span></Label>
+              <Input placeholder={t.nicknamePlaceholder2} value={details.nickname} onChange={set("nickname")} className="h-11 rounded-xl text-base" />
+            </div>
+          )}
 
           {/* New invitee form */}
           {showNewForm && (
@@ -270,6 +290,21 @@ export default function AddInviteeDialog({ open, onOpenChange, eventId }) {
                 <Input type="email" placeholder="example@email.com" value={details.email} onChange={set("email")} className="h-11 rounded-xl text-base" dir="ltr" />
               </div>
               <p className="text-xs text-muted-foreground -mt-1">{t.contactRequired}</p>
+              <div className="space-y-2">
+                <Label>{t.town} <span className="text-muted-foreground text-xs font-normal">({t.optional})</span></Label>
+                <Select value={details.town} onValueChange={v => setDetails(prev => ({ ...prev, town: v }))}>
+                  <SelectTrigger className="h-11 rounded-xl text-base">
+                    <SelectValue placeholder={t.town}>
+                      {details.town ? (t[details.town] || details.town) : null}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sortedCityKeys.map(key => (
+                      <SelectItem key={key} value={key}>{t[key] || key}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>{t.groupLabel}</Label>

@@ -1,7 +1,7 @@
 """events.thank_you_message — per-event thank-you template
 
-Revision ID: 0009
-Revises: 0008
+Revision ID: 0013
+Revises: 0012
 Create Date: 2026-10-09
 
 The event owner writes the thank-you text by hand, with placeholders like
@@ -16,8 +16,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0009"
-down_revision: Union[str, None] = "0008"
+revision: str = "0013"
+down_revision: Union[str, None] = "0012"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

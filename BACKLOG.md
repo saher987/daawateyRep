@@ -111,6 +111,63 @@ Deferred work — not urgent, tracked here so it doesn't get lost.
   - **iOS push.** Deferred along with iOS phone-OTP/Universal Links — see
     Mobile/Release above.
 
+## Guests / Invitations
+
+- [ ] **Ship the invitation↔account linking fix (code ready, not merged).**
+  Reported 2026-10-07: guest "السيد جريس ارمانيوس" (0533472177) showed
+  "لم يدخل التطبيق" in the guest list although he exists in Users. Cause:
+  `verify_otp` linked only *one* invitation per phone-OTP login
+  (`find_by_phone` returns the first row), so a guest invited to several
+  events had the others left unlinked. Fixed on branch
+  `claude/wonderful-sagan-ctua8n` (commit `101fe65`):
+  - `verify_otp` now calls `link_pending_invitations` (links all rows).
+  - Same linking when an admin sets a user's phone (`PUT /api/users/{id}`)
+    and when an admin-invited account with a phone is first created.
+  - Migration `0013_relink_recipients_by_phone` backfills existing
+    unlinked rows to their *active* account by normalized phone (fills
+    missing links only; tested on a throwaway DB).
+
+  To ship, in this order: merge to `main` → run **Run DB Migration**
+  (prod) → **Deploy** (prod). Afterwards check جريس ارمانيوس shows
+  "دخل التطبيق".
+
+- [ ] **Post-event thank-you message to guests who accepted.** Requested
+  2026-10-07, deliberately deferred (started, then reverted before any
+  commit). Scope as requested:
+  - **Automatic:** one day after the event, send a thank-you to every
+    guest with `rsvp_status = accepted`.
+  - **Manual single send:** a per-guest button in the guest lists (admin
+    EventDetails / `InviteeRow` and the owner's My Event list).
+  - **Customizable in the UI:** host/admin edits the message text, e.g. a
+    card on the event page with a textarea, `{name}` / `{event}`
+    placeholders, a preview, and an auto-send on/off switch.
+
+  Design sketched when it was started:
+  - DB (new migration): `events.thanks_message` (Text, null = default
+    text), `events.thanks_auto_enabled` (bool, default true),
+    `events.thanks_sent_at`; `invitation_recipients.thanks_sent_at`.
+  - Channel: SMS via Pulseem (same as the invitation; costs per message)
+    plus an in-app notification for guests with an account. `{name}` uses
+    `_resolve_display_name` (nickname + first + last + suffix).
+  - Scheduling: nothing scheduled exists yet. Plan was an hourly GitHub
+    Actions cron that authenticates via the existing WIF deploy service
+    account (`google-github-actions/auth` with `token_format: id_token`)
+    and calls a backend endpoint that verifies the Google OIDC token's
+    audience + email — no new secret needed. Only send for events whose
+    `date + 24h` is within the last ~48h, so deploying the feature never
+    blasts thank-yous for old events.
+  - Decide before building: send time (event start + 24h vs. a fixed hour
+    the next day), and whether auto-send should default to on.
+
+- [ ] **WhatsApp automatic sending.** Today the WhatsApp icon only opens
+  the host's own WhatsApp with the message pre-filled; the host presses
+  Send. Automating presses on a personal WhatsApp risks the number being
+  banned. Real automation needs the WhatsApp Business Platform (Cloud
+  API) via Meta or a provider (Twilio / 360dialog / possibly Pulseem): a
+  dedicated business number, Meta-approved message templates, per-message
+  cost. Cheaper interim idea: a "send one after another" mode that opens
+  the next guest's WhatsApp automatically after each Send.
+
 ## Infra
 
 - [ ] **Apex domain (`daawatey.com`, no `www`) — DNS fixed, cert still

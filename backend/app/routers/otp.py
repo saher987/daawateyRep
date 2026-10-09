@@ -34,15 +34,26 @@ def _generate_code() -> str:
     return f"{random.randint(0, 999999):06d}"
 
 
-def _link_recipient(recipient: models.InvitationRecipient, user: models.User) -> None:
-    recipient.phone_verified = True
-    recipient.verified_phone = recipient.phone
-    recipient.user_id = user.id
+def _prefill_profile(user: models.User, recipient: models.InvitationRecipient) -> None:
+    """Seed empty profile fields from what the inviter typed in for this
+    guest, so they don't have to retype them. Never overwrites anything the
+    user already set themselves."""
     if not user.first_name and not user.last_name:
         if recipient.first_name:
             user.first_name = recipient.first_name
         if recipient.last_name:
             user.last_name = recipient.last_name
+    if not user.nickname and recipient.nickname:
+        user.nickname = recipient.nickname
+    if not user.town and recipient.town:
+        user.town = recipient.town
+
+
+def _link_recipient(recipient: models.InvitationRecipient, user: models.User) -> None:
+    recipient.phone_verified = True
+    recipient.verified_phone = recipient.phone
+    recipient.user_id = user.id
+    _prefill_profile(user, recipient)
 
 
 def link_pending_invitations(db: Session, user: models.User, phone: str) -> None:
@@ -276,11 +287,7 @@ def verify_otp(body: schemas.OtpVerifyRequest, db: Session = Depends(get_db)) ->
         recipient.phone_verified = True
         recipient.verified_phone = phone
         recipient.user_id = user.id
-        if not user.first_name and not user.last_name:
-            if recipient.first_name:
-                user.first_name = recipient.first_name
-            if recipient.last_name:
-                user.last_name = recipient.last_name
+        _prefill_profile(user, recipient)
 
     db.commit()
 

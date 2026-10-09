@@ -6,19 +6,21 @@ import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { downloadFile } from "@/lib/downloadFile";
+import { recipientDisplayName } from "@/lib/recipientName";
 
 const COLORS = {
   accepted: "#22c55e",
   declined: "#ef4444",
-  pending:  "#f59e0b",
+  pending:  "#eab308",
+  maybe:    "#f97316",
 };
 
 function exportToExcel(recipients, eventTitle, t) {
   const rows = recipients.map(r => ({
-    [t.colName]: r.external_full_name || r.full_name || "",
+    [t.colName]: recipientDisplayName(r),
     [t.colPhone]: r.phone || "",
     [t.email]: r.email || "",
-    [t.colStatus]: r.rsvp_status === "accepted" ? t.statsAccepted : r.rsvp_status === "declined" ? t.statsDeclined : t.statsPending,
+    [t.colStatus]: r.rsvp_status === "accepted" ? t.statsAccepted : r.rsvp_status === "declined" ? t.statsDeclined : r.rsvp_status === "maybe" ? t.statsMaybe : t.statsPending,
     [t.colGuests]: r.rsvp_guests_count || r.guests_count || 1,
     // r.town (when the invitee is linked to a registered account) is a
     // CITY_KEYS key like "nazareth", not a display string — translate it
@@ -47,13 +49,13 @@ function exportPendingToExcel(recipients, eventTitle, t) {
   // pending invitees fills them in by hand and sends the sheet back.
   const headers = [t.colName, t.colPhone, t.email, t.colCity, t.groupLabel, t.exportOpened, t.exportOpenDate, t.exportContacted, t.exportContactAnswer];
   const rows = pending.map(r => [
-    [r.nickname, r.first_name, r.last_name].filter(Boolean).join(" ") || r.external_full_name || r.full_name || "",
+    recipientDisplayName(r),
     r.phone || "",
     r.email || "",
     r.town ? (t[r.town] || r.town) : "",
     r.group_label || "",
     r.open_count > 0 ? t.exportYes : t.exportNo,
-    r.last_opened_at ? format(new Date(r.last_opened_at), "yyyy/MM/dd HH:mm") : "",
+    r.last_opened_at ? format(new Date(r.last_opened_at), "dd/MM/yyyy HH:mm") : "",
     "",
     "",
   ]);
@@ -70,6 +72,7 @@ export default function GuestStatsDashboard({ recipients, event }) {
     total: recipients.length,
     accepted: recipients.filter(r => r.rsvp_status === "accepted").length,
     declined: recipients.filter(r => r.rsvp_status === "declined").length,
+    maybe:    recipients.filter(r => r.rsvp_status === "maybe").length,
     pending:  recipients.filter(r => !r.rsvp_status || r.rsvp_status === "pending").length,
     totalGuests: recipients
       .filter(r => r.rsvp_status === "accepted")
@@ -81,12 +84,14 @@ export default function GuestStatsDashboard({ recipients, event }) {
   const pieData = [
     { name: t.statsAccepted,  value: stats.accepted, key: "accepted" },
     { name: t.statsDeclined,  value: stats.declined, key: "declined" },
+    { name: t.statsMaybe,     value: stats.maybe,    key: "maybe"    },
     { name: t.statsPending,   value: stats.pending,  key: "pending"  },
   ].filter(d => d.value > 0);
 
   const barData = [
     { name: t.statsAccepted,   count: stats.accepted,  fill: COLORS.accepted },
     { name: t.statsDeclined,   count: stats.declined,  fill: COLORS.declined },
+    { name: t.statsMaybe,      count: stats.maybe,     fill: COLORS.maybe    },
     { name: t.statsPending,    count: stats.pending,   fill: COLORS.pending  },
     { name: t.statsOpened,     count: stats.opened,    fill: "#6366f1" },
     { name: t.statsNotOpened,  count: stats.notOpened, fill: "#94a3b8" },
@@ -96,8 +101,9 @@ export default function GuestStatsDashboard({ recipients, event }) {
     { label: t.statsTotal,       value: stats.total,       color: "bg-muted/60",       text: "" },
     { label: t.statsAccepted,    value: stats.accepted,    color: "bg-success/10",     text: "text-success" },
     { label: t.statsDeclinedAll, value: stats.declined,    color: "bg-destructive/10", text: "text-destructive" },
-    { label: t.statsPending,     value: stats.pending,     color: "bg-warning/10",     text: "text-warning" },
-    { label: t.statsTotalGuests, value: stats.totalGuests, color: "bg-primary/10",     text: "text-primary" },
+    { label: t.statsMaybe,       value: stats.maybe,       color: "bg-orange-500/10",  text: "text-orange-600 dark:text-orange-400" },
+    { label: t.statsPending,     value: stats.pending,     color: "bg-yellow-500/10",  text: "text-yellow-600 dark:text-yellow-400" },
+    { label: t.statsTotalGuests, value: stats.totalGuests, color: "bg-violet-500/10",  text: "text-violet-600 dark:text-violet-400" },
   ];
 
   return (
@@ -128,7 +134,7 @@ export default function GuestStatsDashboard({ recipients, event }) {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
         {statCards.map(s => (
           <div key={s.label} className={`text-center p-3 rounded-xl ${s.color}`}>
             <p className={`text-2xl font-bold font-display ${s.text}`}>{s.value}</p>
@@ -179,9 +185,9 @@ export default function GuestStatsDashboard({ recipients, event }) {
           <div>
             <p className="text-sm font-medium text-muted-foreground mb-3 text-center">{t.statsEngagement}</p>
             <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={barData} barSize={28}>
+              <BarChart data={barData} barSize={24}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="name" interval={0} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis allowDecimals={false} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={28} />
                 <Tooltip
                   formatter={(value, name) => [`${value}`, t.statsCount]}

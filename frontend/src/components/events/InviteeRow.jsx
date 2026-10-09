@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Copy, Check, Trash2, ExternalLink, UserCheck, UserX, Eye, Clock, Send, Loader2, MessageCircle, Heart } from "lucide-react";
+import { Copy, Check, Trash2, ExternalLink, UserCheck, UserX, Eye, Clock, Send, Loader2, MessageCircle, Users, Heart } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ar, he } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
 import { useT } from "@/lib/i18n";
 import { useAuth } from "@/lib/AuthContext";
+import { recipientDisplayName } from "@/lib/recipientName";
 import { toIntlPhone } from "@/lib/thankYouMessage";
 import ThankYouDialog from "@/components/events/ThankYouDialog";
 
@@ -22,10 +23,10 @@ export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeti
   const dateLocale = user?.preferred_language === "he" ? he : ar;
 
   const rsvpLabel = {
-    pending: { label: t.statusPendingRsvp, className: "bg-warning/10 text-warning border-warning/30" },
+    pending: { label: t.statusPendingRsvp, className: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/30" },
     accepted: { label: t.statusAccepted, className: "bg-success/10 text-success border-success/30" },
     declined: { label: t.statusDeclined, className: "bg-destructive/10 text-destructive border-destructive/30" },
-    maybe: { label: t.statusMaybe, className: "bg-muted text-muted-foreground" },
+    maybe: { label: t.statusMaybe, className: "bg-orange-500/10 text-orange-600 dark:text-orange-400" },
   };
 
   const token = recipient.personal_token || recipient.invitation_token;
@@ -37,7 +38,7 @@ export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeti
   // wherever this page is actually being served from.
   const inviteUrl = token ? `${window.location.origin}/i/${token}` : null;
   const isLinked = !!recipient.user_id;
-  const displayName = [recipient.nickname, recipient.first_name, recipient.last_name].filter(Boolean).join(' ') || recipient.external_full_name || recipient.full_name || "—";
+  const displayName = recipientDisplayName(recipient) || "—";
 
   const deleteMutation = useMutation({
     mutationFn: () => base44.entities.InvitationRecipient.delete(recipient.id),
@@ -84,9 +85,9 @@ export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeti
   const shareViaWhatsapp = () => {
     if (!inviteUrl) return;
     const message = eventGreeting
-      ? `لحظرة ${displayName}، ${eventGreeting} ${inviteUrl}`
+      ? `حضرة ${displayName}، ${eventGreeting} ${inviteUrl}`
       : eventTitle
-      ? `لحظرة ${displayName}، تمت دعوتكم لحضور ${eventTitle}. ${inviteUrl}`
+      ? `حضرة ${displayName}، تمت دعوتكم لحضور ${eventTitle}. ${inviteUrl}`
       : inviteUrl;
     const waUrl = `https://wa.me/${recipient.phone ? toIntlPhone(recipient.phone) : ""}?text=${encodeURIComponent(message)}`;
     window.open(waUrl, "_blank", "noopener,noreferrer");
@@ -112,10 +113,16 @@ export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeti
             variant="outline"
             className={`text-xs px-2 py-0 ${isLinked ? "bg-success/10 text-success border-success/30" : "bg-muted text-muted-foreground"}`}
           >
-            {isLinked ? t.statusResponded : t.statusPendingRsvp}
+            {isLinked ? t.appLoggedIn : t.appNotLoggedIn}
           </Badge>
-          <Badge variant="outline" className={`text-xs px-2 py-0 ${rsvp.className}`}>
+          <Badge variant="outline" className={`text-xs px-2 py-0 gap-1 ${rsvp.className}`}>
             {rsvp.label}
+            {/* How many are coming — only meaningful for an accepted RSVP */}
+            {recipient.rsvp_status === "accepted" && (
+              <span className="inline-flex items-center gap-0.5 font-semibold">
+                · <Users className="w-3 h-3" /> {recipient.rsvp_guests_count || recipient.guests_count || 1}
+              </span>
+            )}
           </Badge>
         </div>
         <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground flex-wrap">
