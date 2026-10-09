@@ -196,7 +196,6 @@ export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeti
         onOpenChange={setShowThanks}
         recipient={recipient}
         template={thankYouMessage}
-        eventId={eventId}
       />
     </div>
   );

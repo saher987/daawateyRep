@@ -214,10 +214,6 @@ class RecipientCreate(BaseModel):
     user_id: str | None = None
 
 
-class RecipientUpdate(BaseModel):
-    name_suffix: str | None = None
-
-
 class ThankYouSend(BaseModel):
     # Already filled in for this guest by the frontend (thankYouMessage.js).
     # Capped so one tap can't fire off a runaway multi-part SMS.

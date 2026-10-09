@@ -4,9 +4,8 @@ import { Label } from "@/components/ui/label";
 import { useT } from "@/lib/i18n";
 import { SUFFIX_SUGGESTIONS } from "@/lib/thankYouMessage";
 
-// Free-text name suffix ("وعائلته", "وزوجته"…) with one-tap quick picks.
-// Used when adding an invitee and in ThankYouDialog for older invitees
-// added before the field existed.
+// Free-text name suffix ("وعائلته", "وزوجته"…) with one-tap quick picks,
+// used when adding an invitee.
 export default function SuffixPicker({ value, onChange }) {
   const t = useT();
   return (
