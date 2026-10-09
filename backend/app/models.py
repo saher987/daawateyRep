@@ -243,6 +243,9 @@ class Event(Base):
     description_ar: Mapped[str | None] = mapped_column(Text, nullable=True)
     invitation_greeting: Mapped[str | None] = mapped_column(Text, nullable=True)
     invitation_greeting_he: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Hand-written thank-you template with [first_name]-style placeholders,
+    # filled per invitee on the frontend (lib/thankYouMessage.js).
+    thank_you_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     cover_image_url: Mapped[str | None] = mapped_column(String, nullable=True)
     invitation_image_url: Mapped[str | None] = mapped_column(String, nullable=True)
     groom_name: Mapped[str | None] = mapped_column(String, nullable=True)

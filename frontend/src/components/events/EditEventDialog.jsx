@@ -49,6 +49,7 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
         max_guests: event.max_guests || "",
         description: event.description || "",
         invitation_greeting: event.invitation_greeting || "",
+        thank_you_message: event.thank_you_message || "",
       });
       // Load existing owners from owner_phones
       const existingPhones = event.owner_phones || [];
@@ -350,6 +351,17 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
               onChange={e => handleChange("invitation_greeting", e.target.value)}
               className="rounded-xl min-h-[80px]"
               placeholder={t.invitationGreetingPlaceholder}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>{t.thankYouSection}</Label>
+            <p className="text-xs text-muted-foreground">{t.thankYouHint}</p>
+            <Textarea
+              value={form.thank_you_message}
+              onChange={e => handleChange("thank_you_message", e.target.value)}
+              className="rounded-xl min-h-[80px]"
+              placeholder={t.thankYouPlaceholder}
             />
           </div>
 

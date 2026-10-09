@@ -262,6 +262,7 @@ export default function EventDetails() {
                         eventId={eventId}
                         eventTitle={event?.title}
                         eventGreeting={event?.invitation_greeting}
+                        thankYouMessage={event?.thank_you_message}
                         canResend={isPrivileged}
                       />
                     ))

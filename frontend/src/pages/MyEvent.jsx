@@ -6,7 +6,7 @@ import { useT } from "@/lib/i18n";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   CalendarHeart, MapPin, Calendar, Users, Download,
-  CheckCircle2, XCircle, Clock, Pencil, ChevronDown, ChevronUp
+  CheckCircle2, XCircle, Clock, Pencil, ChevronDown, ChevronUp, Heart
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,7 @@ import { format } from "date-fns";
 import { ar, he } from "date-fns/locale";
 import { useToast } from "@/components/ui/use-toast";
 import { downloadFile } from "@/lib/downloadFile";
+import { openThankYouInWhatsapp } from "@/lib/thankYouMessage";
 
 // rsvpLabel is built dynamically using t inside components
 const rsvpColor = {
@@ -40,6 +41,7 @@ function EditEventDialog({ event, open, onOpenChange }) {
     description: event.description || "",
     host_name: event.host_name || "",
     host_phone: event.host_phone || "",
+    thank_you_message: event.thank_you_message || "",
   });
 
   const mutation = useMutation({
@@ -85,6 +87,11 @@ function EditEventDialog({ event, open, onOpenChange }) {
           <div>
             <Label>{t.eventDescription}</Label>
             <Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="mt-1" rows={3} />
+          </div>
+          <div>
+            <Label>{t.thankYouSection}</Label>
+            <p className="text-xs text-muted-foreground mt-1">{t.thankYouHint}</p>
+            <Textarea value={form.thank_you_message} onChange={e => setForm(f => ({ ...f, thank_you_message: e.target.value }))} className="mt-1" rows={4} placeholder={t.thankYouPlaceholder} />
           </div>
           <div className="flex gap-2 pt-2">
             <Button className="flex-1" onClick={() => mutation.mutate(form)} disabled={mutation.isPending}>
@@ -275,8 +282,19 @@ function EventControlPanel({ event }) {
                   <div className="md:col-span-1 text-sm text-center">
                     {r.rsvp_status === "accepted" ? (r.rsvp_guests_count || r.guests_count || 1) : "—"}
                   </div>
-                  <div className="md:col-span-2 text-xs text-muted-foreground">
-                    {r.rsvp_date ? format(new Date(r.rsvp_date), "yyyy/MM/dd") : "—"}
+                  <div className="md:col-span-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                    <span>{r.rsvp_date ? format(new Date(r.rsvp_date), "yyyy/MM/dd") : "—"}</span>
+                    {r.rsvp_status === "accepted" && event.thank_you_message && r.phone && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => openThankYouInWhatsapp(event.thank_you_message, r)}
+                        title={t.sendThankYou}
+                      >
+                        <Heart className="w-4 h-4 text-primary" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}

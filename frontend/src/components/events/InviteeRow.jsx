@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Copy, Check, Trash2, ExternalLink, UserCheck, UserX, Eye, Clock, Send, Loader2, MessageCircle } from "lucide-react";
+import { Copy, Check, Trash2, ExternalLink, UserCheck, UserX, Eye, Clock, Send, Loader2, MessageCircle, Heart } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ar, he } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -9,19 +9,9 @@ import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
 import { useT } from "@/lib/i18n";
 import { useAuth } from "@/lib/AuthContext";
+import { toIntlPhone, openThankYouInWhatsapp } from "@/lib/thankYouMessage";
 
-// wa.me wants digits-only international format, no "+". Same normalization
-// rule as the backend's to_international_phone (pulseem.py) so a guest's
-// local 05... number and an already-international one both resolve right.
-function toIntlPhone(phone) {
-  const p = phone.trim().replace(/\s/g, "");
-  if (p.startsWith("+972")) return p.slice(1);
-  if (p.startsWith("972")) return p;
-  if (p.startsWith("0")) return "972" + p.slice(1);
-  return "972" + p;
-}
-
-export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeting, canResend = false }) {
+export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeting, thankYouMessage, canResend = false }) {
   const [copied, setCopied] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -156,6 +146,16 @@ export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeti
             {sendSmsMutation.isPending
               ? <Loader2 className="w-4 h-4 animate-spin" />
               : <Send className="w-4 h-4" />}
+          </Button>
+        )}
+        {recipient.rsvp_status === "accepted" && thankYouMessage && recipient.phone && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => openThankYouInWhatsapp(thankYouMessage, recipient)}
+            title={t.sendThankYou}
+          >
+            <Heart className="w-4 h-4 text-primary" />
           </Button>
         )}
         {inviteUrl && (
