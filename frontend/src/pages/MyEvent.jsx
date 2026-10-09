@@ -5,7 +5,7 @@ import { useT } from "@/lib/i18n";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  CalendarHeart, MapPin, Calendar, Download, Pencil, Users, Heart
+  CalendarHeart, MapPin, Calendar, Download, Pencil, Users
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +20,6 @@ import { useToast } from "@/components/ui/use-toast";
 import { downloadFile } from "@/lib/downloadFile";
 import GuestStatsDashboard from "@/components/events/GuestStatsDashboard";
 import { recipientDisplayName } from "@/lib/recipientName";
-import ThankYouDialog from "@/components/events/ThankYouDialog";
 
 // rsvpLabel is built dynamically using t inside components
 const rsvpColor = {
@@ -122,7 +121,6 @@ function EditEventDialog({ event, open, onOpenChange }) {
 
 function EventControlPanel({ event }) {
   const [showEdit, setShowEdit] = useState(false);
-  const [thanksRecipient, setThanksRecipient] = useState(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const t = useT();
@@ -285,19 +283,8 @@ function EventControlPanel({ event }) {
                   <div className="hidden md:block md:col-span-1 text-sm text-center">
                     {r.rsvp_status === "accepted" ? (r.rsvp_guests_count || r.guests_count || 1) : "—"}
                   </div>
-                  <div className="md:col-span-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                    <span>{r.rsvp_date ? format(new Date(r.rsvp_date), "dd/MM/yyyy") : "—"}</span>
-                    {r.rsvp_status === "accepted" && event.thank_you_message && r.phone && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => setThanksRecipient(r)}
-                        title={t.sendThankYou}
-                      >
-                        <Heart className="w-4 h-4 text-primary" />
-                      </Button>
-                    )}
+                  <div className="md:col-span-2 text-xs text-muted-foreground">
+                    {r.rsvp_date ? format(new Date(r.rsvp_date), "dd/MM/yyyy") : "—"}
                   </div>
                 </div>
               ))}
@@ -307,12 +294,6 @@ function EventControlPanel({ event }) {
       </Card>
 
       <EditEventDialog event={event} open={showEdit} onOpenChange={setShowEdit} />
-      <ThankYouDialog
-        open={!!thanksRecipient}
-        onOpenChange={open => { if (!open) setThanksRecipient(null); }}
-        recipient={thanksRecipient}
-        template={event.thank_you_message}
-      />
     </div>
   );
 }
