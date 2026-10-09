@@ -218,6 +218,12 @@ class RecipientUpdate(BaseModel):
     name_suffix: str | None = None
 
 
+class ThankYouSend(BaseModel):
+    # Already filled in for this guest by the frontend (thankYouMessage.js).
+    # Capped so one tap can't fire off a runaway multi-part SMS.
+    message: str = Field(min_length=1, max_length=1000)
+
+
 class RecipientOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

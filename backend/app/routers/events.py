@@ -657,6 +657,26 @@ def resend_invitation(
     return {"success": sent}
 
 
+@router.post("/invitation-recipients/{recipient_id}/send-thanks")
+def send_thanks(
+    recipient_id: str,
+    body: schemas.ThankYouSend,
+    user: models.User = Depends(get_app_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """ThankYouDialog.jsx's send button: SMS the event's thank-you message,
+    already filled in for this guest, to an invitee who accepted. Same
+    access rule as resend_invitation above."""
+    recipient = _get_recipient_or_404(db, recipient_id)
+    _require_event_access(recipient.event, user)
+    if recipient.rsvp_status != models.RsvpStatus.accepted:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Thank-you is only sent to guests who accepted")
+    if not recipient.phone:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Recipient has no phone number")
+    sent = send_sms(recipient.phone, body.message.strip(), reference=recipient.id)
+    return {"success": sent}
+
+
 def _attach_towns(
     recipients: list[models.InvitationRecipient], db: Session
 ) -> list[schemas.RecipientOut]:

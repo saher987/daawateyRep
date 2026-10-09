@@ -414,6 +414,12 @@ const functionHandlers = {
       body: { name_suffix: nameSuffix },
     })
   },
+  async sendThankYouSms({ recipientId, message }) {
+    return request(`/api/invitation-recipients/${recipientId}/send-thanks`, {
+      method: 'POST',
+      body: { message },
+    })
+  },
   async sendInvitationSms({ recipientId }) {
     return request(`/api/invitation-recipients/${recipientId}/resend`, { method: 'POST' })
   },
