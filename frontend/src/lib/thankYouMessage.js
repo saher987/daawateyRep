@@ -8,6 +8,10 @@ export const THANK_YOU_PLACEHOLDERS = ["target_string", "nick_name", "first_name
 // Quick picks for an invitee's name suffix — free text is allowed too.
 export const SUFFIX_SUGGESTIONS = ["وعائلته", "وعائلتها", "وزوجته", "وزوجها", "وخطيبته", "وخطيبها", "وأولاده"];
 
+// Starting text in ThankYouDialog for events with no thank_you_message of
+// their own, so admins can thank guests of any event.
+export const DEFAULT_THANK_YOU_TEMPLATE = "[target_string]، شكراً على حضوركم ومشاركتكم فرحتنا.";
+
 // Appended to every thank-you. The full https:// URL is what makes phones
 // render it as a tappable link.
 export const THANK_YOU_FOOTER = "أُرسلت بواسطة تطبيق دعوتي\nhttps://www.daawatey.com";

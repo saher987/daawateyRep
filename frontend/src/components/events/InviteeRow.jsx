@@ -157,7 +157,7 @@ export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeti
               : <Send className="w-4 h-4" />}
           </Button>
         )}
-        {canResend && recipient.rsvp_status === "accepted" && thankYouMessage && recipient.phone && (
+        {canResend && recipient.rsvp_status === "accepted" && recipient.phone && (
           <Button
             variant="ghost"
             size="icon"
