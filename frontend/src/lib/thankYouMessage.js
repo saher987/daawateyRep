@@ -13,8 +13,9 @@ export const SUFFIX_SUGGESTIONS = ["وعائلته", "وعائلتها", "وزو
 export const DEFAULT_THANK_YOU_TEMPLATE = "[target_string]، شكراً على حضوركم ومشاركتكم فرحتنا.";
 
 // Appended to every thank-you. The full https:// URL is what makes phones
-// render it as a tappable link.
-export const THANK_YOU_FOOTER = "أُرسلت بواسطة تطبيق دعوتي\nhttps://www.daawatey.com";
+// render it as a tappable link; /get is the same app-store redirect the
+// printed QR codes use (GetApp.jsx).
+export const THANK_YOU_FOOTER = "أُرسلت بواسطة تطبيق دعوتي\nhttps://daawatey.com/get";
 
 // wa.me (InviteeRow's WhatsApp share) wants digits-only international format, no "+". Same normalization
 // rule as the backend's to_international_phone (pulseem.py) so a guest's
