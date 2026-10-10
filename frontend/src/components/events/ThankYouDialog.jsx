@@ -1,26 +1,34 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Loader2, Send } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { base44 } from "@/api/base44Client";
 import { useT } from "@/lib/i18n";
 import { useBackButton } from "@/hooks/useBackButton";
-import { buildThankYouMessage, smsPartCount } from "@/lib/thankYouMessage";
+import { buildThankYouMessage, smsPartCount, DEFAULT_THANK_YOU_TEMPLATE } from "@/lib/thankYouMessage";
 
-// Opened from the heart button on an accepted invitee. Shows the filled-in
-// thank-you message before it goes out by SMS. The guest's name suffix
-// comes from their invitee record (set in AddInviteeDialog).
+// Opened from the heart button on an accepted invitee (admin/manager only).
+// The text starts from the event's thank_you_message, or a default when the
+// event has none, and can be edited before sending; the preview shows it
+// filled in for this guest. The guest's name suffix comes from their
+// invitee record (set in AddInviteeDialog).
 export default function ThankYouDialog({ open, onOpenChange, recipient, template }) {
   const t = useT();
   const { toast } = useToast();
   const [sending, setSending] = useState(false);
+  const [text, setText] = useState("");
   useBackButton({ isOpen: open, onClose: () => onOpenChange(false) });
 
-  if (!recipient || !template) return null;
+  useEffect(() => {
+    if (open) setText(template || DEFAULT_THANK_YOU_TEMPLATE);
+  }, [open, template]);
 
-  const message = buildThankYouMessage(template, recipient);
+  if (!recipient) return null;
+
+  const message = buildThankYouMessage(text, recipient);
   const parts = smsPartCount(message);
 
   const send = async () => {
@@ -50,6 +58,12 @@ export default function ThankYouDialog({ open, onOpenChange, recipient, template
         </DialogHeader>
 
         <div className="space-y-2">
+          <Label>{t.thankYouSection}</Label>
+          <Textarea value={text} onChange={e => setText(e.target.value)} className="rounded-xl min-h-[80px]" dir="auto" />
+          <p className="text-xs text-muted-foreground">{t.thankYouDialogHint}</p>
+        </div>
+
+        <div className="space-y-2">
           <Label>{t.thankYouPreview}</Label>
           <div className="rounded-xl border bg-muted/30 p-3 text-sm whitespace-pre-wrap" dir="auto">
             {message}
@@ -60,7 +74,7 @@ export default function ThankYouDialog({ open, onOpenChange, recipient, template
         </div>
 
         <div className="flex gap-3 pt-1">
-          <Button onClick={send} disabled={sending} className="flex-1 h-11 rounded-xl gap-2">
+          <Button onClick={send} disabled={sending || !text.trim()} className="flex-1 h-11 rounded-xl gap-2">
             {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             {t.sendSms}
           </Button>
