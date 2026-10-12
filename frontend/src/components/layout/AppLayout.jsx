@@ -194,7 +194,7 @@ export default function AppLayout() {
             if (item.adminOnly && !isPrivileged) return false;
             if (item.userOnly && isPrivileged) return false;
             if (item.venueOwner && !isPrivileged && !ownsVenue) return false;
-            if (item.venueOwnerOnly && !isVenueOwner) return false;
+            if (item.venueOwnerOnly && !ownsVenue) return false;
             return true;
           }).map((item) =>
           <Link

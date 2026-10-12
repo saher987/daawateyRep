@@ -23,7 +23,6 @@ export default function MyVenueDetail() {
   const t = useT();
   const lang = user?.preferred_language || "ar";
   const dateLocale = lang === "he" ? he : ar;
-  const isPrivileged = user?.role === "admin" || user?.role === "manager";
 
   const { data: venue, isLoading } = useQuery({
     queryKey: ["venue", id],
@@ -42,7 +41,11 @@ export default function MyVenueDetail() {
     );
   }, [allEvents, venue]);
 
-  const hasAccess = venue && (isPrivileged || (Array.isArray(venue.owner_phones) && venue.owner_phones.includes(user?.phone)));
+  // GET /api/venues/{id} already 403s anyone who isn't admin/manager or
+  // listed in owner_phones (compared in international format there), so a
+  // venue that loaded is one the caller may see. The old client-side
+  // owner_phones.includes(user.phone) check broke for 05... profile phones.
+  const hasAccess = !!venue;
 
   if (isLoading) {
     return <div className="flex items-center justify-center h-64"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;

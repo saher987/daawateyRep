@@ -3,7 +3,7 @@
 // GET /api/venues, scoped server-side to the caller's own venues for
 // venue_owner accounts — the `.filter(...)` by owner_phones below is a
 // redundant belt-and-suspenders check, same as in VenueSchedule.jsx.
-import React, { useMemo } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -16,17 +16,19 @@ import PageHeader from "@/components/shared/PageHeader";
 export default function MyVenues() {
   const { user } = useAuth();
   const t = useT();
-  const isVenueOwner = user?.role === "venue_owner" || user?.role === "admin" || user?.role === "manager";
+  // Owning a venue (phone in its owner_phones) counts, not only the
+  // venue_owner role — see /api/me's owns_venue.
+  const isVenueOwner = user?.role === "venue_owner" || !!user?.owns_venue || user?.role === "admin" || user?.role === "manager";
 
   const { data: venues = [], isLoading } = useQuery({
     queryKey: ["venues"],
     queryFn: () => base44.entities.Venue.list(),
   });
 
-  const myVenues = useMemo(() => {
-    if (user?.role === "admin" || user?.role === "manager") return venues;
-    return venues.filter(v => Array.isArray(v.owner_phones) && v.owner_phones.includes(user?.phone));
-  }, [venues, user]);
+  // /api/venues already returns only the caller's own venues for anyone but
+  // admin/manager. Not re-filtered by owner_phones.includes(user.phone):
+  // owner_phones are stored as 972... while a profile phone can be 05...
+  const myVenues = venues;
 
   if (!isVenueOwner) {
     return <div className="flex items-center justify-center h-64 text-muted-foreground">{t.noPermissionPage}</div>;

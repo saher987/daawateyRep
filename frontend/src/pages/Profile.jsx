@@ -161,7 +161,7 @@ export default function Profile() {
     }
   };
 
-  const roleLabel = { admin: t.roleAdmin, manager: t.roleManager, user: t.roleUser };
+  const roleLabel = { admin: t.roleAdmin, manager: t.roleManager, venue_owner: t.roleVenueOwner, user: t.roleUser };
 
   return (
     <div>
