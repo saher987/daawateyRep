@@ -35,6 +35,9 @@ class MeResponse(BaseModel):
     preferred_language: str
     photo_url: str | None = None
     profile_complete: bool
+    # Listed in at least one venue's owner_phones — drives the venue
+    # calendar menu for owners whose role isn't venue_owner.
+    owns_venue: bool = False
 
 
 class UserOut(BaseModel):

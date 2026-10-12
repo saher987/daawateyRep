@@ -14,29 +14,32 @@ from app.integrations.pulseem import to_international_phone
 router = APIRouter(prefix="/api", tags=["venues"])
 
 
+def owned_venues(db: Session, user: models.User) -> list[models.Venue]:
+    """Venues whose owner_phones list the user's phone — what makes someone
+    a venue owner, whatever their role (an admin adding a phone to a
+    venue's owners doesn't change that user's role)."""
+    if not user.phone:
+        return []
+    return list(
+        db.query(models.Venue)
+        .filter(models.Venue.owner_phones.any(to_international_phone(user.phone)))
+        .order_by(models.Venue.name)
+        .all()
+    )
+
+
 @router.get("/venues", response_model=list[schemas.VenueOut])
 def list_venues(
     user: models.User = Depends(get_app_user),
     db: Session = Depends(get_db),
 ) -> list[models.Venue]:
     """admin/manager see every venue (CreateEvent's picker needs the full
-    list). venue_owner sees only venues they're listed on — needed for
-    MyVenues.jsx/VenueSchedule.jsx's venue selector — enforced here
-    server-side rather than trusting those pages' own client-side
-    `.filter(...) by owner_phones` (kept in the ported pages too, but only
-    as a redundant check, not the real boundary). Anyone else: 403."""
+    list). Everyone else sees only the venues they own (owned_venues), which
+    backs MyVenues.jsx/VenueSchedule.jsx's venue selector; no venues owned
+    means an empty list."""
     if user.role in (models.Role.admin, models.Role.manager):
         return list(db.query(models.Venue).order_by(models.Venue.name).all())
-    if user.role == models.Role.venue_owner:
-        if not user.phone:
-            return []
-        return list(
-            db.query(models.Venue)
-            .filter(models.Venue.owner_phones.any(to_international_phone(user.phone)))
-            .order_by(models.Venue.name)
-            .all()
-        )
-    raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Not authorized")
+    return owned_venues(db, user)
 
 
 @router.post("/venues", response_model=schemas.VenueOut, status_code=status.HTTP_201_CREATED)
