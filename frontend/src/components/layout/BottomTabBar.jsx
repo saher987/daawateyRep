@@ -7,7 +7,7 @@ import { useT } from "@/lib/i18n";
 // Remember the last deep path visited per tab root
 const tabHistory = {};
 
-export default function BottomTabBar({ unreadCount = 0, userRole, isAuthenticated, isProfileIncomplete = false }) {
+export default function BottomTabBar({ unreadCount = 0, userRole, ownsVenue = false, isAuthenticated, isProfileIncomplete = false }) {
   const location = useLocation();
   const navigate = useNavigate();
   const t = useT();
@@ -32,6 +32,8 @@ export default function BottomTabBar({ unreadCount = 0, userRole, isAuthenticate
   const userTabs = [
     { path: "/my-invitations", icon: Mail, label: t.myInvitations },
     { path: "/my-event", icon: CalendarHeart, label: t.myEvent },
+    // A regular user listed as a venue's owner gets that venue's calendar.
+    ...(ownsVenue ? [{ path: "/venue-schedule", icon: CalendarRange, label: t.venueScheduleTitle || "לוח אולמות" }] : []),
     // Same fix as AppLayout.jsx's sidebar: the page itself has no access
     // restriction for regular users, only the nav did. Added here (not
     // just the desktop sidebar) since regular users are mostly on mobile.

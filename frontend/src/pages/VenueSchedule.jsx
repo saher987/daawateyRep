@@ -23,7 +23,9 @@ export default function VenueSchedule() {
   const { user } = useAuth();
   const t = useT();
   const isAdmin = user?.role === "admin" || user?.role === "manager";
-  const isVenueOwner = user?.role === "venue_owner";
+  // Owning a venue (phone listed in its owner_phones) is what counts, not
+  // only the venue_owner role — see /api/me's owns_venue.
+  const isVenueOwner = user?.role === "venue_owner" || !!user?.owns_venue;
   const lang = user?.preferred_language || "ar";
   const dateLocale = lang === "he" ? he : ar;
 
@@ -36,11 +38,11 @@ export default function VenueSchedule() {
     queryFn: () => base44.entities.Venue.list(),
   });
 
-  // Filter venues this user owns (for venue_owner role)
-  const myVenues = useMemo(() => {
-    if (isAdmin) return venues;
-    return venues.filter(v => Array.isArray(v.owner_phones) && v.owner_phones.includes(user?.phone));
-  }, [venues, user, isAdmin]);
+  // /api/venues already returns only the caller's own venues for anyone but
+  // admin/manager. Not re-filtered here by owner_phones.includes(user.phone):
+  // owner_phones are stored international (972...) while a profile phone can
+  // be local (05...), so that check dropped owners' own venues.
+  const myVenues = venues;
 
   // Load events
   const { data: allEvents = [] } = useQuery({
