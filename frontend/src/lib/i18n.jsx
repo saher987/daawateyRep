@@ -246,6 +246,7 @@ const translations = {
     roleAdmin: "مشرف",
     roleManager: "مدير",
     roleUser: "مستخدم",
+    roleVenueOwner: "صاحب قاعة",
 
     // CreateEvent / EditEvent form
     basicInfo: "المعلومات الأساسية",
@@ -899,6 +900,7 @@ const translations = {
     roleAdmin: "מנהל מערכת",
     roleManager: "מנהל",
     roleUser: "משתמש",
+    roleVenueOwner: "בעל אולם",
 
     // CreateEvent / EditEvent form
     basicInfo: "מידע בסיסי",

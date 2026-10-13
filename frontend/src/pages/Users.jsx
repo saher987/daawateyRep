@@ -39,7 +39,7 @@ export default function Users() {
   const isPrivileged = user?.role === "admin" || user?.role === "manager";
   const sortedCityKeys = sortCityKeysForDisplay(CITY_KEYS, t, user?.preferred_language || "ar");
 
-  const roleLabel = { admin: t.roleAdmin, manager: t.roleManager, user: t.roleUser };
+  const roleLabel = { admin: t.roleAdmin, manager: t.roleManager, venue_owner: t.roleVenueOwner, user: t.roleUser };
 
   const [search, setSearch] = useState("");
   const [filterTown, setFilterTown] = useState("all");
@@ -384,6 +384,7 @@ export default function Users() {
                 onValueChange={v => setAddForm(prev => ({ ...prev, role: v }))}
                 options={[
                   { value: "user", label: t.roleUser },
+                  { value: "venue_owner", label: t.roleVenueOwner },
                   { value: "manager", label: t.roleManager },
                   ...(user?.role === "admin" ? [{ value: "admin", label: t.roleAdmin }] : []),
                 ]}
@@ -482,6 +483,7 @@ export default function Users() {
                     onValueChange={v => setEditForm(prev => ({ ...prev, role: v }))}
                     options={[
                       { value: "user", label: t.roleUser },
+                      { value: "venue_owner", label: t.roleVenueOwner },
                       { value: "manager", label: t.roleManager },
                       { value: "admin", label: t.roleAdmin },
                     ]}
