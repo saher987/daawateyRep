@@ -35,6 +35,9 @@ class MeResponse(BaseModel):
     preferred_language: str
     photo_url: str | None = None
     profile_complete: bool
+    # Listed in at least one venue's owner_phones — drives the venue
+    # calendar menu for owners whose role isn't venue_owner.
+    owns_venue: bool = False
 
 
 class UserOut(BaseModel):
@@ -116,6 +119,7 @@ class EventCreate(BaseModel):
     description_ar: str | None = None
     invitation_greeting: str | None = None
     invitation_greeting_he: str | None = None
+    thank_you_message: str | None = None
     cover_image_url: str | None = None
     invitation_image_url: str | None = None
     groom_name: str | None = None
@@ -142,6 +146,7 @@ class EventUpdate(BaseModel):
     description_ar: str | None = None
     invitation_greeting: str | None = None
     invitation_greeting_he: str | None = None
+    thank_you_message: str | None = None
     cover_image_url: str | None = None
     invitation_image_url: str | None = None
     groom_name: str | None = None
@@ -171,6 +176,7 @@ class EventOut(BaseModel):
     description_ar: str | None
     invitation_greeting: str | None
     invitation_greeting_he: str | None
+    thank_you_message: str | None
     cover_image_url: str | None
     invitation_image_url: str | None
     groom_name: str | None
@@ -209,6 +215,12 @@ class RecipientCreate(BaseModel):
     group_label: str | None = None
     town: str | None = None
     user_id: str | None = None
+
+
+class ThankYouSend(BaseModel):
+    # Already filled in for this guest by the frontend (thankYouMessage.js).
+    # Capped so one tap can't fire off a runaway multi-part SMS.
+    message: str = Field(min_length=1, max_length=1000)
 
 
 class RecipientOut(BaseModel):

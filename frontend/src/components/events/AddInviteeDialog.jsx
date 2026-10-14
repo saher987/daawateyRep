@@ -17,11 +17,13 @@ import { useT } from "@/lib/i18n";
 import { useAuth } from "@/lib/AuthContext";
 import { CITY_KEYS, sortCityKeysForDisplay } from "@/lib/cities";
 import { useBackButton } from "@/hooks/useBackButton";
+import SuffixPicker from "@/components/events/SuffixPicker";
 
 const emptyDetails = {
   nickname: "",
   first_name: "",
   last_name: "",
+  name_suffix: "",
   phone: "",
   email: "",
   guests_count: "1",
@@ -124,6 +126,7 @@ export default function AddInviteeDialog({ open, onOpenChange, eventId }) {
       nickname,
       first_name: selectedUser.first_name || null,
       last_name: selectedUser.last_name || null,
+      name_suffix: details.name_suffix.trim() || null,
       phone: selectedUser.phone || "",
       email: selectedUser.email || null,
       eventId,
@@ -139,6 +142,7 @@ export default function AddInviteeDialog({ open, onOpenChange, eventId }) {
       nickname: details.nickname || null,
       first_name: details.first_name || null,
       last_name: details.last_name || null,
+      name_suffix: details.name_suffix.trim() || null,
       phone: details.phone,
       email: details.email || null,
       eventId,
@@ -257,6 +261,9 @@ export default function AddInviteeDialog({ open, onOpenChange, eventId }) {
               <Input placeholder={t.nicknamePlaceholder2} value={details.nickname} onChange={set("nickname")} className="h-11 rounded-xl text-base" />
             </div>
           )}
+          {selectedUser && !showNewForm && (
+            <SuffixPicker value={details.name_suffix} onChange={v => setDetails(prev => ({ ...prev, name_suffix: v }))} />
+          )}
 
           {/* New invitee form */}
           {showNewForm && (
@@ -275,6 +282,7 @@ export default function AddInviteeDialog({ open, onOpenChange, eventId }) {
                   <Input placeholder={t.lastNameRequired} value={details.last_name} onChange={set("last_name")} className="h-11 rounded-xl text-base" />
                 </div>
               </div>
+              <SuffixPicker value={details.name_suffix} onChange={v => setDetails(prev => ({ ...prev, name_suffix: v }))} />
               <div className="space-y-2">
                 <Label>{t.phoneOptional} <span className="text-muted-foreground text-xs font-normal">{t.phoneRecommendedHint}</span></Label>
                 <Input type="tel" placeholder="05xxxxxxxx" value={details.phone} onChange={set("phone")} className="h-11 rounded-xl text-base" dir="ltr" />

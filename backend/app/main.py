@@ -64,7 +64,7 @@ def handle_data_error(_request: Request, exc: DataError) -> JSONResponse:
     return JSONResponse(status_code=400, content={"detail": "Invalid request"})
 
 
-def _me_response(user: models.User) -> schemas.MeResponse:
+def _me_response(user: models.User, db: Session) -> schemas.MeResponse:
     return schemas.MeResponse(
         id=user.id,
         uid=user.firebase_uid,
@@ -78,6 +78,7 @@ def _me_response(user: models.User) -> schemas.MeResponse:
         preferred_language=user.preferred_language,
         photo_url=user.photo_url,
         profile_complete=user.profile_complete,
+        owns_venue=bool(venues.owned_venues(db, user)),
     )
 
 
@@ -114,12 +115,12 @@ def app_version() -> dict[str, int | None]:
 
 
 @app.get("/api/me", response_model=schemas.MeResponse)
-def me(user: models.User = Depends(get_app_user)) -> schemas.MeResponse:
+def me(user: models.User = Depends(get_app_user), db: Session = Depends(get_db)) -> schemas.MeResponse:
     """The verified Firebase identity plus the app-level role/profile
     layered on top of it (see BUSINESS_LOGIC.md) — this is what the
     frontend's AppLayout uses to decide navigation and whether to redirect
     to /profile (spec §2's profile-completion enforcement)."""
-    return _me_response(user)
+    return _me_response(user, db)
 
 
 @app.put("/api/profile", response_model=schemas.MeResponse)
@@ -165,7 +166,7 @@ def update_profile(
         otp.link_pending_invitations(db, user, fields["phone"])
         db.commit()
     db.refresh(user)
-    return _me_response(user)
+    return _me_response(user, db)
 
 
 @app.delete("/api/account", status_code=204)

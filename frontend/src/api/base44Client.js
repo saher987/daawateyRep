@@ -408,6 +408,12 @@ const functionHandlers = {
   async notifyEventUpdate({ eventId }) {
     return request(`/api/events/${eventId}/notify-update`, { method: 'POST' })
   },
+  async sendThankYouSms({ recipientId, message }) {
+    return request(`/api/invitation-recipients/${recipientId}/send-thanks`, {
+      method: 'POST',
+      body: { message },
+    })
+  },
   async sendInvitationSms({ recipientId }) {
     return request(`/api/invitation-recipients/${recipientId}/resend`, { method: 'POST' })
   },

@@ -246,6 +246,7 @@ const translations = {
     roleAdmin: "مشرف",
     roleManager: "مدير",
     roleUser: "مستخدم",
+    roleVenueOwner: "صاحب قاعة",
 
     // CreateEvent / EditEvent form
     basicInfo: "المعلومات الأساسية",
@@ -283,6 +284,17 @@ const translations = {
     invitationGreetingSection: "نص برقية الدعوة",
     invitationGreetingHint: "هذا النص سيظهر في رسالة SMS والبريد الإلكتروني المرسلة للمدعوين",
     invitationGreetingPlaceholder: "مثال: سمير وعائلته المكرمة يدعونكم لحضور حفل زفاف ابنه أمير",
+    thankYouSection: "رسالة الشكر",
+    thankYouHint: "تُرسل برسالة SMS لمن أكّد حضوره. [target_string] = اسم المدعو الكامل كما في الدعوة (مثال: السيد محمود عواد وعائلته). يُضاف في الآخر سطر «أُرسلت بواسطة تطبيق دعوتي» مع رابط تحميل التطبيق.",
+    thankYouPlaceholder: "مثال: [target_string]، شكراً على حضوركم ومشاركتكم فرحتنا.\nأبو محمد وعائلته",
+    sendThankYou: "إرسال رسالة شكر",
+    suffixLabel: "إضافة بعد الاسم",
+    suffixPlaceholder: "مثال: وعائلته",
+    thankYouPreview: "معاينة الرسالة",
+    sendSms: "إرسال SMS",
+    thankYouDialogHint: "[target_string] = اسم المدعو الكامل. التعديل هنا لهذه الرسالة فقط.",
+    thankYouSent: "تم إرسال رسالة الشكر",
+    thankYouFailed: "لم يتم إرسال الرسالة، حاول مرة أخرى",
     descriptionSection: "وصف المناسبة",
     descriptionPlaceholder: "أضف وصفاً أو رسالة ترحيبية...",
     createEventBtn: "إنشاء المناسبة",
@@ -501,6 +513,8 @@ const translations = {
     exportGuestList: "قائمة الضيوف",
     exportPendingBtn: "تصدير المنتظرين",
     exportOpenDate: "تاريخ الفتح",
+    exportContacted: "تم التواصل؟",
+    exportContactAnswer: "جواب المدعو",
     exportPendingSuffix: "قائمة المنتظرين",
 
     // EventRequests page
@@ -886,6 +900,7 @@ const translations = {
     roleAdmin: "מנהל מערכת",
     roleManager: "מנהל",
     roleUser: "משתמש",
+    roleVenueOwner: "בעל אולם",
 
     // CreateEvent / EditEvent form
     basicInfo: "מידע בסיסי",
@@ -923,6 +938,17 @@ const translations = {
     invitationGreetingSection: "נוסח ההזמנה",
     invitationGreetingHint: "טקסט זה יופיע ב-SMS ובדואר אלקטרוני שנשלח למוזמנים",
     invitationGreetingPlaceholder: "למשל: סמיר ומשפחתו מזמינים אתכם לחתונת בנו",
+    thankYouSection: "הודעת תודה",
+    thankYouHint: "נשלחת ב-SMS למי שאישר הגעה. [target_string] = שם המוזמן המלא כמו בהזמנה (למשל: السيد محمود عواد وعائلته). בסוף מתווספת שורה «נשלח באמצעות דעוותי» עם קישור להורדת האפליקציה.",
+    thankYouPlaceholder: "למשל: [target_string], תודה שהגעתם ושמחתם איתנו.\nאבו מוחמד ומשפחתו",
+    sendThankYou: "שליחת הודעת תודה",
+    suffixLabel: "תוספת אחרי השם",
+    suffixPlaceholder: "למשל: وعائلته",
+    thankYouPreview: "תצוגה מקדימה",
+    sendSms: "שליחת SMS",
+    thankYouDialogHint: "[target_string] = שם המוזמן המלא. השינוי כאן חל רק על ההודעה הזו.",
+    thankYouSent: "הודעת התודה נשלחה",
+    thankYouFailed: "ההודעה לא נשלחה, נסו שוב",
     descriptionSection: "תיאור האירוע",
     descriptionPlaceholder: "הוסף תיאור או הודעת ברכה...",
     createEventBtn: "צור אירוע",
@@ -1140,6 +1166,8 @@ const translations = {
     exportGuestList: "רשימת אורחים",
     exportPendingBtn: "ייצוא ממתינים",
     exportOpenDate: "תאריך פתיחה",
+    exportContacted: "יצרנו קשר?",
+    exportContactAnswer: "תשובת המוזמן",
     exportPendingSuffix: "ממתינים לאישור",
 
     // EventRequests page

@@ -43,6 +43,7 @@ function EditEventDialog({ event, open, onOpenChange }) {
     description: event.description || "",
     host_name: event.host_name || "",
     host_phone: event.host_phone || "",
+    thank_you_message: event.thank_you_message || "",
   });
 
   const mutation = useMutation({
@@ -88,6 +89,11 @@ function EditEventDialog({ event, open, onOpenChange }) {
           <div>
             <Label>{t.eventDescription}</Label>
             <Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="mt-1" rows={3} />
+          </div>
+          <div>
+            <Label>{t.thankYouSection}</Label>
+            <p className="text-xs text-muted-foreground mt-1">{t.thankYouHint}</p>
+            <Textarea value={form.thank_you_message} onChange={e => setForm(f => ({ ...f, thank_you_message: e.target.value }))} className="mt-1" rows={4} placeholder={t.thankYouPlaceholder} />
           </div>
           <div className="flex gap-2 pt-2">
             <Button

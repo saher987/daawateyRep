@@ -188,11 +188,13 @@ export default function AppLayout() {
           {navItems.filter((item) => {
             const isPrivileged = user?.role === "admin" || user?.role === "manager";
             const isVenueOwner = user?.role === "venue_owner";
+            // Venue calendar: anyone who owns a venue, whatever their role.
+            const ownsVenue = isVenueOwner || !!user?.owns_venue;
             if (item.privileged && !isPrivileged) return false;
             if (item.adminOnly && !isPrivileged) return false;
             if (item.userOnly && isPrivileged) return false;
-            if (item.venueOwner && !isPrivileged && !isVenueOwner) return false;
-            if (item.venueOwnerOnly && !isVenueOwner) return false;
+            if (item.venueOwner && !isPrivileged && !ownsVenue) return false;
+            if (item.venueOwnerOnly && !ownsVenue) return false;
             return true;
           }).map((item) =>
           <Link
@@ -360,6 +362,7 @@ export default function AppLayout() {
         <BottomTabBar
           unreadCount={unreadCount}
           userRole={user?.role}
+          ownsVenue={!!user?.owns_venue}
           isAuthenticated={isAuthenticated}
           isProfileIncomplete={isProfileIncomplete}
         />

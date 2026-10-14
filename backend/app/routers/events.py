@@ -19,6 +19,7 @@ from app.auth import get_app_user, require_role
 from app.db import get_db
 from app.integrations.push import send_push_to_user
 from app.integrations.pulseem import find_by_phone, send_sms, to_international_phone
+from app.routers.venues import owned_venues
 from app.integrations.resend_email import send_email
 
 router = APIRouter(prefix="/api", tags=["events"])
@@ -104,8 +105,9 @@ def list_venue_events(
     """Flow E: powers the venue calendar (VenueSchedule.jsx for admin/
     venue_owner, VenueMonthCalendar on MyVenueDetail.jsx) — every active/
     draft event, scoped to the venues the caller can see. admin/manager get
-    everything, same as the original's unrestricted query; venue_owner gets
-    only events at venues where they're listed in owner_phones, enforced
+    everything, same as the original's unrestricted query; anyone else gets
+    only events at venues where they're listed in owner_phones (whatever
+    their role, see venues.owned_venues), enforced
     here server-side (the original relied on Base44's per-row RLS for this
     — VenueSchedule.jsx's client-side `.filter(...)` by owner_phones was
     always a redundant belt-and-suspenders check against data Base44 had
@@ -115,20 +117,12 @@ def list_venue_events(
     denormalized venue_name text, exactly like the ported pages do — an
     event doesn't have to reference a real Venue row (inline venue text is
     still valid), so venue_name is the only link for those."""
-    if user.role not in (models.Role.admin, models.Role.manager, models.Role.venue_owner):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Not authorized")
-
     query = db.query(models.Event).filter(
         models.Event.status.in_([models.EventStatus.active, models.EventStatus.draft])
     )
-    if user.role == models.Role.venue_owner:
-        my_venues = []
-        if user.phone:
-            my_venues = (
-                db.query(models.Venue)
-                .filter(models.Venue.owner_phones.any(to_international_phone(user.phone)))
-                .all()
-            )
+    if user.role not in (models.Role.admin, models.Role.manager):
+        # Anyone listed in a venue's owner_phones, whatever their role.
+        my_venues = owned_venues(db, user)
         if not my_venues:
             return []
         venue_ids = [v.id for v in my_venues]
@@ -635,6 +629,26 @@ def resend_invitation(
     event = recipient.event
     _require_event_access(event, user)
     sent = _send_invitation(event, recipient, invited_by=user)
+    return {"success": sent}
+
+
+@router.post("/invitation-recipients/{recipient_id}/send-thanks")
+def send_thanks(
+    recipient_id: str,
+    body: schemas.ThankYouSend,
+    _: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
+    db: Session = Depends(get_db),
+) -> dict:
+    """ThankYouDialog.jsx's send button: SMS the event's thank-you message,
+    already filled in for this guest, to an invitee who accepted. Admin/
+    manager only — event owners don't get the button (EventDetails.jsx
+    passes canResend={isPrivileged}), and each send is a paid SMS."""
+    recipient = _get_recipient_or_404(db, recipient_id)
+    if recipient.rsvp_status != models.RsvpStatus.accepted:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Thank-you is only sent to guests who accepted")
+    if not recipient.phone:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Recipient has no phone number")
+    sent = send_sms(recipient.phone, body.message.strip(), reference=recipient.id)
     return {"success": sent}
 
 
