@@ -1,7 +1,7 @@
 """data backfill: link unlinked invitation_recipients to their user by phone
 
-Revision ID: 0013
-Revises: 0012
+Revision ID: 0014
+Revises: 0013
 Create Date: 2026-10-07
 
 Catch-up for a gap 0008 couldn't cover: otp.py's verify_otp linked only
@@ -21,8 +21,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0013"
-down_revision: Union[str, None] = "0012"
+revision: str = "0014"
+down_revision: Union[str, None] = "0013"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -70,7 +70,7 @@ def upgrade() -> None:
         )
         linked += 1
 
-    print(f"[0013] linked {linked} invitation_recipients row(s) to their matching user by phone")
+    print(f"[0014] linked {linked} invitation_recipients row(s) to their matching user by phone")
 
 
 def downgrade() -> None:
