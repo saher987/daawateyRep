@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Mail, ArrowLeft, Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
+import { publicAppOrigin } from "@/lib/publicUrl";
 
 export default function ForgotPassword() {
   const [lang, setLang] = usePublicLanguage();
@@ -27,7 +28,7 @@ export default function ForgotPassword() {
     setLoading(true);
     try {
       await sendPasswordResetEmail(auth, email, {
-        url: `${window.location.origin}/reset-password`,
+        url: `${publicAppOrigin()}/reset-password`,
         handleCodeInApp: true,
       });
     } catch {

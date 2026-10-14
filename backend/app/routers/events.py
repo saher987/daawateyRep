@@ -245,7 +245,7 @@ def notify_event_update(
     event = _get_event_or_404(db, event_id)
     _require_event_access(event, user)
 
-    app_url = os.environ.get("APP_URL", "https://daawatey-frontend-t3tobt7bfq-uc.a.run.app")
+    app_url = os.environ.get("APP_URL", "https://daawatey.com")
     sms_sent = 0
     email_sent = 0
     recipients = (
@@ -548,7 +548,7 @@ def _send_invitation(
     its caller needs to know whether anything actually went out. Returns
     True if at least one channel (of whichever the recipient has) sent
     successfully."""
-    app_url = os.environ.get("APP_URL", "https://daawatey-frontend-t3tobt7bfq-uc.a.run.app")
+    app_url = os.environ.get("APP_URL", "https://daawatey.com")
     invitation_link = f"{app_url}/i/{recipient.personal_token}"
 
     invitee_name = _resolve_display_name(
