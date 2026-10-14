@@ -19,7 +19,7 @@ import { ar, he } from "date-fns/locale";
 import { useToast } from "@/components/ui/use-toast";
 import { downloadFile } from "@/lib/downloadFile";
 import GuestStatsDashboard from "@/components/events/GuestStatsDashboard";
-import { recipientDisplayName } from "@/lib/recipientName";
+import { recipientDisplayName, recipientMatchesSearch } from "@/lib/recipientName";
 
 // rsvpLabel is built dynamically using t inside components
 const rsvpColor = {
@@ -138,9 +138,7 @@ function EventControlPanel({ event }) {
 
   const filtered = recipients.filter(r => {
     const matchFilter = filter === "all" || r.rsvp_status === filter;
-    const matchSearch = !search ||
-      recipientDisplayName(r).includes(search) ||
-      (r.phone || "").includes(search);
+    const matchSearch = recipientMatchesSearch(r, search);
     return matchFilter && matchSearch;
   });
 

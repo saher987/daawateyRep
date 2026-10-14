@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { Link, useNavigate } from "react-router-dom";
 import {
   CalendarHeart, MapPin, Users, Phone, Copy, Check, Plus,
-  ArrowRight, Settings, Trash2, Send, ExternalLink, Pencil, Sparkles
+  ArrowRight, Settings, Trash2, Send, ExternalLink, Pencil, Sparkles, Search
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,8 @@ import { format } from "date-fns";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/AuthContext";
 import { useT } from "@/lib/i18n";
+import { Input } from "@/components/ui/input";
+import { recipientMatchesSearch } from "@/lib/recipientName";
 
 
 export default function EventDetails() {
@@ -42,6 +44,7 @@ export default function EventDetails() {
   const [showEditEvent, setShowEditEvent] = useState(false);
   const [showCardEditor, setShowCardEditor] = useState(false);
   const [inviteeFilter, setInviteeFilter] = useState("all");
+  const [inviteeSearch, setInviteeSearch] = useState("");
 
   const { data: event, isLoading: eventLoading } = useQuery({
     queryKey: ["event", eventId],
@@ -219,7 +222,7 @@ export default function EventDetails() {
               { key: "not_opened", label: t.filterNotOpened, count: recipients.filter(r => !r.last_opened_at).length },
             ];
 
-            const filtered = recipients.filter(r => {
+            const filtered = recipients.filter(r => recipientMatchesSearch(r, inviteeSearch)).filter(r => {
               if (inviteeFilter === "all") return true;
               if (inviteeFilter === "accepted") return r.rsvp_status === "accepted";
               if (inviteeFilter === "declined") return r.rsvp_status === "declined";
@@ -251,6 +254,17 @@ export default function EventDetails() {
                       </span>
                     </button>
                   ))}
+                </div>
+
+                {/* Partial first/last name (or phone) search, combined with the tab filter */}
+                <div className="relative mb-3">
+                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                  <Input
+                    value={inviteeSearch}
+                    onChange={e => setInviteeSearch(e.target.value)}
+                    placeholder={t.searchNamePhone}
+                    className="pr-9 h-10 rounded-xl"
+                  />
                 </div>
 
                 <Card className="divide-y divide-border overflow-hidden">
