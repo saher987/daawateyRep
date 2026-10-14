@@ -289,6 +289,12 @@ def verify_otp(body: schemas.OtpVerifyRequest, db: Session = Depends(get_db)) ->
         recipient.user_id = user.id
         _prefill_profile(user, recipient)
 
+    # Link *every* invitation under this phone, not just the one above —
+    # find_by_phone only ever returns a single row, so a guest invited to
+    # more than one event used to log in with only one invitation linked,
+    # and the guest list showed "لم يدخل التطبيق" for the others.
+    link_pending_invitations(db, user, phone)
+
     db.commit()
 
     # create_custom_token needs no prior Firebase-side user for this uid —

@@ -123,7 +123,7 @@ Deferred work — not urgent, tracked here so it doesn't get lost.
   - `verify_otp` now calls `link_pending_invitations` (links all rows).
   - Same linking when an admin sets a user's phone (`PUT /api/users/{id}`)
     and when an admin-invited account with a phone is first created.
-  - Migration `0013_relink_recipients_by_phone` backfills existing
+  - Migration `0014_relink_recipients_by_phone` backfills existing
     unlinked rows to their *active* account by normalized phone (fills
     missing links only; tested on a throwaway DB).
 

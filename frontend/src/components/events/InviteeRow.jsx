@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useT } from "@/lib/i18n";
 import { useAuth } from "@/lib/AuthContext";
 import { recipientDisplayName } from "@/lib/recipientName";
+import { publicAppOrigin } from "@/lib/publicUrl";
 import { toIntlPhone } from "@/lib/thankYouMessage";
 import ThankYouDialog from "@/components/events/ThankYouDialog";
 
@@ -36,7 +37,7 @@ export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeti
   // resolves to instead of this app, which is exactly what "אירוע לא נמצא"
   // (event not found) was reporting. window.location.origin is always
   // wherever this page is actually being served from.
-  const inviteUrl = token ? `${window.location.origin}/i/${token}` : null;
+  const inviteUrl = token ? `${publicAppOrigin()}/i/${token}` : null;
   const isLinked = !!recipient.user_id;
   const displayName = recipientDisplayName(recipient) || "—";
 
