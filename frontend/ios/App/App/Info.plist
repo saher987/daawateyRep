@@ -117,5 +117,12 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<!-- Push: the backend sends alert pushes with content-available, which
+	     iOS only delivers to the app (for the tap/foreground handlers) with
+	     the remote-notification background mode declared. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>

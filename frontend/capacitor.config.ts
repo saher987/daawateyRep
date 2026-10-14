@@ -14,6 +14,27 @@ const config: CapacitorConfig = {
       providers: ['google.com', 'apple.com'],
       skipNativeAuth: true,
     },
+    // Push via @capacitor-firebase/messaging (replaced
+    // @capacitor/push-notifications, which on iOS hands back the raw APNs
+    // token — the backend sends through FCM and needs an FCM token on both
+    // platforms). Show pushes as a banner with sound even while the app is
+    // in the foreground.
+    FirebaseMessaging: {
+      presentationOptions: ['alert', 'badge', 'sound'],
+    },
+  },
+  // Both @capacitor-firebase plugins ask for this to avoid a SwiftPM
+  // package identity collision between them (capawesome-team/
+  // capacitor-firebase#959) — needed now that there are two.
+  experimental: {
+    ios: {
+      spm: {
+        packageOptions: {
+          '@capacitor-firebase/authentication': { symlink: true },
+          '@capacitor-firebase/messaging': { symlink: true },
+        },
+      },
+    },
   },
 }
 
