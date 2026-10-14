@@ -171,7 +171,7 @@ export default function AddInviteeDialog({ open, onOpenChange, eventId }) {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md" dir="rtl">
+      <DialogContent className="sm:max-w-md max-h-[92dvh] overflow-y-auto p-5 gap-3" dir="rtl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="w-5 h-5" />
@@ -267,61 +267,64 @@ export default function AddInviteeDialog({ open, onOpenChange, eventId }) {
 
           {/* New invitee form */}
           {showNewForm && (
-            <form onSubmit={submitNew} className="space-y-4">
-              <div className="space-y-2">
-                <Label>{t.nicknameOptional} <span className="text-muted-foreground text-xs font-normal">{t.nicknameOptionalHint}</span></Label>
-                <Input placeholder={t.nicknamePlaceholder2} value={details.nickname} onChange={set("nickname")} className="h-11 rounded-xl text-base" />
+            // Compact on phones: paired fields side by side, h-10 inputs and
+            // tighter spacing so the whole form (and its submit button) fits
+            // one screen — at h-11/space-y-4 it was ~980px tall on a 844px
+            // phone and the dialog didn't scroll, hiding the button.
+            <form onSubmit={submitNew} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3 items-start">
+                <div className="space-y-1.5">
+                  <Label className="text-sm">{t.nicknameOptional} <span className="text-muted-foreground text-xs font-normal">{t.nicknameOptionalHint}</span></Label>
+                  <Input placeholder={t.nicknamePlaceholder2} value={details.nickname} onChange={set("nickname")} className="h-10 rounded-xl text-base" />
+                </div>
+                <SuffixPicker compact value={details.name_suffix} onChange={v => setDetails(prev => ({ ...prev, name_suffix: v }))} />
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label>{t.firstNameRequired} <span className="text-destructive">*</span></Label>
-                  <Input placeholder={t.firstNameRequired} value={details.first_name} onChange={set("first_name")} className="h-11 rounded-xl text-base" />
+                <div className="space-y-1.5">
+                  <Label className="text-sm">{t.firstNameRequired} <span className="text-destructive">*</span></Label>
+                  <Input placeholder={t.firstNameRequired} value={details.first_name} onChange={set("first_name")} className="h-10 rounded-xl text-base" />
                 </div>
-                <div className="space-y-2">
-                  <Label>{t.lastNameRequired} <span className="text-destructive">*</span></Label>
-                  <Input placeholder={t.lastNameRequired} value={details.last_name} onChange={set("last_name")} className="h-11 rounded-xl text-base" />
+                <div className="space-y-1.5">
+                  <Label className="text-sm">{t.lastNameRequired} <span className="text-destructive">*</span></Label>
+                  <Input placeholder={t.lastNameRequired} value={details.last_name} onChange={set("last_name")} className="h-10 rounded-xl text-base" />
                 </div>
               </div>
-              <SuffixPicker value={details.name_suffix} onChange={v => setDetails(prev => ({ ...prev, name_suffix: v }))} />
-              <div className="space-y-2">
-                <Label>{t.phoneOptional} <span className="text-muted-foreground text-xs font-normal">{t.phoneRecommendedHint}</span></Label>
-                <Input type="tel" placeholder="05xxxxxxxx" value={details.phone} onChange={set("phone")} className="h-11 rounded-xl text-base" dir="ltr" />
-              </div>
-              <div className="space-y-2">
-                {/* Not actually mandatory on its own — canSubmitNew only
-                    requires *either* phone or email (see hasContact below).
-                    The label used to carry a "*" implying email alone was
-                    required, which contradicted that logic; dropped it and
-                    put the shared requirement in the note under both
-                    fields instead. */}
-                <Label>{t.emailRequired} <span className="text-muted-foreground text-xs font-normal">{t.emailRequiredHint}</span></Label>
-                <Input type="email" placeholder="example@email.com" value={details.email} onChange={set("email")} className="h-11 rounded-xl text-base" dir="ltr" />
-              </div>
-              <p className="text-xs text-muted-foreground -mt-1">{t.contactRequired}</p>
-              <div className="space-y-2">
-                <Label>{t.town} <span className="text-muted-foreground text-xs font-normal">({t.optional})</span></Label>
-                <Select value={details.town} onValueChange={v => setDetails(prev => ({ ...prev, town: v }))}>
-                  <SelectTrigger className="h-11 rounded-xl text-base">
-                    <SelectValue placeholder={t.town}>
-                      {details.town ? (t[details.town] || details.town) : null}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sortedCityKeys.map(key => (
-                      <SelectItem key={key} value={key}>{t[key] || key}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>{t.groupLabel}</Label>
-                  <Input placeholder={t.groupPlaceholder} value={details.group_label} onChange={set("group_label")} className="h-11 rounded-xl text-base" />
+              {/* Either phone or email is required (hasContact) — the note
+                  only appears when neither is filled. */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-sm">{t.phoneOptional}</Label>
+                  <Input type="tel" placeholder="05xxxxxxxx" value={details.phone} onChange={set("phone")} className="h-10 rounded-xl text-base" dir="ltr" />
                 </div>
-                <div className="space-y-2">
-                  <Label>{t.guestsCount}</Label>
-                  <Input type="number" min="1" value={details.guests_count} onChange={set("guests_count")} className="h-11 rounded-xl text-base" />
+                <div className="space-y-1.5">
+                  <Label className="text-sm">{t.emailRequired}</Label>
+                  <Input type="email" placeholder="example@email.com" value={details.email} onChange={set("email")} className="h-10 rounded-xl text-base" dir="ltr" />
                 </div>
+              </div>
+              <div className="grid grid-cols-[2fr_1fr] gap-3">
+                <div className="space-y-1.5 min-w-0">
+                  <Label className="text-sm">{t.town} <span className="text-muted-foreground text-xs font-normal">({t.optional})</span></Label>
+                  <Select value={details.town} onValueChange={v => setDetails(prev => ({ ...prev, town: v }))}>
+                    <SelectTrigger className="h-10 rounded-xl text-base">
+                      <SelectValue placeholder={t.town}>
+                        {details.town ? (t[details.town] || details.town) : null}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sortedCityKeys.map(key => (
+                        <SelectItem key={key} value={key}>{t[key] || key}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm">{t.guestsCount}</Label>
+                  <Input type="number" min="1" value={details.guests_count} onChange={set("guests_count")} className="h-10 rounded-xl text-base" />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm">{t.groupLabel}</Label>
+                <Input placeholder={t.groupPlaceholder} value={details.group_label} onChange={set("group_label")} className="h-10 rounded-xl text-base" />
               </div>
               {!hasContact && (hasName || details.nickname.trim()) && (
                 <p className="text-xs text-destructive">{t.contactRequired}</p>
