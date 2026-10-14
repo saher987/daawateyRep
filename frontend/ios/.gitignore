@@ -11,3 +11,7 @@ capacitor-cordova-ios-plugins
 # Generated Config files
 App/App/capacitor.config.json
 App/App/config.xml
+
+# Absolute symlinks written by `cap sync` (SPM packageOptions symlink:true);
+# regenerated on every sync, machine-specific.
+App/CapApp-SPM/symlinks

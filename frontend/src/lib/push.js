@@ -3,34 +3,35 @@
 // backend/app/integrations/push.py and PushNotificationHandler.jsx (which
 // wires this into the app: register on sign-in, navigate on tap).
 import { Capacitor } from '@capacitor/core'
-import { PushNotifications } from '@capacitor/push-notifications'
+import { FirebaseMessaging } from '@capacitor-firebase/messaging'
 import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging'
 import { app, firebaseConfig } from '@/lib/firebase'
 import { base44 } from '@/api/base44Client'
 
 /** Requests permission and registers this device for push, sending the
- * resulting token to the backend. Native: the token itself arrives later,
- * async, via the 'registration' listener set up in
- * setupNativePushListeners — this only triggers that flow. Web: getToken()
- * resolves with the token directly, so this handles the whole thing.
+ * resulting token to the backend. Native and web both get the token
+ * directly from getToken(); native token rotations later arrive via the
+ * 'tokenReceived' listener in setupNativePushListeners.
  * Silently no-ops on any missing prerequisite (unsupported browser, no
  * VAPID key configured yet, permission denied) — push is a bonus channel,
  * never something the rest of the app should block or error on. */
 export async function requestAndRegisterPush() {
   if (Capacitor.isNativePlatform()) {
-    // iOS gate removed 2026-09-28 — @capacitor/push-notifications exposes
-    // the same checkPermissions/requestPermissions/register API on both
-    // platforms; iOS was blocked only because the APNs side (entitlement +
-    // provisioning profile + Firebase's Apple config) wasn't set up yet,
-    // not because this code path itself needed to differ.
-    const current = await PushNotifications.checkPermissions()
+    // @capacitor-firebase/messaging (replaced @capacitor/push-notifications
+    // 2026-10-14): getToken() returns an FCM token on both Android and iOS.
+    // The old plugin returned the raw APNs token on iOS, which FCM — what
+    // backend/app/integrations/push.py sends through — rejects, so iOS
+    // never received a push. Token refreshes arrive via 'tokenReceived'
+    // (setupNativePushListeners).
+    const current = await FirebaseMessaging.checkPermissions()
     let granted = current.receive === 'granted'
     if (!granted && current.receive !== 'denied') {
-      const requested = await PushNotifications.requestPermissions()
+      const requested = await FirebaseMessaging.requestPermissions()
       granted = requested.receive === 'granted'
     }
     if (!granted) return
-    await PushNotifications.register()
+    const { token } = await FirebaseMessaging.getToken()
+    if (token) await base44.push.registerToken(token, Capacitor.getPlatform())
     return
   }
 
@@ -59,16 +60,17 @@ export async function requestAndRegisterPush() {
 export function setupNativePushListeners({ onToken, onTap } = {}) {
   if (!Capacitor.isNativePlatform()) return () => {}
 
-  const registrationListener = PushNotifications.addListener('registration', (token) => {
-    base44.push.registerToken(token.value, Capacitor.getPlatform()).catch(() => {})
-    onToken?.(token.value)
+  const tokenListener = FirebaseMessaging.addListener('tokenReceived', ({ token }) => {
+    if (!token) return
+    base44.push.registerToken(token, Capacitor.getPlatform()).catch(() => {})
+    onToken?.(token)
   })
-  const tapListener = PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
-    onTap?.(action.notification?.data)
+  const tapListener = FirebaseMessaging.addListener('notificationActionPerformed', (event) => {
+    onTap?.(event.notification?.data)
   })
 
   return () => {
-    registrationListener.then((l) => l.remove())
+    tokenListener.then((l) => l.remove())
     tapListener.then((l) => l.remove())
   }
 }
