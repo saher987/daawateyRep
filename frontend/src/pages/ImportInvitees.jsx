@@ -13,13 +13,9 @@ import { useToast } from "@/components/ui/use-toast";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { useT, translations } from "@/lib/i18n";
-import { CITY_KEYS } from "@/lib/cities";
-import { FileSpreadsheet, Send, CheckCircle2, Phone, MapPin, Users as UsersIcon, Search } from "lucide-react";
-
-// Default town for a row whose city cell is empty — the imported guest
-// lists so far have all been Nazareth-based, with only the out-of-town
-// guests' city filled in.
-const DEFAULT_CITY = "nazareth";
+import { CITY_KEYS, sortCityKeysForDisplay } from "@/lib/cities";
+import SuffixPicker from "@/components/events/SuffixPicker";
+import { FileSpreadsheet, Send, CheckCircle2, Phone, MapPin, Users as UsersIcon, Search, UserPlus, X } from "lucide-react";
 
 // Header names accepted per column (lower-cased, trimmed), so the import
 // works with the English headers of the template file as well as Arabic/
@@ -87,13 +83,16 @@ function parseRows(sheet) {
         last_name: clean(get("last_name")),
         name_suffix: clean(get("name_suffix")),
         phone: normalizePhone(get("phone")),
-        city: cityText ? CITY_LOOKUP.get(cityText) || null : DEFAULT_CITY,
+        // An empty city cell stays empty — no default town.
+        city: cityText ? CITY_LOOKUP.get(cityText) || null : null,
         cityText,
         guests_count: Number.isFinite(guests) && guests >= 1 ? guests : 1,
       };
     })
     .filter((row) => row.nickname || row.first_name || row.last_name || row.phone);
 }
+
+const EMPTY_MANUAL = { nickname: "", first_name: "", last_name: "", name_suffix: "", phone: "", city: "", guests_count: "1" };
 
 export default function ImportInvitees() {
   const { user } = useAuth();
@@ -102,12 +101,16 @@ export default function ImportInvitees() {
   const queryClient = useQueryClient();
   const t = useT();
   const fileInputRef = useRef(null);
+  // Row ids stay unique across file loads and manual additions.
+  const nextIdRef = useRef(0);
   const isPrivileged = user?.role === "admin" || user?.role === "manager";
 
   const [eventId, setEventId] = useState("");
   const [rows, setRows] = useState([]);
   const [fileName, setFileName] = useState("");
   const [search, setSearch] = useState("");
+  const [showManual, setShowManual] = useState(false);
+  const [manual, setManual] = useState(EMPTY_MANUAL);
   const [sendingIds, setSendingIds] = useState(() => new Set());
   // Rows sent in this session — the durable indication is the event's own
   // recipient list (sentPhones below), this just covers the moment between
@@ -120,20 +123,26 @@ export default function ImportInvitees() {
     enabled: isPrivileged,
   });
 
-  const { data: recipients = [] } = useQuery({
+  const { data: recipients = [], isLoading: recipientsLoading } = useQuery({
     queryKey: ["recipients", eventId],
     queryFn: async () => (await base44.functions.invoke("getEventRecipients", { eventId })).recipients,
     enabled: !!eventId,
   });
 
   const sentPhones = useMemo(() => new Set(recipients.map((r) => phoneKey(r.phone)).filter(Boolean)), [recipients]);
-  const isSent = (row) => sentIds.has(row.id) || (!!row.phone && sentPhones.has(phoneKey(row.phone)));
+  // Already a recipient of the selected event (matched by phone) — either
+  // invited before this import or just sent from it.
+  const isInEvent = (row) => !!row.phone && sentPhones.has(phoneKey(row.phone));
+  const isSent = (row) => sentIds.has(row.id) || isInEvent(row);
 
+  // Not-yet-invited rows first; Array.prototype.sort is stable, so each
+  // group keeps the file's order.
   const visibleRows = useMemo(() => {
     const q = search.trim();
-    if (!q) return rows;
-    return rows.filter((r) => [r.nickname, r.first_name, r.last_name, r.phone].join(" ").includes(q));
-  }, [rows, search]);
+    const filtered = q ? rows.filter((r) => [r.nickname, r.first_name, r.last_name, r.phone].join(" ").includes(q)) : [...rows];
+    const sent = (r) => sentIds.has(r.id) || (!!r.phone && sentPhones.has(phoneKey(r.phone)));
+    return filtered.sort((a, b) => Number(sent(a)) - Number(sent(b)));
+  }, [rows, search, sentIds, sentPhones]);
 
   const sentCount = rows.filter(isSent).length;
 
@@ -148,10 +157,10 @@ export default function ImportInvitees() {
     if (!file) return;
     try {
       const sheet = await readSheet(file);
-      const parsed = parseRows(sheet);
-      setRows(parsed);
+      const parsed = parseRows(sheet).map((row) => ({ ...row, id: nextIdRef.current++ }));
+      // A new file replaces the previous file's rows; manually added ones stay.
+      setRows((prev) => [...prev.filter((r) => r.manual), ...parsed]);
       setFileName(file.name);
-      setSentIds(new Set());
       toast({ title: t.importLoaded.replace("{count}", parsed.length) });
     } catch (err) {
       toast({ title: t.importReadError, description: err.message, variant: "destructive" });
@@ -191,7 +200,39 @@ export default function ImportInvitees() {
     }
   };
 
+  const addManualRow = (e) => {
+    e.preventDefault();
+    const phone = normalizePhone(manual.phone);
+    const hasName = [manual.nickname, manual.first_name, manual.last_name].some((v) => clean(v));
+    if (!hasName || !phone) {
+      toast({ title: t.importNeedNameOrPhone, variant: "destructive" });
+      return;
+    }
+    const guests = parseInt(manual.guests_count, 10);
+    const row = {
+      id: nextIdRef.current++,
+      manual: true,
+      nickname: clean(manual.nickname),
+      first_name: clean(manual.first_name),
+      last_name: clean(manual.last_name),
+      name_suffix: clean(manual.name_suffix),
+      phone,
+      city: manual.city || null,
+      cityText: "",
+      guests_count: Number.isFinite(guests) && guests >= 1 ? guests : 1,
+    };
+    setRows((prev) => [row, ...prev]);
+    setManual(EMPTY_MANUAL);
+    toast({ title: t.importRowAdded });
+  };
+
+  const setManualField = (field) => (e) => setManual((m) => ({ ...m, [field]: e.target.value }));
+
   const eventOptions = events.map((ev) => ({ value: ev.id, label: ev.title }));
+  const cityOptions = [
+    { value: "", label: t.importNoCity },
+    ...sortCityKeysForDisplay(CITY_KEYS, t, user?.preferred_language || "ar").map((key) => ({ value: key, label: t[key] || key })),
+  ];
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -217,7 +258,64 @@ export default function ImportInvitees() {
           </div>
         </div>
         <p className="text-xs text-muted-foreground">{t.importColumnsHint}</p>
+        {!showManual && (
+          <Button type="button" variant="outline" className="w-full rounded-xl gap-2" onClick={() => setShowManual(true)}>
+            <UserPlus className="w-4 h-4" />
+            {t.importAddManually}
+          </Button>
+        )}
       </Card>
+
+      {showManual && (
+        <Card className="p-5 mb-6">
+          <form onSubmit={addManualRow} className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold flex items-center gap-2">
+                <UserPlus className="w-4 h-4" />
+                {t.importAddManually}
+              </h3>
+              <Button type="button" variant="ghost" size="icon" onClick={() => setShowManual(false)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label className="text-sm">{t.nicknameOptional}</Label>
+                <Input value={manual.nickname} onChange={setManualField("nickname")} placeholder={t.nicknamePlaceholder2} className="h-10 rounded-xl" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm">{t.firstName}</Label>
+                <Input value={manual.first_name} onChange={setManualField("first_name")} className="h-10 rounded-xl" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm">{t.lastName}</Label>
+                <Input value={manual.last_name} onChange={setManualField("last_name")} className="h-10 rounded-xl" />
+              </div>
+            </div>
+            <SuffixPicker compact value={manual.name_suffix} onChange={(v) => setManual((m) => ({ ...m, name_suffix: v }))} />
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label className="text-sm">{t.phone}</Label>
+                <Input type="tel" dir="ltr" value={manual.phone} onChange={setManualField("phone")} placeholder="05X-XXXXXXX" className="h-10 rounded-xl" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm">
+                  {t.town} <span className="text-muted-foreground text-xs font-normal">({t.optional})</span>
+                </Label>
+                <MobileSelect value={manual.city} onValueChange={(v) => setManual((m) => ({ ...m, city: v }))} options={cityOptions} placeholder={t.importNoCity} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm">{t.guestsCount}</Label>
+                <Input type="number" min={1} value={manual.guests_count} onChange={setManualField("guests_count")} className="h-10 rounded-xl" />
+              </div>
+            </div>
+            <Button type="submit" className="w-full sm:w-auto gap-2">
+              <UserPlus className="w-4 h-4" />
+              {t.importAddRow}
+            </Button>
+          </form>
+        </Card>
+      )}
 
       {rows.length > 0 && (
         <>
@@ -236,6 +334,7 @@ export default function ImportInvitees() {
           <div className="space-y-2">
             {visibleRows.map((row) => {
               const sent = isSent(row);
+              const alreadyInvited = isInEvent(row) && !sentIds.has(row.id);
               const sending = sendingIds.has(row.id);
               const name = [row.nickname, row.first_name, row.last_name, row.name_suffix].filter(Boolean).join(" ");
               return (
@@ -250,9 +349,13 @@ export default function ImportInvitees() {
                         <Phone className="w-3 h-3" />
                         <span dir="ltr">{row.phone || t.importNoPhone}</span>
                       </span>
-                      <span className={`flex items-center gap-1 ${row.city ? "" : "text-destructive"}`}>
+                      <span className={`flex items-center gap-1 ${!row.city && row.cityText ? "text-destructive" : ""}`}>
                         <MapPin className="w-3 h-3" />
-                        {row.city ? t[row.city] || row.city : `${row.cityText} (${t.importUnknownCity})`}
+                        {row.city
+                          ? t[row.city] || row.city
+                          : row.cityText
+                          ? `${row.cityText} (${t.importUnknownCity})`
+                          : t.importNoCity}
                       </span>
                       <span className="flex items-center gap-1">
                         <UsersIcon className="w-3 h-3" />
@@ -263,13 +366,13 @@ export default function ImportInvitees() {
                   {sent ? (
                     <span className="flex items-center gap-1.5 text-sm font-medium text-green-700 dark:text-green-400 shrink-0">
                       <CheckCircle2 className="w-4 h-4" />
-                      {t.importSent}
+                      {alreadyInvited ? t.importAlreadyInEvent : t.importSent}
                     </span>
                   ) : (
                     <Button
                       size="sm"
                       className="gap-1.5 shrink-0"
-                      disabled={!eventId || !row.phone || sending}
+                      disabled={!eventId || recipientsLoading || !row.phone || sending}
                       title={!row.phone ? t.importNoPhone : undefined}
                       onClick={() => sendInvitation(row)}
                     >
