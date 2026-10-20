@@ -97,59 +97,65 @@ export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeti
   const rsvp = rsvpLabel[recipient.rsvp_status] || rsvpLabel.pending;
 
   return (
-    <div className="flex items-center gap-3 p-4 hover:bg-muted/30 transition-colors">
-      {/* Left: User linked indicator */}
-      <div className="flex-shrink-0">
-        {isLinked
-          ? <UserCheck className="w-5 h-5 text-success" />
-          : <UserX className="w-5 h-5 text-muted-foreground/50" />
-        }
-      </div>
-
-      {/* Center: Info */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <p className="font-medium text-sm">{displayName}</p>
-          <Badge
-            variant="outline"
-            className={`text-xs px-2 py-0 ${isLinked ? "bg-success/10 text-success border-success/30" : "bg-muted text-muted-foreground"}`}
-          >
-            {isLinked ? t.appLoggedIn : t.appNotLoggedIn}
-          </Badge>
-          <Badge variant="outline" className={`text-xs px-2 py-0 gap-1 ${rsvp.className}`}>
-            {rsvp.label}
-            {/* How many are coming — only meaningful for an accepted RSVP */}
-            {recipient.rsvp_status === "accepted" && (
-              <span className="inline-flex items-center gap-0.5 font-semibold">
-                · <Users className="w-3 h-3" /> {recipient.rsvp_guests_count || recipient.guests_count || 1}
-              </span>
-            )}
-          </Badge>
+    // Phones: info on its own full-width block, actions in a row under it —
+    // side by side, the six action buttons left the name a one-word-wide
+    // column. sm+ keeps the single row.
+    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-4 hover:bg-muted/30 transition-colors">
+      <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
+        {/* User linked indicator */}
+        <div className="flex-shrink-0 pt-0.5 sm:pt-0">
+          {isLinked
+            ? <UserCheck className="w-5 h-5 text-success" />
+            : <UserX className="w-5 h-5 text-muted-foreground/50" />
+          }
         </div>
-        <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground flex-wrap">
-          {recipient.phone && <span dir="ltr">{recipient.phone}</span>}
-          {recipient.group_label && <span>· {recipient.group_label}</span>}
-          <span className="flex items-center gap-1" title={t.invitationSentCount}>
-            <Send className="w-3 h-3" />
-            {recipient.sent_count || 0}
-          </span>
-          <span className="flex items-center gap-1">
-            <Eye className="w-3 h-3" />
-            {recipient.open_count || 0}
-          </span>
-          {recipient.last_opened_at ? (
-            <span className="flex items-center gap-1 text-primary/70">
-              <Clock className="w-3 h-3" />
-              {t.statusOpened} {formatDistanceToNow(new Date(recipient.last_opened_at), { addSuffix: true, locale: dateLocale })}
+
+        {/* Center: Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="font-medium text-sm">{displayName}</p>
+            <Badge
+              variant="outline"
+              className={`text-xs px-2 py-0 ${isLinked ? "bg-success/10 text-success border-success/30" : "bg-muted text-muted-foreground"}`}
+            >
+              {isLinked ? t.appLoggedIn : t.appNotLoggedIn}
+            </Badge>
+            <Badge variant="outline" className={`text-xs px-2 py-0 gap-1 ${rsvp.className}`}>
+              {rsvp.label}
+              {/* How many are coming — only meaningful for an accepted RSVP */}
+              {recipient.rsvp_status === "accepted" && (
+                <span className="inline-flex items-center gap-0.5 font-semibold">
+                  · <Users className="w-3 h-3" /> {recipient.rsvp_guests_count || recipient.guests_count || 1}
+                </span>
+              )}
+            </Badge>
+          </div>
+          <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground flex-wrap">
+            {recipient.phone && <span dir="ltr">{recipient.phone}</span>}
+            {recipient.group_label && <span>· {recipient.group_label}</span>}
+            <span className="flex items-center gap-1" title={t.invitationSentCount}>
+              <Send className="w-3 h-3" />
+              {recipient.sent_count || 0}
             </span>
-          ) : (
-            <span className="text-muted-foreground/50">{t.filterNotOpened}</span>
-          )}
+            <span className="flex items-center gap-1">
+              <Eye className="w-3 h-3" />
+              {recipient.open_count || 0}
+            </span>
+            {recipient.last_opened_at ? (
+              <span className="flex items-center gap-1 text-primary/70 whitespace-nowrap">
+                <Clock className="w-3 h-3" />
+                {t.statusOpened} {formatDistanceToNow(new Date(recipient.last_opened_at), { addSuffix: true, locale: dateLocale })}
+              </span>
+            ) : (
+              <span className="text-muted-foreground/50">{t.filterNotOpened}</span>
+            )}
+          </div>
         </div>
+
       </div>
 
-      {/* Right: Actions */}
-      <div className="flex items-center gap-1 flex-shrink-0">
+      {/* Actions */}
+      <div className="flex items-center gap-1 flex-shrink-0 self-end sm:self-auto">
         {canResend && recipient.phone && (
           <Button
             variant="ghost"
