@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { Link, useNavigate } from "react-router-dom";
 import {
   CalendarHeart, MapPin, Users, Phone, Copy, Check, Plus,
-  ArrowRight, Settings, Trash2, Send, ExternalLink, Pencil, Sparkles, Search
+  ArrowRight, Settings, Trash2, Send, ExternalLink, Pencil, Sparkles, Search, BellRing
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ import LoadingSpinner from "@/components/shared/LoadingSpinner";
 import EmptyState from "@/components/shared/EmptyState";
 import InviteeRow from "@/components/events/InviteeRow";
 import AddInviteeDialog from "@/components/events/AddInviteeDialog";
+import ReminderDialog from "@/components/events/ReminderDialog";
 import EditEventDialog from "@/components/events/EditEventDialog";
 import InvitationCardEditor from "@/components/events/InvitationCardEditor";
 import GuestStatsDashboard from "@/components/events/GuestStatsDashboard";
@@ -41,6 +42,7 @@ export default function EventDetails() {
   const { user } = useAuth();
   const t = useT();
   const [showAddInvitee, setShowAddInvitee] = useState(false);
+  const [showReminder, setShowReminder] = useState(false);
   const [showEditEvent, setShowEditEvent] = useState(false);
   const [showCardEditor, setShowCardEditor] = useState(false);
   const [inviteeFilter, setInviteeFilter] = useState("all");
@@ -195,10 +197,18 @@ export default function EventDetails() {
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-lg">{t.guestListTitle}</h3>
-            <Button className="gap-2 rounded-xl" onClick={() => setShowAddInvitee(true)}>
-              <Plus className="w-4 h-4" />
-              {t.addInvitee}
-            </Button>
+            <div className="flex gap-2">
+              {isPrivileged && recipients.length > 0 && (
+                <Button variant="outline" className="gap-2 rounded-xl" onClick={() => setShowReminder(true)}>
+                  <BellRing className="w-4 h-4" />
+                  {t.sendReminder}
+                </Button>
+              )}
+              <Button className="gap-2 rounded-xl" onClick={() => setShowAddInvitee(true)}>
+                <Plus className="w-4 h-4" />
+                {t.addInvitee}
+              </Button>
+            </div>
           </div>
 
           {recipients.length === 0 ? (
@@ -342,6 +352,14 @@ export default function EventDetails() {
         onOpenChange={setShowAddInvitee}
         eventId={eventId}
       />
+      {isPrivileged && event && (
+        <ReminderDialog
+          open={showReminder}
+          onOpenChange={setShowReminder}
+          event={event}
+          recipients={recipients}
+        />
+      )}
       <EditEventDialog
         open={showEditEvent}
         onOpenChange={setShowEditEvent}

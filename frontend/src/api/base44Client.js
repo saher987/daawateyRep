@@ -414,6 +414,9 @@ const functionHandlers = {
       body: { message },
     })
   },
+  async sendEventReminders({ eventId, ...body }) {
+    return request(`/api/events/${eventId}/send-reminders`, { method: 'POST', body })
+  },
   async sendInvitationSms({ recipientId }) {
     return request(`/api/invitation-recipients/${recipientId}/resend`, { method: 'POST' })
   },

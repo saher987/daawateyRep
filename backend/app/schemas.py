@@ -177,6 +177,8 @@ class EventOut(BaseModel):
     invitation_greeting: str | None
     invitation_greeting_he: str | None
     thank_you_message: str | None
+    reminder_message: str | None = None
+    reminder_message_pending: str | None = None
     cover_image_url: str | None
     invitation_image_url: str | None
     groom_name: str | None
@@ -217,6 +219,29 @@ class RecipientCreate(BaseModel):
     user_id: str | None = None
 
 
+class ReminderSend(BaseModel):
+    """ReminderDialog.jsx: remind the event's guests whose RSVP is in
+    `statuses` (declined guests are never reminded). Texts are templates
+    with [placeholders], filled per guest server-side."""
+
+    statuses: list[RsvpStatus] = Field(min_length=1)
+    message_accepted: str = Field(min_length=1, max_length=1000)
+    message_pending: str = Field(min_length=1, max_length=1000)
+    # Off: guests reminded before for this event are skipped.
+    include_already_reminded: bool = False
+    # Guests with the app get a push; on: they get the SMS as well.
+    sms_app_users: bool = False
+
+
+class ReminderResult(BaseModel):
+    reminded: int
+    push: int
+    sms: int
+    failed: int
+    skipped_already_reminded: int
+    skipped_no_contact: int
+
+
 class ThankYouSend(BaseModel):
     # Already filled in for this guest by the frontend (thankYouMessage.js).
     # Capped so one tap can't fire off a runaway multi-part SMS.
@@ -239,6 +264,8 @@ class RecipientOut(BaseModel):
     status: RecipientStatus
     open_count: int
     sent_count: int = 0
+    reminder_count: int = 0
+    last_reminded_at: datetime | None = None
     phone_verified: bool
     rsvp_status: RsvpStatus
     rsvp_guests_count: int | None

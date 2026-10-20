@@ -247,6 +247,12 @@ class Event(Base):
     # Hand-written thank-you template with [first_name]-style placeholders,
     # filled per invitee on the frontend (lib/thankYouMessage.js).
     thank_you_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Reminder texts (placeholders filled server-side, see events.py
+    # send_reminders): one for guests who accepted, one for guests who
+    # haven't replied (pending/maybe). Saved from the reminder dialog on
+    # each send; null means the dialog's defaults.
+    reminder_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reminder_message_pending: Mapped[str | None] = mapped_column(Text, nullable=True)
     cover_image_url: Mapped[str | None] = mapped_column(String, nullable=True)
     invitation_image_url: Mapped[str | None] = mapped_column(String, nullable=True)
     groom_name: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -317,6 +323,10 @@ class InvitationRecipient(Base):
     # Times the invitation actually went out (initial invite + resends),
     # counting only sends where at least one channel succeeded.
     sent_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    # Event reminders that actually went out (push or SMS), and when the
+    # last one did — the reminder dialog skips already-reminded guests.
+    reminder_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    last_reminded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     phone_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     verified_phone: Mapped[str | None] = mapped_column(String, nullable=True)
     rsvp_status: Mapped[RsvpStatus] = mapped_column(

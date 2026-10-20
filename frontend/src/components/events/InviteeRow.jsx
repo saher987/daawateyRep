@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Copy, Check, Trash2, ExternalLink, UserCheck, UserX, Eye, Clock, Send, Loader2, MessageCircle, Users, Heart } from "lucide-react";
+import { Copy, Check, Trash2, ExternalLink, UserCheck, UserX, Eye, Clock, Send, Loader2, MessageCircle, Users, Heart, BellRing } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ar, he } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -137,6 +137,12 @@ export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeti
               <Send className="w-3 h-3" />
               {recipient.sent_count || 0}
             </span>
+            {recipient.reminder_count > 0 && (
+              <span className="flex items-center gap-1" title={t.reminderSentCount}>
+                <BellRing className="w-3 h-3" />
+                {recipient.reminder_count}
+              </span>
+            )}
             <span className="flex items-center gap-1">
               <Eye className="w-3 h-3" />
               {recipient.open_count || 0}

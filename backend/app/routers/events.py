@@ -8,7 +8,9 @@ was ported from.
 """
 
 import os
+import re
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, or_
@@ -654,6 +656,119 @@ def send_thanks(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Recipient has no phone number")
     sent = send_sms(recipient.phone, body.message.strip(), reference=recipient.id)
     return {"success": sent}
+
+
+# Event reminders — times are shown in Israel time whatever the server's zone.
+_EVENT_TZ = ZoneInfo("Asia/Jerusalem")
+_WEEKDAYS_AR = ["الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت", "الأحد"]
+_PLACEHOLDER = re.compile(r"\[(\w+)\]")
+
+
+def _fill_reminder(template: str, event: models.Event, recipient: models.InvitationRecipient) -> str:
+    """Fills a reminder template for one guest. Same placeholders and
+    tidy-up as the frontend preview (frontend/src/lib/reminderMessage.js):
+    unknown [placeholders] are left as typed, and an empty one doesn't leave
+    a doubled space or a space before punctuation behind."""
+    app_url = os.environ.get("APP_URL", "https://daawatey.com")
+    when = event.date.astimezone(_EVENT_TZ)
+    values = {
+        "target_string": _resolve_display_name(
+            recipient.external_full_name,
+            recipient.nickname,
+            recipient.first_name,
+            recipient.last_name,
+            recipient.name_suffix,
+        )
+        or "",
+        "event_title": event.title or "",
+        "day": _WEEKDAYS_AR[when.weekday()],
+        "date": when.strftime("%d/%m/%Y"),
+        "time": when.strftime("%H:%M"),
+        "venue": event.venue_name or "",
+        "invite_link": f"{app_url}/i/{recipient.personal_token}",
+    }
+    filled = _PLACEHOLDER.sub(lambda m: values.get(m.group(1), m.group(0)), template)
+    lines = [
+        re.sub(r" ([،,.!؟?])", r"\1", re.sub(r"[ \t]{2,}", " ", line)).strip()
+        for line in filled.split("\n")
+    ]
+    return "\n".join(lines)
+
+
+@router.post("/events/{event_id}/send-reminders", response_model=schemas.ReminderResult)
+def send_reminders(
+    event_id: str,
+    body: schemas.ReminderSend,
+    _: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
+    db: Session = Depends(get_db),
+) -> schemas.ReminderResult:
+    """ReminderDialog.jsx: remind the guests whose RSVP is in body.statuses.
+
+    Guests linked to an app account get a push + in-app notification; if
+    the push reaches none of their devices they get the SMS instead (and
+    with sms_app_users, the SMS as well). Everyone else gets the SMS.
+    Accepted guests get message_accepted, pending/maybe guests
+    message_pending. A guest's reminder_count goes up only when something
+    actually went out. Admin/manager only — every SMS costs money, same as
+    send_thanks. Both texts are saved on the event for next time."""
+    event = _get_event_or_404(db, event_id)
+    if event.date and event.date <= datetime.now(timezone.utc):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="The event has already started")
+
+    statuses = {s for s in body.statuses if s != models.RsvpStatus.declined}
+    event.reminder_message = body.message_accepted
+    event.reminder_message_pending = body.message_pending
+
+    recipients = (
+        db.query(models.InvitationRecipient)
+        .filter(
+            models.InvitationRecipient.event_id == event_id,
+            models.InvitationRecipient.rsvp_status.in_(statuses),
+        )
+        .all()
+    )
+    result = dict(reminded=0, push=0, sms=0, failed=0, skipped_already_reminded=0, skipped_no_contact=0)
+    now = datetime.now(timezone.utc)
+    for recipient in recipients:
+        if recipient.last_reminded_at and not body.include_already_reminded:
+            result["skipped_already_reminded"] += 1
+            continue
+        linked_user = db.get(models.User, recipient.user_id) if recipient.user_id else None
+        if not linked_user and not recipient.phone:
+            result["skipped_no_contact"] += 1
+            continue
+
+        template = (
+            body.message_accepted
+            if recipient.rsvp_status == models.RsvpStatus.accepted
+            else body.message_pending
+        )
+        text = _fill_reminder(template, event, recipient)
+
+        pushed = False
+        if linked_user:
+            _notify_recipient_in_app(db, recipient, title="تذكير", message=text, event_id=event.id)
+            pushed = send_push_to_user(
+                db,
+                linked_user,
+                title="🔔 تذكير",
+                body=text,
+                data={"path": f"/i/{recipient.personal_token}"},
+            )
+        texted = False
+        if recipient.phone and (not pushed or body.sms_app_users):
+            texted = send_sms(recipient.phone, text, reference=recipient.id)
+
+        if pushed or texted:
+            recipient.reminder_count = (recipient.reminder_count or 0) + 1
+            recipient.last_reminded_at = now
+            result["reminded"] += 1
+            result["push"] += int(pushed)
+            result["sms"] += int(texted)
+        else:
+            result["failed"] += 1
+    db.commit()
+    return schemas.ReminderResult(**result)
 
 
 def _attach_towns(
