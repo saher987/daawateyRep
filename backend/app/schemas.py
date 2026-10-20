@@ -238,6 +238,7 @@ class RecipientOut(BaseModel):
     personal_token: str
     status: RecipientStatus
     open_count: int
+    sent_count: int = 0
     phone_verified: bool
     rsvp_status: RsvpStatus
     rsvp_guests_count: int | None

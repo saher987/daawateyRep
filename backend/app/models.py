@@ -314,6 +314,9 @@ class InvitationRecipient(Base):
     first_opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     open_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Times the invitation actually went out (initial invite + resends),
+    # counting only sends where at least one channel succeeded.
+    sent_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     phone_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     verified_phone: Mapped[str | None] = mapped_column(String, nullable=True)
     rsvp_status: Mapped[RsvpStatus] = mapped_column(

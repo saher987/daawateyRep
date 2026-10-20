@@ -129,6 +129,10 @@ export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeti
         <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground flex-wrap">
           {recipient.phone && <span dir="ltr">{recipient.phone}</span>}
           {recipient.group_label && <span>· {recipient.group_label}</span>}
+          <span className="flex items-center gap-1" title={t.invitationSentCount}>
+            <Send className="w-3 h-3" />
+            {recipient.sent_count || 0}
+          </span>
           <span className="flex items-center gap-1">
             <Eye className="w-3 h-3" />
             {recipient.open_count || 0}

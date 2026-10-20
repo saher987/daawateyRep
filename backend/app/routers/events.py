@@ -445,7 +445,8 @@ def add_recipient(
     db.add(recipient)
     db.commit()
     db.refresh(recipient)
-    _send_invitation(event, recipient, invited_by=user)
+    if _send_invitation(event, recipient, invited_by=user):
+        recipient.sent_count = (recipient.sent_count or 0) + 1
     _notify_recipient_in_app(
         db,
         recipient,
@@ -629,6 +630,9 @@ def resend_invitation(
     event = recipient.event
     _require_event_access(event, user)
     sent = _send_invitation(event, recipient, invited_by=user)
+    if sent:
+        recipient.sent_count = (recipient.sent_count or 0) + 1
+        db.commit()
     return {"success": sent}
 
 
