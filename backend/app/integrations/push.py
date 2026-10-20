@@ -27,18 +27,19 @@ def send_push_to_user(
     title: str,
     body: str,
     data: dict[str, str] | None = None,
-) -> None:
+) -> bool:
     """Fire-and-forget: never raises. A push failing (no tokens registered,
     FCM unreachable, every token stale) must not break whatever request
     triggered it — inviting a guest still has to succeed even if the push
-    to them doesn't."""
+    to them doesn't. Returns whether FCM accepted it for at least one of the
+    user's devices, for callers that fall back to SMS (event reminders)."""
     tokens = [
         row.token
         for row in db.query(models.PushToken).filter(models.PushToken.user_id == user.id)
     ]
     if not tokens:
         logger.info("send_push_to_user: no tokens registered for user %s, skipping", user.id)
-        return
+        return False
 
     message = messaging.MulticastMessage(
         notification=messaging.Notification(title=title, body=body),
@@ -62,7 +63,7 @@ def send_push_to_user(
         response = messaging.send_each_for_multicast(message)
     except firebase_exceptions.FirebaseError:
         logger.exception("FCM send_each_for_multicast failed for user %s", user.id)
-        return
+        return False
 
     # No INFO-level confirmation of a successful call previously existed at
     # all, which made a silently-undelivered push indistinguishable from a
@@ -99,3 +100,4 @@ def send_push_to_user(
             synchronize_session=False
         )
         db.commit()
+    return response.success_count > 0
