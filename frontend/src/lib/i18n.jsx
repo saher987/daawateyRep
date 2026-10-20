@@ -577,6 +577,8 @@ const translations = {
     importRowAdded: "تمت الإضافة إلى القائمة",
     importNeedNameOrPhone: "أدخل اسماً ورقم هاتف",
     invitationSentCount: "عدد مرات إرسال الدعوة",
+    appVersion: "الإصدار",
+    versionCopied: "تم نسخ معلومات الإصدار",
 
     // Cities
     jerusalem: "القدس",
@@ -1237,6 +1239,8 @@ const translations = {
     importRowAdded: "נוסף לרשימה",
     importNeedNameOrPhone: "הזינו שם ומספר טלפון",
     invitationSentCount: "מספר פעמים שההזמנה נשלחה",
+    appVersion: "גרסה",
+    versionCopied: "פרטי הגרסה הועתקו",
 
     // Cities
     jerusalem: "ירושלים",

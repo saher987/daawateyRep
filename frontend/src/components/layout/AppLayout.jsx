@@ -15,6 +15,7 @@ import InstallAppBanner from "@/components/shared/InstallAppBanner";
 import UpdateAvailableBanner from "@/components/shared/UpdateAvailableBanner";
 import useNavigationDirection from "@/hooks/useNavigationDirection";
 import { useT } from "@/lib/i18n";
+import AppVersion from "@/components/shared/AppVersion";
 
 function useNavItems() {
   const t = useT();
@@ -272,6 +273,9 @@ export default function AppLayout() {
               
               <LogOut className="w-4 h-4" />
             </Button>
+          </div>
+          <div className="text-center">
+            <AppVersion />
           </div>
         </div>
       </aside>

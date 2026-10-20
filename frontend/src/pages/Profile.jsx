@@ -18,6 +18,7 @@ import {
   LogOut, Mail, Shield, Trash2, AlertTriangle, Save, Loader2, Users, Camera, Phone, X
 } from "lucide-react";
 import CitySelect from "@/components/shared/CitySelect";
+import AppVersion from "@/components/shared/AppVersion";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
@@ -357,6 +358,9 @@ export default function Profile() {
             </AlertDialogContent>
           </AlertDialog>
         </Card>
+        <div className="text-center pt-2">
+          <AppVersion />
+        </div>
       </div>
     </div>
   );
