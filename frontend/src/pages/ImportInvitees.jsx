@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import PageHeader from "@/components/shared/PageHeader";
 import MobileSelect from "@/components/shared/MobileSelect";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import LoadingSpinner from "@/components/shared/LoadingSpinner";
 import { useToast } from "@/components/ui/use-toast";
 import { base44 } from "@/api/base44Client";
@@ -91,6 +92,9 @@ function parseRows(sheet) {
     })
     .filter((row) => row.nickname || row.first_name || row.last_name || row.phone);
 }
+
+// Radix Select items can't use "" as a value — stands in for "no city".
+const NO_CITY = "__none__";
 
 const EMPTY_MANUAL = { nickname: "", first_name: "", last_name: "", name_suffix: "", phone: "", city: "", guests_count: "1" };
 
@@ -229,10 +233,7 @@ export default function ImportInvitees() {
   const setManualField = (field) => (e) => setManual((m) => ({ ...m, [field]: e.target.value }));
 
   const eventOptions = events.map((ev) => ({ value: ev.id, label: ev.title }));
-  const cityOptions = [
-    { value: "", label: t.importNoCity },
-    ...sortCityKeysForDisplay(CITY_KEYS, t, user?.preferred_language || "ar").map((key) => ({ value: key, label: t[key] || key })),
-  ];
+  const sortedCityKeys = sortCityKeysForDisplay(CITY_KEYS, t, user?.preferred_language || "ar");
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -302,7 +303,21 @@ export default function ImportInvitees() {
                 <Label className="text-sm">
                   {t.town} <span className="text-muted-foreground text-xs font-normal">({t.optional})</span>
                 </Label>
-                <MobileSelect value={manual.city} onValueChange={(v) => setManual((m) => ({ ...m, city: v }))} options={cityOptions} placeholder={t.importNoCity} />
+                {/* A scrolling dropdown, like AddInviteeDialog's — MobileSelect's
+                    bottom sheet has no height limit and overflows with every city. */}
+                <Select value={manual.city || NO_CITY} onValueChange={(v) => setManual((m) => ({ ...m, city: v === NO_CITY ? "" : v }))}>
+                  <SelectTrigger className="h-10 rounded-xl text-base">
+                    <SelectValue placeholder={t.importNoCity} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_CITY}>{t.importNoCity}</SelectItem>
+                    {sortedCityKeys.map((key) => (
+                      <SelectItem key={key} value={key}>
+                        {t[key] || key}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-sm">{t.guestsCount}</Label>
