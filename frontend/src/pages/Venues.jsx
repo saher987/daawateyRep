@@ -8,12 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Pencil, Trash2, MapPin, Users, Phone, Loader2, ImagePlus, X, UserPlus, UserMinus } from "lucide-react";
 import PageHeader from "@/components/shared/PageHeader";
 import { useToast } from "@/components/ui/use-toast";
-import { CITY_KEYS, sortCityKeysForDisplay } from "@/lib/cities";
 import { useT } from "@/lib/i18n";
+import CitySelect from "@/components/shared/CitySelect";
 
 const emptyForm = { name: "", city: "", address: "", max_guests: "", map_url: "", phone: "", notes: "", image_url: "", owner_phones: [] };
 
@@ -122,7 +121,6 @@ export default function Venues() {
   const queryClient = useQueryClient();
   const isPrivileged = user?.role === "admin" || user?.role === "manager";
   const t = useT();
-  const sortedCityKeys = sortCityKeysForDisplay(CITY_KEYS, t, user?.preferred_language || "ar");
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingVenue, setEditingVenue] = useState(null);
@@ -306,18 +304,7 @@ export default function Venues() {
               </div>
               <div className="space-y-2">
                 <Label>{t.cityLabel}</Label>
-                <Select value={form.city} onValueChange={v => setForm(p => ({ ...p, city: v }))}>
-                  <SelectTrigger className="h-11 rounded-xl">
-                    <SelectValue placeholder={t.cityPlaceholder}>
-                      {form.city ? (t[form.city] || form.city) : null}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sortedCityKeys.map(key => (
-                      <SelectItem key={key} value={key}>{t[key] || key}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <CitySelect value={form.city} onValueChange={v => setForm(p => ({ ...p, city: v }))} placeholder={t.cityPlaceholder} className="h-11" />
               </div>
               <div className="space-y-2">
                 <Label>{t.addressLabel}</Label>

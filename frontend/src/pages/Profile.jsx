@@ -14,10 +14,10 @@ import { Link } from "react-router-dom";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
-import { CITY_KEYS, sortCityKeysForDisplay } from "@/lib/cities";
 import {
   LogOut, Mail, Shield, Trash2, AlertTriangle, Save, Loader2, Users, Camera, Phone, X
 } from "lucide-react";
+import CitySelect from "@/components/shared/CitySelect";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
@@ -34,8 +34,6 @@ export default function Profile() {
   // AppLayout.jsx's isProfileIncomplete.
   const wasIncomplete = user && !user.profile_complete;
   const isPrivileged = user?.role === "admin" || user?.role === "manager";
-  const lang = user?.preferred_language || "ar";
-  const sortedCityKeys = sortCityKeysForDisplay(CITY_KEYS, t, lang);
   const [deleting, setDeleting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -284,18 +282,7 @@ export default function Profile() {
 
         <div className="space-y-2">
           <Label>{t.town} <span className="text-destructive">*</span></Label>
-          <Select value={form.town} onValueChange={v => setForm(prev => ({ ...prev, town: v }))}>
-            <SelectTrigger className="h-11 rounded-xl text-base">
-              <SelectValue placeholder={t.townPlaceholder}>
-                {form.town ? (t[form.town] || form.town) : null}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {sortedCityKeys.map(key => (
-                <SelectItem key={key} value={key}>{t[key] || key}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <CitySelect value={form.town} onValueChange={v => setForm(prev => ({ ...prev, town: v }))} placeholder={t.townPlaceholder} className="h-11" />
         </div>
 
         <div className="space-y-2">

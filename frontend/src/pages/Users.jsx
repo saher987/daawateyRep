@@ -23,7 +23,7 @@ import { Mail, Phone, MapPin, Pencil, Search, Clock, Users as UsersIcon, X, User
 import { formatDistanceToNow } from "date-fns";
 import { ar, he } from "date-fns/locale";
 import { useT } from "@/lib/i18n";
-import { CITY_KEYS, sortCityKeysForDisplay } from "@/lib/cities";
+import CitySelect from "@/components/shared/CitySelect";
 const roleColor = {
   admin: "bg-destructive/10 text-destructive",
   manager: "bg-primary/10 text-primary",
@@ -37,7 +37,6 @@ export default function Users() {
   const queryClient = useQueryClient();
   const t = useT();
   const isPrivileged = user?.role === "admin" || user?.role === "manager";
-  const sortedCityKeys = sortCityKeysForDisplay(CITY_KEYS, t, user?.preferred_language || "ar");
 
   const roleLabel = { admin: t.roleAdmin, manager: t.roleManager, venue_owner: t.roleVenueOwner, user: t.roleUser };
 
@@ -467,10 +466,9 @@ export default function Users() {
 
               <div className="space-y-2">
                 <Label>{t.cityTownLabel}</Label>
-                <MobileSelect
+                <CitySelect
                   value={editForm.town}
                   onValueChange={v => setEditForm(prev => ({ ...prev, town: v }))}
-                  options={sortedCityKeys.map(key => ({ value: key, label: t[key] || key }))}
                   placeholder={t.cityTownPlaceholder}
                 />
               </div>
