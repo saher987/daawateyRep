@@ -5,19 +5,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
-} from "@/components/ui/select";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Loader2, UserPlus, Search, UserCheck, ChevronRight } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import debounce from "lodash/debounce";
 import { useT } from "@/lib/i18n";
-import { useAuth } from "@/lib/AuthContext";
-import { CITY_KEYS, sortCityKeysForDisplay } from "@/lib/cities";
 import { useBackButton } from "@/hooks/useBackButton";
 import SuffixPicker from "@/components/events/SuffixPicker";
+import CitySelect from "@/components/shared/CitySelect";
 
 const emptyDetails = {
   nickname: "",
@@ -162,8 +158,6 @@ export default function AddInviteeDialog({ open, onOpenChange, eventId }) {
   };
 
   const t = useT();
-  const { user } = useAuth();
-  const sortedCityKeys = sortCityKeysForDisplay(CITY_KEYS, t, user?.preferred_language || "ar");
   useBackButton({ isOpen: open, onClose: () => handleClose(false) });
   const hasContact = details.phone.trim() || details.email.trim();
   const hasName = details.first_name.trim() || details.last_name.trim();
@@ -304,18 +298,7 @@ export default function AddInviteeDialog({ open, onOpenChange, eventId }) {
               <div className="grid grid-cols-[2fr_1fr] gap-3">
                 <div className="space-y-1.5 min-w-0">
                   <Label className="text-sm">{t.town} <span className="text-muted-foreground text-xs font-normal">({t.optional})</span></Label>
-                  <Select value={details.town} onValueChange={v => setDetails(prev => ({ ...prev, town: v }))}>
-                    <SelectTrigger className="h-10 rounded-xl text-base">
-                      <SelectValue placeholder={t.town}>
-                        {details.town ? (t[details.town] || details.town) : null}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {sortedCityKeys.map(key => (
-                        <SelectItem key={key} value={key}>{t[key] || key}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <CitySelect value={details.town} onValueChange={v => setDetails(prev => ({ ...prev, town: v }))} placeholder={t.town} className="h-10" />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-sm">{t.guestsCount}</Label>
