@@ -136,15 +136,20 @@ function EventControlPanel({ event }) {
     },
   });
 
-  const filtered = recipients.filter(r => {
-    // "opened_no_response": opened the invitation but hasn't replied yet —
-    // same rule as the admin event page (EventDetails.jsx).
-    const matchFilter =
-      filter === "all" ||
-      (filter === "opened_no_response" ? !!r.last_opened_at && r.rsvp_status === "pending" : r.rsvp_status === filter);
-    const matchSearch = recipientMatchesSearch(r, search);
-    return matchFilter && matchSearch;
-  });
+  // Opened/not-opened follow the admin event page's rules (EventDetails.jsx).
+  // Counts are over the whole guest list, not the search results.
+  const filters = [
+    { key: "all", label: t.all, match: () => true },
+    { key: "accepted", label: t.accepted, match: r => r.rsvp_status === "accepted" },
+    { key: "declined", label: t.declined, match: r => r.rsvp_status === "declined" },
+    { key: "maybe", label: t.statusMaybe, match: r => r.rsvp_status === "maybe" },
+    { key: "pending", label: t.pending, match: r => r.rsvp_status === "pending" },
+    { key: "opened_no_response", label: t.filterOpenedNoReply, match: r => !!r.last_opened_at && r.rsvp_status === "pending" },
+    { key: "not_opened", label: t.filterNotOpened, match: r => !r.last_opened_at },
+  ].map(f => ({ ...f, count: recipients.filter(f.match).length }));
+  const activeFilter = filters.find(f => f.key === filter) || filters[0];
+
+  const filtered = recipients.filter(r => activeFilter.match(r) && recipientMatchesSearch(r, search));
 
   const exportCSV = () => {
     const headers = [t.name, t.phone, t.status, t.guests, t.replyDate, "ملاحظات"];
@@ -224,24 +229,22 @@ function EventControlPanel({ event }) {
               className="flex-1 h-9 rounded-lg text-sm"
             />
             <div className="flex gap-1 flex-wrap">
-              {[
-                { key: "all", label: t.all },
-                { key: "accepted", label: t.accepted },
-                { key: "declined", label: t.declined },
-                { key: "maybe", label: t.statusMaybe },
-                { key: "pending", label: t.pending },
-                { key: "opened_no_response", label: t.filterOpenedNoReply },
-              ].map(f => (
+              {filters.map(f => (
                 <button
                   key={f.key}
                   onClick={() => setFilter(f.key)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                     filter === f.key
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted text-muted-foreground hover:bg-accent"
                   }`}
                 >
                   {f.label}
+                  <span className={`px-1.5 rounded-full ${
+                    filter === f.key ? "bg-primary-foreground/20 text-primary-foreground" : "bg-background text-muted-foreground"
+                  }`}>
+                    {f.count}
+                  </span>
                 </button>
               ))}
             </div>
