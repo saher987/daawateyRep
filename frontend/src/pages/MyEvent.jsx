@@ -137,7 +137,11 @@ function EventControlPanel({ event }) {
   });
 
   const filtered = recipients.filter(r => {
-    const matchFilter = filter === "all" || r.rsvp_status === filter;
+    // "opened_no_response": opened the invitation but hasn't replied yet —
+    // same rule as the admin event page (EventDetails.jsx).
+    const matchFilter =
+      filter === "all" ||
+      (filter === "opened_no_response" ? !!r.last_opened_at && r.rsvp_status === "pending" : r.rsvp_status === filter);
     const matchSearch = recipientMatchesSearch(r, search);
     return matchFilter && matchSearch;
   });
@@ -226,6 +230,7 @@ function EventControlPanel({ event }) {
                 { key: "declined", label: t.declined },
                 { key: "maybe", label: t.statusMaybe },
                 { key: "pending", label: t.pending },
+                { key: "opened_no_response", label: t.filterOpenedNoReply },
               ].map(f => (
                 <button
                   key={f.key}
