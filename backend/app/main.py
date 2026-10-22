@@ -18,6 +18,7 @@ from app.routers import (
     notifications,
     otp,
     planned_weddings,
+    providers,
     push_tokens,
     support,
     uploads,
@@ -38,6 +39,7 @@ app.include_router(planned_weddings.router)
 app.include_router(support.router)
 app.include_router(uploads.router)
 app.include_router(push_tokens.router)
+app.include_router(providers.router)
 
 _allowed_origins = os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
 

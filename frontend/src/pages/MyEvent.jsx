@@ -19,6 +19,7 @@ import { ar, he } from "date-fns/locale";
 import { useToast } from "@/components/ui/use-toast";
 import { downloadFile } from "@/lib/downloadFile";
 import GuestStatsDashboard from "@/components/events/GuestStatsDashboard";
+import PlanningServicesCard from "@/components/providers/PlanningServicesCard";
 import { recipientDisplayName, recipientMatchesSearch } from "@/lib/recipientName";
 
 // rsvpLabel is built dynamically using t inside components
@@ -334,6 +335,9 @@ export default function MyEvent() {
         <CalendarHeart className="w-16 h-16 text-muted-foreground/40" />
         <h2 className="text-xl font-display font-semibold">{t.noEventAssigned}</h2>
         <p className="text-muted-foreground">{t.noEventAssignedDesc}</p>
+        <div className="w-full max-w-3xl text-start">
+          <PlanningServicesCard />
+        </div>
       </div>
     );
   }
@@ -369,6 +373,8 @@ export default function MyEvent() {
       ) : (
         <p className="text-muted-foreground text-center py-10">{t.chooseEvent}</p>
       )}
+
+      <PlanningServicesCard />
     </div>
   );
 }

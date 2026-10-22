@@ -6,6 +6,7 @@ import { AuthProvider } from './lib/AuthContext'
 import { I18nProvider } from './lib/i18n'
 import ProtectedRoute from './components/ProtectedRoute'
 import AppLayout from './components/layout/AppLayout'
+import ProvidersLayout from './components/providers/ProvidersLayout'
 import PageNotFound from './lib/PageNotFound'
 import { Login } from './pages/Login'
 import GetApp from './pages/GetApp'
@@ -38,6 +39,10 @@ const Support = lazy(() => import('./pages/Support'))
 const Register = lazy(() => import('./pages/Register'))
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
 const ResetPassword = lazy(() => import('./pages/ResetPassword'))
+const Providers = lazy(() => import('./pages/Providers'))
+const ProviderCategory = lazy(() => import('./pages/ProviderCategory'))
+const ProviderDetail = lazy(() => import('./pages/ProviderDetail'))
+const ManageProviders = lazy(() => import('./pages/ManageProviders'))
 
 const PageSpinner = () => (
   <div className="fixed inset-0 flex items-center justify-center bg-background">
@@ -113,6 +118,14 @@ function App() {
                 }
               />
 
+              {/* Public: signed-in users see these inside AppLayout, anyone
+                  else in ProvidersLayout's guest shell. */}
+              <Route element={<ProvidersLayout />}>
+                <Route path="/providers" element={<Providers />} />
+                <Route path="/providers/category/:id" element={<ProviderCategory />} />
+                <Route path="/providers/:id" element={<ProviderDetail />} />
+              </Route>
+
               <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
                 <Route element={<AppLayout />}>
                   <Route
@@ -176,6 +189,14 @@ function App() {
                     element={
                       <Suspense fallback={<PageSpinner />}>
                         <Venues />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="/manage-providers"
+                    element={
+                      <Suspense fallback={<PageSpinner />}>
+                        <ManageProviders />
                       </Suspense>
                     }
                   />

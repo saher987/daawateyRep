@@ -215,6 +215,53 @@ const venuesApi = {
   },
 }
 
+// Event professionals directory. The browse calls are public (auth:
+// false) — provider pages are shareable links anyone can open; manage*
+// calls are admin/manager only (see backend app/routers/providers.py).
+const providersApi = {
+  async listCategories() {
+    return request('/api/provider-categories', { auth: false })
+  },
+  async list(params) {
+    return request('/api/providers', { auth: false, params })
+  },
+  async get(id) {
+    return request(`/api/providers/${id}`, { auth: false })
+  },
+  // Fire-and-forget from the contact buttons — a failed count must never
+  // block the call/WhatsApp link itself.
+  recordContactClick(id, kind) {
+    request(`/api/providers/${id}/contact-clicks`, { method: 'POST', auth: false, body: { kind } }).catch(() => {})
+  },
+  async manageList() {
+    return request('/api/manage/providers')
+  },
+  async manageCreate(data) {
+    return request('/api/manage/providers', { method: 'POST', body: data })
+  },
+  async manageUpdate(id, data) {
+    return request(`/api/manage/providers/${id}`, { method: 'PUT', body: data })
+  },
+  async manageDelete(id) {
+    return request(`/api/manage/providers/${id}`, { method: 'DELETE' })
+  },
+  async manageListCategories() {
+    return request('/api/manage/provider-categories')
+  },
+  async manageCreateCategory(data) {
+    return request('/api/manage/provider-categories', { method: 'POST', body: data })
+  },
+  async manageUpdateCategory(id, data) {
+    return request(`/api/manage/provider-categories/${id}`, { method: 'PUT', body: data })
+  },
+  async manageDeleteCategory(id) {
+    return request(`/api/manage/provider-categories/${id}`, { method: 'DELETE' })
+  },
+  async manageReorderCategories(ids) {
+    return request('/api/manage/provider-categories/order', { method: 'PUT', body: { ids } })
+  },
+}
+
 const usersApi = {
   async filter(query) {
     const params = {}
@@ -485,4 +532,5 @@ export const base44 = {
   push: pushApi,
   app: appApi,
   myInvitations: myInvitationsApi,
+  providers: providersApi,
 }
