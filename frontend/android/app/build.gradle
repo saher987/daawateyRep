@@ -11,7 +11,7 @@ android {
         // higher than the last one. CI passes the GitHub Actions run number
         // via -PandroidVersionCode; local builds fall back to 1.
         versionCode project.hasProperty('androidVersionCode') ? (project.androidVersionCode as Integer) : 1
-        versionName "1.6"
+        versionName "1.7"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
