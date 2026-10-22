@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, startTransition, Suspense } from "r
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import {
-  LayoutDashboard, CalendarHeart, Bell, Menu, X, LogOut, Sparkles, UserCircle, ChevronRight, ShieldCheck, Mail, AlertCircle, MapPin, CalendarRange, Building2, Heart, FileSpreadsheet } from
+  LayoutDashboard, CalendarHeart, Bell, Menu, X, LogOut, Sparkles, UserCircle, ChevronRight, ShieldCheck, Mail, AlertCircle, MapPin, CalendarRange, Building2, Heart, FileSpreadsheet, Store } from
 "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,10 +41,12 @@ function useNavItems() {
   // regular users was a nav-only restriction with no matching backend
   // one. Regular users arguably care about this more than admins do.
   { path: "/planned-weddings", icon: Heart, label: isVenueOwner ? t.plannedWeddings : t.upcomingWeddings },
+  { path: "/providers", icon: Store, label: t.providersTab },
   { path: "/notifications", icon: Bell, label: t.notifications },
   { path: "/users", icon: ShieldCheck, label: t.users, privileged: true },
   { path: "/import-invitees", icon: FileSpreadsheet, label: t.importInvitees, privileged: true },
   { path: "/venues", icon: MapPin, label: t.venues, privileged: true },
+  { path: "/manage-providers", icon: Store, label: t.manageProviders, privileged: true },
   { path: "/venue-schedule", icon: CalendarRange, label: t.venueScheduleTitle || "לוח אולמות", venueOwner: true },
   { path: "/my-venues", icon: Building2, label: t.myVenuesManage, venueOwnerOnly: true },
   { path: "/event-requests", icon: CalendarHeart, label: t.eventRequests, privileged: true },
@@ -75,7 +77,7 @@ export default function AppLayout() {
     window.addEventListener("popstate", handler);
     return () => window.removeEventListener("popstate", handler);
   }, [sidebarOpen]);
-  const rootPaths = ["/", "/dashboard", "/my-invitations", "/my-event", "/events", "/notifications", "/profile", "/venue-schedule"];
+  const rootPaths = ["/", "/dashboard", "/my-invitations", "/my-event", "/events", "/notifications", "/profile", "/venue-schedule", "/providers"];
   const direction = useNavigationDirection();
 
   // Profile completion check — user.profile_complete (backend, models.py)

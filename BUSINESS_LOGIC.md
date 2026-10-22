@@ -129,6 +129,9 @@ once the API underneath it is stable.
 | Invite users, change roles | ✅ | ❌ | ❌ | ❌ |
 | View/manage own venues + their schedule | ✅ | ✅ | ✅ (own only) | ❌ |
 | Request an event, manage own event as owner | ✅ | ✅ | ❌ | ✅ |
+| Browse the providers directory (`/providers`) | ✅ | ✅ | ✅ | ✅ (also signed-out) |
+| Add/edit/hide providers and their categories (`/manage-providers`) | ✅ | ✅ | ❌ | ❌ |
+| Delete providers / provider categories | ✅ | ❌ | ❌ | ❌ |
 
 Enforced via a `require_role(*roles)` FastAPI dependency, and per-row checks
 (`owner_phones`/`manager_phones` membership) inside route handlers where the

@@ -8,6 +8,7 @@ the explicit, reviewed list of what's actually accepted/returned.
 
 from datetime import date as date_type
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -515,3 +516,82 @@ class SupportMessageCreate(BaseModel):
     email: str
     subject: str
     message: str
+
+
+class ProviderCategoryIn(BaseModel):
+    name_ar: str = Field(min_length=1)
+    name_he: str = Field(min_length=1)
+    icon: str = "sparkles"
+    is_active: bool = True
+
+
+class ProviderCategoryOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    name_ar: str
+    name_he: str
+    icon: str
+    sort_order: int
+    is_active: bool
+    # Published providers for the public list; every provider for the
+    # management list.
+    provider_count: int = 0
+
+
+class ProviderCategoryOrder(BaseModel):
+    ids: list[str]
+
+
+class ProviderIn(BaseModel):
+    category_id: str
+    name: str = Field(min_length=1)
+    city: str | None = None
+    address: str | None = None
+    map_url: str | None = None
+    phone: str | None = None
+    whatsapp: str | None = None
+    instagram_url: str | None = None
+    facebook_url: str | None = None
+    website_url: str | None = None
+    description_ar: str | None = None
+    description_he: str | None = None
+    logo_url: str | None = None
+    cover_url: str | None = None
+    gallery_urls: list[str] = Field(default=[], max_length=10)
+    price_from: int | None = Field(default=None, ge=0)
+    is_published: bool = True
+    is_featured: bool = False
+
+
+class ProviderOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    category_id: str
+    name: str
+    city: str | None
+    address: str | None
+    map_url: str | None
+    phone: str | None
+    whatsapp: str | None
+    instagram_url: str | None
+    facebook_url: str | None
+    website_url: str | None
+    description_ar: str | None
+    description_he: str | None
+    logo_url: str | None
+    cover_url: str | None
+    gallery_urls: list[str]
+    price_from: int | None
+    is_published: bool
+    is_featured: bool
+
+
+class ProviderAdminOut(ProviderOut):
+    # Contact-button taps in the last 30 days, by kind.
+    clicks: dict[str, int] = {}
+
+
+class ProviderContactClickIn(BaseModel):
+    kind: Literal["phone", "whatsapp", "instagram", "facebook", "website", "map"]

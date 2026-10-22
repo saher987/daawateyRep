@@ -492,3 +492,81 @@ class PushToken(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
     )
+
+
+class ProviderCategory(Base):
+    """A kind of event professional (photographers, makeup artists, ...).
+    A table rather than an enum so admins/managers can add, rename,
+    reorder or hide categories from the app without a deploy."""
+
+    __tablename__ = "provider_categories"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    name_ar: Mapped[str] = mapped_column(String, nullable=False)
+    name_he: Mapped[str] = mapped_column(String, nullable=False)
+    # A key into the frontend's fixed icon list (lib/providerIcons.js), not
+    # an uploaded image — keeps every category visually consistent.
+    icon: Mapped[str] = mapped_column(String, nullable=False, default="sparkles")
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow
+    )
+
+
+class Provider(Base):
+    """An event professional listed in the app's public directory. Exactly
+    one category each. Only is_published rows are ever visible to the
+    public endpoints; everything else is admin/manager-only."""
+
+    __tablename__ = "providers"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    # No ondelete: a category that still has providers can't be deleted
+    # (provider_categories' DELETE returns 409 for that case first).
+    category_id: Mapped[str] = mapped_column(
+        ForeignKey("provider_categories.id"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    city: Mapped[str | None] = mapped_column(String, nullable=True)
+    address: Mapped[str | None] = mapped_column(String, nullable=True)
+    map_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    phone: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Empty means "same as phone" — most businesses use one number for both.
+    whatsapp: Mapped[str | None] = mapped_column(String, nullable=True)
+    instagram_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    facebook_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    website_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    description_ar: Mapped[str | None] = mapped_column(Text, nullable=True)
+    description_he: Mapped[str | None] = mapped_column(Text, nullable=True)
+    logo_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    cover_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    gallery_urls: Mapped[list[str]] = mapped_column(
+        ARRAY(String), nullable=False, default=list
+    )
+    price_from: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    is_published: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    is_featured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+
+class ProviderContactClick(Base):
+    """One tap on a provider's call/WhatsApp/Instagram/... button — the
+    numbers admins see per provider. Recorded anonymously (the directory
+    is public), so these are indicative counts, not verified leads."""
+
+    __tablename__ = "provider_contact_clicks"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    provider_id: Mapped[str] = mapped_column(
+        ForeignKey("providers.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    kind: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, index=True
+    )

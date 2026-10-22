@@ -1,6 +1,6 @@
 import React, { startTransition } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, CalendarHeart, Bell, UserCircle, Mail, CalendarRange, Heart } from "lucide-react";
+import { LayoutDashboard, CalendarHeart, Bell, UserCircle, Mail, CalendarRange, Store } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useT } from "@/lib/i18n";
 
@@ -34,10 +34,9 @@ export default function BottomTabBar({ unreadCount = 0, userRole, ownsVenue = fa
     { path: "/my-event", icon: CalendarHeart, label: t.myEvent },
     // A regular user listed as a venue's owner gets that venue's calendar.
     ...(ownsVenue ? [{ path: "/venue-schedule", icon: CalendarRange, label: t.venueScheduleTitle || "לוח אולמות" }] : []),
-    // Same fix as AppLayout.jsx's sidebar: the page itself has no access
-    // restriction for regular users, only the nav did. Added here (not
-    // just the desktop sidebar) since regular users are mostly on mobile.
-    { path: "/planned-weddings", icon: Heart, label: t.upcomingWeddings },
+    // Took the slot of /planned-weddings, which is now a link on the My
+    // Event page (MyEvent.jsx) — a sixth tab doesn't fit on a phone.
+    { path: "/providers", icon: Store, label: t.providersTab },
     { path: "/notifications", icon: Bell, label: t.notifications },
     { path: "/profile", icon: UserCircle, label: t.profile },
   ];
