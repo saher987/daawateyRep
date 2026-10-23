@@ -1,12 +1,12 @@
-// Native Android only: nudges someone running an older bundled build
-// toward the Play Store update. Capacitor bundles the web build into the
+// Native app only (Android and iOS): nudges someone running an older
+// bundled build toward the Play Store / App Store update. Capacitor bundles the web build into the
 // APK at build time (capacitor.config.ts has no server.url, so there's no
 // live-reload from daawatey.com) — an installed app keeps running whatever
 // JS shipped at its last update regardless of what's since been deployed
 // to the backend/web, and Play Store's own auto-update can lag or be
 // disabled by the user. GET /api/app-version returns the versionCode of
-// the most recently uploaded build (an env var bumped by hand after each
-// Play Console upload — see BUSINESS_LOGIC.md); comparing it against this
+// the most recently released build per platform (env vars bumped by hand
+// after each store release — see DEPLOYMENT.md); comparing it against this
 // install's own build number (CapacitorApp.getInfo().build) is the only
 // way the app itself can know it's behind.
 //
@@ -19,23 +19,30 @@ import { Download, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/i18n";
 import { base44 } from "@/api/base44Client";
+import { PLAY_STORE_URL, APP_STORE_URL } from "@/lib/appStoreLinks";
 
 const DISMISS_KEY_PREFIX = "daawatey_update_dismissed_";
-const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.daawatey.app";
+
+// Android versionCode and iOS CFBundleVersion are separate counters (each
+// release workflow's own run number), so each platform has its own field.
+const PLATFORMS = {
+  android: { field: "android_version_code", storeUrl: PLAY_STORE_URL },
+  ios: { field: "ios_version_code", storeUrl: APP_STORE_URL },
+};
 
 export default function UpdateAvailableBanner() {
   const t = useT();
   const [latestVersion, setLatestVersion] = useState(null);
 
   useEffect(() => {
-    if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "android") return;
+    if (!Capacitor.isNativePlatform() || !PLATFORMS[Capacitor.getPlatform()]) return;
     (async () => {
       try {
         const [info, versionInfo] = await Promise.all([
           CapacitorApp.getInfo(),
           base44.app.getVersionInfo(),
         ]);
-        const latest = versionInfo?.android_version_code;
+        const latest = versionInfo?.[PLATFORMS[Capacitor.getPlatform()].field];
         const current = parseInt(info.build, 10);
         if (!latest || !Number.isFinite(current) || latest <= current) return;
         if (localStorage.getItem(DISMISS_KEY_PREFIX + latest) === "1") return;
@@ -62,7 +69,7 @@ export default function UpdateAvailableBanner() {
         <p className="text-xs text-muted-foreground">{t.updateAppSubtitle}</p>
       </div>
       <Button size="sm" className="flex-shrink-0" asChild>
-        <a href={PLAY_STORE_URL} target="_blank" rel="noreferrer">
+        <a href={PLATFORMS[Capacitor.getPlatform()].storeUrl} target="_blank" rel="noreferrer">
           {t.updateAppCta}
         </a>
       </Button>

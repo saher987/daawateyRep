@@ -111,9 +111,15 @@ def app_version() -> dict[str, int | None]:
     here. No auth (checked before sign-in even completes) and no DB —
     just an env var bumped by hand each time a new Android build is
     uploaded to Play Console; unset means the update-nudge banner simply
-    never shows, never a hard failure."""
-    raw = os.environ.get("ANDROID_LATEST_VERSION_CODE")
-    return {"android_version_code": int(raw) if raw else None}
+    never shows, never a hard failure. ios_version_code is the same thing
+    for the iOS app (its CFBundleVersion), bumped once an App Store
+    release is live."""
+    android = os.environ.get("ANDROID_LATEST_VERSION_CODE")
+    ios = os.environ.get("IOS_LATEST_VERSION_CODE")
+    return {
+        "android_version_code": int(android) if android else None,
+        "ios_version_code": int(ios) if ios else None,
+    }
 
 
 @app.get("/api/me", response_model=schemas.MeResponse)
