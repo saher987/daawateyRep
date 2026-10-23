@@ -345,6 +345,12 @@ class MyInvitationRecipientOut(BaseModel):
     personal_token: str
     rsvp_status: RsvpStatus
     rsvp_guests_count: int | None
+    # How many the host invited — the default head count for a one-tap
+    # "attending" from the My Invitations list.
+    guests_count: int
+    # Sent back unchanged on a reply from the list, so changing the answer
+    # there doesn't wipe a message the guest wrote on the invitation page.
+    rsvp_message: str | None
     open_count: int
     first_opened_at: datetime | None
     created_at: datetime
@@ -355,9 +361,15 @@ class MyInvitationEventOut(BaseModel):
 
     id: str
     title: str
+    event_type: EventType
     venue_name: str
+    venue_city: str | None
+    venue_address: str | None
     date: datetime
     cover_image_url: str | None
+    groom_name: str | None
+    bride_name: str | None
+    host_name: str | None
 
 
 class MyInvitationOut(BaseModel):
