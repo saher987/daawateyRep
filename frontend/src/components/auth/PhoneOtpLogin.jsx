@@ -6,6 +6,7 @@
 // it, so this is usable standalone on Login/Register too, not just
 // alongside an invitation.
 import React, { useEffect, useState } from "react";
+import { Capacitor, registerPlugin } from "@capacitor/core";
 import { signInWithCustomToken } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { base44 } from "@/api/base44Client";
@@ -13,6 +14,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, ShieldCheck, Phone } from "lucide-react";
 import { motion } from "framer-motion";
+
+// Native Android only — android/.../SmsUserConsentPlugin.java.
+const SmsUserConsent = registerPlugin("SmsUserConsent");
 
 // Arabic-only defaults: every existing call site (the invitation page) is
 // Arabic-first already. Login.jsx/Register.jsx pass their own `t` slice
@@ -114,6 +118,29 @@ export default function PhoneOtpLogin({ recipientId, initialPhone, t: tOverride,
         // — either way, manual entry (already on screen) still works.
       });
     return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
+  // The Android app's WebView has no WebOTP, so there the native SMS User
+  // Consent API does the same job: Android shows a one-tap "allow Daawatey
+  // to read this message" sheet for the incoming OTP SMS, and the code is
+  // filled in and verified. Listens for up to ~5 minutes from here.
+  useEffect(() => {
+    if (step !== "verify" || Capacitor.getPlatform() !== "android") return;
+    let active = true;
+    SmsUserConsent.start()
+      .then(({ code }) => {
+        if (!active || !code) return;
+        setOtpCode(code);
+        verifyOtp(code);
+      })
+      .catch(() => {
+        // Declined, timed out or stopped — manual entry still works.
+      });
+    return () => {
+      active = false;
+      SmsUserConsent.stop().catch(() => {});
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
