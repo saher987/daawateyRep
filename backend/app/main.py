@@ -81,6 +81,10 @@ def _me_response(user: models.User, db: Session) -> schemas.MeResponse:
         photo_url=user.photo_url,
         profile_complete=user.profile_complete,
         owns_venue=bool(venues.owned_venues(db, user)),
+        owns_provider=db.query(models.Provider.id)
+        .filter(models.Provider.owner_user_id == user.id)
+        .first()
+        is not None,
     )
 
 

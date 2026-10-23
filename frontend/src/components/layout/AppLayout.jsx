@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, startTransition, Suspense } from "r
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import {
-  LayoutDashboard, CalendarHeart, Bell, Menu, X, LogOut, Sparkles, UserCircle, ChevronRight, ShieldCheck, Mail, AlertCircle, MapPin, CalendarRange, Building2, Heart, FileSpreadsheet, Store } from
+  LayoutDashboard, CalendarHeart, Bell, Menu, X, LogOut, Sparkles, UserCircle, ChevronRight, ShieldCheck, Mail, AlertCircle, MapPin, CalendarRange, Building2, Heart, FileSpreadsheet, Store, Briefcase } from
 "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +42,9 @@ function useNavItems() {
   // one. Regular users arguably care about this more than admins do.
   { path: "/planned-weddings", icon: Heart, label: isVenueOwner ? t.plannedWeddings : t.upcomingWeddings },
   { path: "/providers", icon: Store, label: t.providersTab },
+  // Anyone who listed a business; everyone else gets there from the
+  // directory's "List your business" card.
+  { path: "/my-business", icon: Briefcase, label: t.myBusiness, providerOwner: true },
   { path: "/notifications", icon: Bell, label: t.notifications },
   { path: "/users", icon: ShieldCheck, label: t.users, privileged: true },
   { path: "/import-invitees", icon: FileSpreadsheet, label: t.importInvitees, privileged: true },
@@ -198,6 +201,7 @@ export default function AppLayout() {
             if (item.userOnly && isPrivileged) return false;
             if (item.venueOwner && !isPrivileged && !ownsVenue) return false;
             if (item.venueOwnerOnly && !ownsVenue) return false;
+            if (item.providerOwner && !user?.owns_provider) return false;
             return true;
           }).map((item) =>
           <Link
