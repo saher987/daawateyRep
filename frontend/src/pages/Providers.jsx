@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Star, Store } from "lucide-react";
+import { ChevronLeft, Search, Star, Store } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useT } from "@/lib/i18n";
 import { Input } from "@/components/ui/input";
@@ -123,6 +123,21 @@ export default function Providers() {
           )}
         </>
       )}
+
+      {/* Self-listing entry point — guests land on /login first. */}
+      <Link
+        to="/my-business"
+        className="flex items-center gap-3 rounded-2xl border border-dashed border-primary/50 bg-primary/5 px-4 py-3.5 hover:bg-primary/10 transition-colors"
+      >
+        <span className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+          <Store className="w-5 h-5 text-primary" />
+        </span>
+        <span className="flex-1 min-w-0">
+          <span className="block font-semibold text-sm text-foreground">{t.offerServiceTitle}</span>
+          <span className="block text-xs text-muted-foreground">{t.offerServiceDesc}</span>
+        </span>
+        <ChevronLeft className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+      </Link>
     </div>
   );
 }

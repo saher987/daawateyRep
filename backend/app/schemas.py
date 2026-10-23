@@ -39,6 +39,9 @@ class MeResponse(BaseModel):
     # Listed in at least one venue's owner_phones — drives the venue
     # calendar menu for owners whose role isn't venue_owner.
     owns_venue: bool = False
+    # Submitted at least one business to the providers directory — drives
+    # the "My business" menu item.
+    owns_provider: bool = False
 
 
 class UserOut(BaseModel):
@@ -555,7 +558,10 @@ class ProviderCategoryOrder(BaseModel):
     ids: list[str]
 
 
-class ProviderIn(BaseModel):
+class ProviderDetailsIn(BaseModel):
+    """What a business owner can set on their own listing — everything but
+    the publish/featured switches, which stay with admins/managers."""
+
     category_id: str
     name: str = Field(min_length=1)
     city: str | None = None
@@ -572,8 +578,17 @@ class ProviderIn(BaseModel):
     cover_url: str | None = None
     gallery_urls: list[str] = Field(default=[], max_length=10)
     price_from: int | None = Field(default=None, ge=0)
+
+
+class ProviderIn(ProviderDetailsIn):
     is_published: bool = True
     is_featured: bool = False
+
+
+class ProviderSubmitIn(ProviderDetailsIn):
+    # A self-listed business has to be reachable — the whole point of the
+    # directory is the call/WhatsApp buttons.
+    phone: str = Field(min_length=1)
 
 
 class ProviderOut(BaseModel):
@@ -600,9 +615,23 @@ class ProviderOut(BaseModel):
     is_featured: bool
 
 
-class ProviderAdminOut(ProviderOut):
+class ProviderOwnerOut(ProviderOut):
+    review_status: str
+    review_note: str | None
+
+
+class ProviderAdminOut(ProviderOwnerOut):
     # Contact-button taps in the last 30 days, by kind.
     clicks: dict[str, int] = {}
+    # Who submitted it, for self-listed providers (all None otherwise).
+    owner_user_id: str | None = None
+    owner_name: str | None = None
+    owner_phone: str | None = None
+
+
+class ProviderReviewIn(BaseModel):
+    action: Literal["approve", "reject"]
+    note: str | None = None
 
 
 class ProviderContactClickIn(BaseModel):

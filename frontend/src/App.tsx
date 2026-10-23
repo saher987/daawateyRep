@@ -43,6 +43,7 @@ const Providers = lazy(() => import('./pages/Providers'))
 const ProviderCategory = lazy(() => import('./pages/ProviderCategory'))
 const ProviderDetail = lazy(() => import('./pages/ProviderDetail'))
 const ManageProviders = lazy(() => import('./pages/ManageProviders'))
+const MyBusiness = lazy(() => import('./pages/MyBusiness'))
 
 const PageSpinner = () => (
   <div className="fixed inset-0 flex items-center justify-center bg-background">
@@ -197,6 +198,14 @@ function App() {
                     element={
                       <Suspense fallback={<PageSpinner />}>
                         <ManageProviders />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="/my-business"
+                    element={
+                      <Suspense fallback={<PageSpinner />}>
+                        <MyBusiness />
                       </Suspense>
                     }
                   />

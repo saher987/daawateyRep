@@ -132,6 +132,8 @@ once the API underneath it is stable.
 | Browse the providers directory (`/providers`) | ✅ | ✅ | ✅ | ✅ (also signed-out) |
 | Add/edit/hide providers and their categories (`/manage-providers`) | ✅ | ✅ | ❌ | ❌ |
 | Delete providers / provider categories | ✅ | ❌ | ❌ | ❌ |
+| Review self-listed businesses (approve / reject, `/manage-providers` → Requests) | ✅ | ✅ | ❌ | ❌ |
+| List your own business (`/my-business`) — hidden until approved; edit/remove your own | ✅ | ✅ | ✅ | ✅ |
 
 Enforced via a `require_role(*roles)` FastAPI dependency, and per-row checks
 (`owner_phones`/`manager_phones` membership) inside route handlers where the

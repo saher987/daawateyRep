@@ -216,8 +216,9 @@ const venuesApi = {
 }
 
 // Event professionals directory. The browse calls are public (auth:
-// false) — provider pages are shareable links anyone can open; manage*
-// calls are admin/manager only (see backend app/routers/providers.py).
+// false) — provider pages are shareable links anyone can open; my* calls
+// are any signed-in user's own listings; manage* calls are admin/manager
+// only (see backend app/routers/providers.py).
 const providersApi = {
   async listCategories() {
     return request('/api/provider-categories', { auth: false })
@@ -244,6 +245,22 @@ const providersApi = {
   },
   async manageDelete(id) {
     return request(`/api/manage/providers/${id}`, { method: 'DELETE' })
+  },
+  async manageReview(id, action, note) {
+    return request(`/api/manage/providers/${id}/review`, { method: 'POST', body: { action, note } })
+  },
+  // Self-listing: the signed-in user's own businesses ("List your business").
+  async myList() {
+    return request('/api/my-providers')
+  },
+  async mySubmit(data) {
+    return request('/api/my-providers', { method: 'POST', body: data })
+  },
+  async myUpdate(id, data) {
+    return request(`/api/my-providers/${id}`, { method: 'PUT', body: data })
+  },
+  async myDelete(id) {
+    return request(`/api/my-providers/${id}`, { method: 'DELETE' })
   },
   async manageListCategories() {
     return request('/api/manage/provider-categories')

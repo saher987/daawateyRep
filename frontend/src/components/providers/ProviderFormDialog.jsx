@@ -35,9 +35,14 @@ function toForm(provider) {
 }
 
 // Every text field the backend stores as nullable: "" from an untouched
-// input goes up as null, not as an empty string.
-function toPayload(form) {
+// input goes up as null, not as an empty string. An owner's own listing
+// never sends the publish/featured switches — those stay with admins.
+function toPayload(form, owner) {
   const data = { ...form };
+  if (owner) {
+    delete data.is_published;
+    delete data.is_featured;
+  }
   for (const [key, value] of Object.entries(data)) {
     if (typeof value === "string" && !value.trim()) data[key] = null;
   }
@@ -68,9 +73,12 @@ function ImageSlot({ label, url, uploading, onPick, onClear, round }) {
   );
 }
 
-export default function ProviderFormDialog({ open, onOpenChange, provider, categories }) {
+// `owner`: a business editing its own listing ("List your business") —
+// goes through /api/my-providers, needs a phone, and has no publish/featured
+// switches; every save goes to admin review.
+export default function ProviderFormDialog({ open, onOpenChange, provider, categories, owner = false }) {
   const t = useT();
-  const { user } = useAuth();
+  const { user, checkAppState } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [form, setForm] = useState(emptyForm);
@@ -93,18 +101,30 @@ export default function ProviderFormDialog({ open, onOpenChange, provider, categ
     queryClient.invalidateQueries({ queryKey: ["providers"] });
     queryClient.invalidateQueries({ queryKey: ["provider"] });
     queryClient.invalidateQueries({ queryKey: ["provider-categories"] });
+    if (owner) {
+      queryClient.invalidateQueries({ queryKey: ["my-providers"] });
+      // /api/me's owns_provider drives the "My business" menu item.
+      checkAppState?.();
+    }
     toast({ title });
     onOpenChange(false);
   };
-  const onError = (e) => toast({ title: t.addError, description: e?.message || t.addErrorDesc, variant: "destructive" });
+  const onError = (e) => toast({
+    title: t.addError,
+    description: e?.message === "listing_limit_reached" ? t.listingLimitReached : e?.message || t.addErrorDesc,
+    variant: "destructive",
+  });
 
   const save = useMutation({
-    mutationFn: (data) => (provider ? base44.providers.manageUpdate(provider.id, data) : base44.providers.manageCreate(data)),
-    onSuccess: () => onDone(t.providerSaved),
+    mutationFn: (data) => {
+      if (owner) return provider ? base44.providers.myUpdate(provider.id, data) : base44.providers.mySubmit(data);
+      return provider ? base44.providers.manageUpdate(provider.id, data) : base44.providers.manageCreate(data);
+    },
+    onSuccess: () => onDone(owner ? t.businessSubmitted : t.providerSaved),
     onError,
   });
   const remove = useMutation({
-    mutationFn: () => base44.providers.manageDelete(provider.id),
+    mutationFn: () => (owner ? base44.providers.myDelete(provider.id) : base44.providers.manageDelete(provider.id)),
     onSuccess: () => onDone(t.providerDeleted),
     onError,
   });
@@ -136,7 +156,7 @@ export default function ProviderFormDialog({ open, onOpenChange, provider, categ
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    save.mutate(toPayload(form));
+    save.mutate(toPayload(form, owner));
   };
 
   const categoryOptions = categories.map((c) => ({ value: c.id, label: localized(c, "name", t.langCode) }));
@@ -146,7 +166,7 @@ export default function ProviderFormDialog({ open, onOpenChange, provider, categ
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-lg flex flex-col max-h-[90vh] p-0 gap-0" dir="rtl">
           <DialogHeader className="px-6 pt-6 pb-4 border-b flex-shrink-0">
-            <DialogTitle>{provider ? t.editProvider : t.addProvider}</DialogTitle>
+            <DialogTitle>{owner ? (provider ? t.editMyBusiness : t.listYourBusiness) : provider ? t.editProvider : t.addProvider}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
             <div className="overflow-y-auto flex-1 px-6 py-4 space-y-4">
@@ -184,7 +204,7 @@ export default function ProviderFormDialog({ open, onOpenChange, provider, categ
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label htmlFor="f-providerPhone">{t.providerPhone}</Label>
-                  <Input id="f-providerPhone" type="tel" value={form.phone} onChange={set("phone")} className="h-11 rounded-xl" dir="ltr" placeholder="05x-xxx-xxxx" />
+                  <Input id="f-providerPhone" type="tel" value={form.phone} onChange={set("phone")} className="h-11 rounded-xl" dir="ltr" placeholder="05x-xxx-xxxx" required={owner} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="f-providerWhatsapp">{t.providerWhatsapp}</Label>
@@ -243,6 +263,9 @@ export default function ProviderFormDialog({ open, onOpenChange, provider, categ
                 </div>
               </div>
 
+              {owner ? (
+                <p className="rounded-xl bg-muted px-4 py-3 text-xs text-muted-foreground">{t.businessReviewHint}</p>
+              ) : (
               <div className="rounded-xl border border-border divide-y divide-border">
                 <label className="flex items-center gap-3 px-4 py-3 cursor-pointer">
                   <span className="flex-1">
@@ -259,14 +282,15 @@ export default function ProviderFormDialog({ open, onOpenChange, provider, categ
                   <Switch checked={form.is_featured} onCheckedChange={(v) => setForm((p) => ({ ...p, is_featured: v }))} />
                 </label>
               </div>
+              )}
             </div>
             <div className="flex gap-3 px-6 py-4 border-t flex-shrink-0 bg-background">
               <Button type="submit" disabled={save.isPending || !!uploading || !form.category_id} className="flex-1 h-11 rounded-xl gap-2">
                 {save.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-                {t.saveBtn}
+                {owner ? t.submitForReview : t.saveBtn}
               </Button>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="h-11 rounded-xl">{t.cancel}</Button>
-              {provider && isAdmin && (
+              {provider && (isAdmin || owner) && (
                 <Button type="button" variant="ghost" size="icon" onClick={() => setConfirmDelete(true)} className="h-11 w-11 text-destructive hover:text-destructive" aria-label={t.deletePermanently}>
                   <Trash2 className="w-4 h-4" />
                 </Button>
@@ -280,7 +304,7 @@ export default function ProviderFormDialog({ open, onOpenChange, provider, categ
         <AlertDialogContent dir="rtl">
           <AlertDialogHeader>
             <AlertDialogTitle>{t.deletePermanently}</AlertDialogTitle>
-            <AlertDialogDescription>{t.confirmDeleteProvider}</AlertDialogDescription>
+            <AlertDialogDescription>{owner ? t.confirmDeleteMyBusiness : t.confirmDeleteProvider}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
             <AlertDialogCancel>{t.cancel}</AlertDialogCancel>

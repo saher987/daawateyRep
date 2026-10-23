@@ -547,12 +547,28 @@ class Provider(Base):
     price_from: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_published: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     is_featured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Self-listing ("List your business"): the user who submitted it, NULL
+    # for listings admins/managers added. SET NULL so deleting the account
+    # leaves the listing for admins to keep or remove.
+    owner_user_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    # pending / approved / rejected (see PROVIDER_REVIEW_STATUSES). Only
+    # is_published decides public visibility; this is the review queue.
+    review_status: Mapped[str] = mapped_column(
+        String, nullable=False, default="approved", server_default="approved"
+    )
+    # Shown to the owner when a submission is rejected.
+    review_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
     )
+
+
+PROVIDER_REVIEW_STATUSES = ("pending", "approved", "rejected")
 
 
 class ProviderContactClick(Base):
