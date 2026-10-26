@@ -19,12 +19,14 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
     UniqueConstraint,
 )
 from sqlalchemy import Enum as SqlEnum
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -586,3 +588,48 @@ class ProviderContactClick(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, index=True
     )
+
+
+class AuditLog(Base):
+    """One row per meaningful action (an admin deactivating a user, a
+    manager activating an event, reminders going out, ...) — written by
+    app.audit.audit() from the endpoint itself, in the same transaction as
+    the change, so a row exists exactly when the action went through.
+    Append-only: nothing in the API updates or deletes these.
+
+    The actor's role/name/phone/email are copied in at write time rather
+    than joined from users: the entry has to keep reading correctly after
+    that user is renamed, changes role, or deletes their account — which is
+    also why actor_user_id isn't a foreign key. `environment` matters here
+    specifically because staging shares prod's database (ARCHITECTURE.md).
+    Every request (audited or not) also gets a structured line in Cloud
+    Logging — see app.audit.RequestLogMiddleware."""
+
+    __tablename__ = "audit_log"
+    __table_args__ = (Index("ix_audit_log_entity", "entity_type", "entity_id"),)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False, index=True
+    )
+    environment: Mapped[str] = mapped_column(String, nullable=False)
+    actor_user_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    actor_role: Mapped[str | None] = mapped_column(String, nullable=True)
+    actor_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    actor_phone: Mapped[str | None] = mapped_column(String, nullable=True)
+    actor_email: Mapped[str | None] = mapped_column(String, nullable=True)
+    action: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    entity_type: Mapped[str] = mapped_column(String, nullable=False)
+    entity_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    # What the entity was called at the time (event title, user name, ...)
+    # — still readable after the entity itself is deleted.
+    entity_label: Mapped[str | None] = mapped_column(String, nullable=True)
+    # {field: [old, new]} for edits.
+    changes: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # Action-specific details: counts sent, review decision, ...
+    meta: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    platform: Mapped[str | None] = mapped_column(String, nullable=True)
+    ip: Mapped[str | None] = mapped_column(String, nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Same id as the request's Cloud Logging line, to go from one to the other.
+    request_id: Mapped[str | None] = mapped_column(String, nullable=True)

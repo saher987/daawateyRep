@@ -140,3 +140,28 @@ Pulseem (SMS) and Resend (email) stay real-send **only on prod** — staging
 has no equivalent API key secrets, so those integrations degrade gracefully
 (log + skip) there, guaranteeing a staging sign-in/test run can never text or
 email a real phone number or inbox.
+
+## Audit log
+
+Two layers (`backend/app/audit.py`):
+
+- **`audit_log` table**: the readable log. Endpoints call
+  `audit(db, actor, "event.activate", "event", event.id, ...)` for the
+  actions worth recording. The row is committed in the same transaction as
+  the action, so it exists exactly when the action went through. Each row
+  holds the actor (role, name and phone copied in at the time), the action,
+  the entity and its name, `{field: [old, new]}` for edits, action details
+  (counts sent, review note, ...), platform, IP and `environment`. That last
+  one matters because staging shares prod's database. Append-only: nothing
+  in the API edits or deletes rows. Admins (role `admin` only) read it at
+  `/audit-log` in the app, backed by `GET /api/audit-log`. Guests' phone
+  numbers are never written to it.
+- **Request log**: one JSON line per POST/PUT/PATCH/DELETE request goes to
+  stdout, so it lands in Cloud Logging. It records method, path, status,
+  user, role and platform. It's the safety net for actions with no
+  `audit()` call and for failed attempts (403s, 500s). Find them in Logs
+  Explorer with `jsonPayload.audit=true`. Its `request_id` matches the
+  audit row's.
+
+When adding an endpoint that changes data someone might later ask "who did
+this?" about, add an `audit()` call before its `db.commit()`.

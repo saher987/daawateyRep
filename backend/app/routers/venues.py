@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app import models, schemas
+from app.audit import audit, changes_since, snapshot
 from app.auth import get_app_user, require_role
 from app.db import get_db
 from app.integrations.pulseem import to_international_phone
@@ -45,7 +46,7 @@ def list_venues(
 @router.post("/venues", response_model=schemas.VenueOut, status_code=status.HTTP_201_CREATED)
 def create_venue(
     body: schemas.VenueCreate,
-    _: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
+    user: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
     db: Session = Depends(get_db),
 ) -> models.Venue:
     data = body.model_dump()
@@ -56,6 +57,8 @@ def create_venue(
     data["owner_phones"] = [to_international_phone(p) for p in data["owner_phones"]]
     venue = models.Venue(**data)
     db.add(venue)
+    db.flush()
+    audit(db, user, "venue.create", "venue", venue.id, label=venue.name)
     db.commit()
     db.refresh(venue)
     return venue
@@ -86,16 +89,21 @@ def get_venue(
 def update_venue(
     venue_id: str,
     body: schemas.VenueUpdate,
-    _: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
+    user: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
     db: Session = Depends(get_db),
 ) -> models.Venue:
     """admin/manager only — spec §1 doesn't give venue_owner permission to
     edit their own venue's record, only to view its schedule/calendar."""
     venue = _get_venue_or_404(db, venue_id)
-    for field, value in body.model_dump(exclude_unset=True).items():
+    fields = body.model_dump(exclude_unset=True)
+    before = snapshot(venue, fields)
+    for field, value in fields.items():
         if field == "owner_phones" and value is not None:
             value = [to_international_phone(p) for p in value]
         setattr(venue, field, value)
+    changes = changes_since(before, venue)
+    if changes:
+        audit(db, user, "venue.update", "venue", venue.id, label=venue.name, changes=changes)
     db.commit()
     db.refresh(venue)
     return venue
@@ -104,11 +112,12 @@ def update_venue(
 @router.delete("/venues/{venue_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_venue(
     venue_id: str,
-    _: models.User = Depends(require_role(models.Role.admin)),
+    user: models.User = Depends(require_role(models.Role.admin)),
     db: Session = Depends(get_db),
 ) -> None:
     """admin-only per spec §1 (venues are one of the two admin-only-delete
     exceptions, alongside planned weddings)."""
     venue = _get_venue_or_404(db, venue_id)
+    audit(db, user, "venue.delete", "venue", venue.id, label=venue.name)
     db.delete(venue)
     db.commit()
