@@ -7,10 +7,15 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app import models, schemas
+from app.audit import audit, changes_since, snapshot
 from app.auth import require_role
 from app.db import get_db
 
 router = APIRouter(prefix="/api", tags=["planned-weddings"])
+
+
+def _label(wedding: models.PlannedWedding) -> str:
+    return f"{wedding.owner_name} — {wedding.date}"
 
 
 @router.get("/planned-weddings", response_model=list[schemas.PlannedWeddingOut])
@@ -28,11 +33,13 @@ def list_planned_weddings(
 )
 def create_planned_wedding(
     body: schemas.PlannedWeddingCreate,
-    _: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
+    user: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
     db: Session = Depends(get_db),
 ) -> models.PlannedWedding:
     wedding = models.PlannedWedding(**body.model_dump())
     db.add(wedding)
+    db.flush()
+    audit(db, user, "planned_wedding.create", "planned_wedding", wedding.id, label=_label(wedding))
     db.commit()
     db.refresh(wedding)
     return wedding
@@ -42,14 +49,27 @@ def create_planned_wedding(
 def update_planned_wedding(
     wedding_id: str,
     body: schemas.PlannedWeddingUpdate,
-    _: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
+    user: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
     db: Session = Depends(get_db),
 ) -> models.PlannedWedding:
     wedding = db.get(models.PlannedWedding, wedding_id)
     if wedding is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Planned wedding not found")
-    for field, value in body.model_dump(exclude_unset=True).items():
+    fields = body.model_dump(exclude_unset=True)
+    before = snapshot(wedding, fields)
+    for field, value in fields.items():
         setattr(wedding, field, value)
+    changes = changes_since(before, wedding)
+    if changes:
+        audit(
+            db,
+            user,
+            "planned_wedding.update",
+            "planned_wedding",
+            wedding.id,
+            label=_label(wedding),
+            changes=changes,
+        )
     db.commit()
     db.refresh(wedding)
     return wedding
@@ -58,11 +78,12 @@ def update_planned_wedding(
 @router.delete("/planned-weddings/{wedding_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_planned_wedding(
     wedding_id: str,
-    _: models.User = Depends(require_role(models.Role.admin)),
+    user: models.User = Depends(require_role(models.Role.admin)),
     db: Session = Depends(get_db),
 ) -> None:
     wedding = db.get(models.PlannedWedding, wedding_id)
     if wedding is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Planned wedding not found")
+    audit(db, user, "planned_wedding.delete", "planned_wedding", wedding.id, label=_label(wedding))
     db.delete(wedding)
     db.commit()

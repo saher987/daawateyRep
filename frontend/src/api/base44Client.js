@@ -12,6 +12,7 @@
 // it needs a matching case added here (and usually a matching backend
 // endpoint first) — see BUSINESS_LOGIC.md.
 
+import { Capacitor } from '@capacitor/core'
 import { auth as firebaseAuth } from '@/lib/firebase'
 import { signOut } from 'firebase/auth'
 
@@ -31,6 +32,11 @@ async function request(path, { method = 'GET', body, auth = true, params } = {})
   if (auth) {
     const token = await firebaseAuth.currentUser?.getIdToken()
     if (token) headers.Authorization = `Bearer ${token}`
+    // web / android / ios, recorded on the audit log (backend app/audit.py).
+    // Signed-in requests only: they're preflighted for Authorization
+    // anyway, whereas on the public pages a custom header would add a CORS
+    // preflight that isn't there today.
+    headers['X-Client-Platform'] = Capacitor.getPlatform()
   }
 
   let url = `${API_BASE_URL}${path}`
@@ -550,4 +556,8 @@ export const base44 = {
   app: appApi,
   myInvitations: myInvitationsApi,
   providers: providersApi,
+  // Admin only — see backend app/routers/audit_log.py.
+  auditLog: {
+    list: (params) => request('/api/audit-log', { params }),
+  },
 }

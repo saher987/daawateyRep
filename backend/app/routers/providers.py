@@ -21,6 +21,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app import models, schemas
+from app.audit import audit, changes_since, snapshot
 from app.auth import get_app_user, require_role
 from app.db import get_db
 from app.integrations.push import send_push_to_user
@@ -305,12 +306,14 @@ def list_all_categories(
 )
 def create_category(
     body: schemas.ProviderCategoryIn,
-    _: models.User = Depends(_privileged),
+    user: models.User = Depends(_privileged),
     db: Session = Depends(get_db),
 ) -> schemas.ProviderCategoryOut:
     last = db.query(func.max(models.ProviderCategory.sort_order)).scalar()
     category = models.ProviderCategory(**body.model_dump(), sort_order=(last or 0) + 1)
     db.add(category)
+    db.flush()
+    audit(db, user, "provider_category.create", "provider_category", category.id, label=category.name_ar)
     db.commit()
     db.refresh(category)
     return _category_out(category, 0)
@@ -320,7 +323,7 @@ def create_category(
 @router.put("/manage/provider-categories/order", status_code=status.HTTP_204_NO_CONTENT)
 def reorder_categories(
     body: schemas.ProviderCategoryOrder,
-    _: models.User = Depends(_privileged),
+    user: models.User = Depends(_privileged),
     db: Session = Depends(get_db),
 ) -> None:
     """`ids` in display order; categories it leaves out keep their place
@@ -334,6 +337,7 @@ def reorder_categories(
     for category in sorted(by_id.values(), key=lambda c: c.sort_order):
         category.sort_order = position
         position += 1
+    audit(db, user, "provider_category.reorder", "provider_category", None, meta={"ids": body.ids})
     db.commit()
 
 
@@ -341,12 +345,25 @@ def reorder_categories(
 def update_category(
     category_id: str,
     body: schemas.ProviderCategoryIn,
-    _: models.User = Depends(_privileged),
+    user: models.User = Depends(_privileged),
     db: Session = Depends(get_db),
 ) -> schemas.ProviderCategoryOut:
     category = _get_category_or_404(db, category_id)
-    for field, value in body.model_dump().items():
+    fields = body.model_dump()
+    before = snapshot(category, fields)
+    for field, value in fields.items():
         setattr(category, field, value)
+    changes = changes_since(before, category)
+    if changes:
+        audit(
+            db,
+            user,
+            "provider_category.update",
+            "provider_category",
+            category.id,
+            label=category.name_ar,
+            changes=changes,
+        )
     db.commit()
     db.refresh(category)
     return _category_out(category, _provider_counts(db, published_only=False).get(category.id, 0))
@@ -355,12 +372,13 @@ def update_category(
 @router.delete("/manage/provider-categories/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_category(
     category_id: str,
-    _: models.User = Depends(_admin_only),
+    user: models.User = Depends(_admin_only),
     db: Session = Depends(get_db),
 ) -> None:
     category = _get_category_or_404(db, category_id)
     if db.query(models.Provider).filter_by(category_id=category_id).count():
         raise HTTPException(status.HTTP_409_CONFLICT, detail="category_has_providers")
+    audit(db, user, "provider_category.delete", "provider_category", category.id, label=category.name_ar)
     db.delete(category)
     db.commit()
 
@@ -434,7 +452,7 @@ def get_provider(
 def review_provider(
     provider_id: str,
     body: schemas.ProviderReviewIn,
-    _: models.User = Depends(_privileged),
+    user: models.User = Depends(_privileged),
     db: Session = Depends(get_db),
 ) -> schemas.ProviderAdminOut:
     """Approve publishes the listing; reject hides it and leaves the note
@@ -444,6 +462,15 @@ def review_provider(
     provider.review_status = "approved" if approved else "rejected"
     provider.review_note = None if approved else ((body.note or "").strip() or None)
     provider.is_published = approved
+    audit(
+        db,
+        user,
+        "provider.approve" if approved else "provider.reject",
+        "provider",
+        provider.id,
+        label=provider.name,
+        meta={"note": provider.review_note} if provider.review_note else None,
+    )
     owner = _owner_of(db, provider)
     if owner is not None:
         if approved:
@@ -475,11 +502,13 @@ def review_provider(
 )
 def create_provider(
     body: schemas.ProviderIn,
-    _: models.User = Depends(_privileged),
+    user: models.User = Depends(_privileged),
     db: Session = Depends(get_db),
 ) -> schemas.ProviderAdminOut:
     provider = models.Provider(**_clean_provider_data(db, body))
     db.add(provider)
+    db.flush()
+    audit(db, user, "provider.create", "provider", provider.id, label=provider.name)
     db.commit()
     db.refresh(provider)
     return _admin_out(provider, {}, None)
@@ -489,12 +518,17 @@ def create_provider(
 def update_provider(
     provider_id: str,
     body: schemas.ProviderIn,
-    _: models.User = Depends(_privileged),
+    user: models.User = Depends(_privileged),
     db: Session = Depends(get_db),
 ) -> schemas.ProviderAdminOut:
     provider = _get_provider_or_404(db, provider_id)
-    for field, value in _clean_provider_data(db, body).items():
+    fields = _clean_provider_data(db, body)
+    before = snapshot(provider, fields)
+    for field, value in fields.items():
         setattr(provider, field, value)
+    changes = changes_since(before, provider)
+    if changes:
+        audit(db, user, "provider.update", "provider", provider.id, label=provider.name, changes=changes)
     db.commit()
     db.refresh(provider)
     return _admin_out(provider, _clicks_by_provider(db).get(provider.id, {}), _owner_of(db, provider))
@@ -503,10 +537,11 @@ def update_provider(
 @router.delete("/manage/providers/{provider_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_provider(
     provider_id: str,
-    _: models.User = Depends(_admin_only),
+    user: models.User = Depends(_admin_only),
     db: Session = Depends(get_db),
 ) -> None:
     """admin-only, like venues — a manager hides (is_published=false)."""
     provider = _get_provider_or_404(db, provider_id)
+    audit(db, user, "provider.delete", "provider", provider.id, label=provider.name)
     db.delete(provider)
     db.commit()

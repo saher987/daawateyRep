@@ -17,6 +17,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app import models, schemas
+from app.audit import audit, changes_since, display_name, snapshot
 from app.auth import require_role
 from app.db import get_db
 
@@ -85,15 +86,27 @@ def list_users(
 def update_user(
     user_id: str,
     body: schemas.UserAdminUpdate,
-    _: models.User = Depends(require_role(models.Role.admin)),
+    admin: models.User = Depends(require_role(models.Role.admin)),
     db: Session = Depends(get_db),
 ) -> models.User:
     target = db.get(models.User, user_id)
     if target is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="User not found")
     fields = body.model_dump(exclude_unset=True)
+    before = snapshot(target, fields)
     for field, value in fields.items():
         setattr(target, field, value)
+    changes = changes_since(before, target)
+    if changes:
+        audit(
+            db,
+            admin,
+            "user.role_change" if "role" in changes else "user.update",
+            "user",
+            target.id,
+            label=display_name(target),
+            changes=changes,
+        )
     db.commit()
     if fields.get("phone"):
         # An admin setting/changing a user's phone links the invitations
@@ -131,6 +144,16 @@ def deactivate_user(
             status.HTTP_400_BAD_REQUEST, detail="Cannot deactivate your own account"
         )
     target.is_active = False
+    # The phone is cleared just below — keep it here, it's otherwise lost.
+    audit(
+        db,
+        admin,
+        "user.deactivate",
+        "user",
+        target.id,
+        label=display_name(target),
+        meta={"phone": target.phone} if target.phone else None,
+    )
     # users.phone is unique (migrations/versions/0005) — a disabled account
     # has no further use for it, and leaving it in place only blocks that
     # number from ever being used again (a new phone-OTP signup, or the
@@ -147,13 +170,14 @@ def deactivate_user(
 @router.post("/users/{user_id}/reactivate", response_model=schemas.UserOut)
 def reactivate_user(
     user_id: str,
-    _: models.User = Depends(require_role(models.Role.admin)),
+    admin: models.User = Depends(require_role(models.Role.admin)),
     db: Session = Depends(get_db),
 ) -> models.User:
     target = db.get(models.User, user_id)
     if target is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="User not found")
     target.is_active = True
+    audit(db, admin, "user.reactivate", "user", target.id, label=display_name(target))
     db.commit()
     db.refresh(target)
     _sync_firebase_active(target.firebase_uid, active=True)
@@ -176,5 +200,15 @@ def create_invite(
         invited_by_uid=user.firebase_uid,
     )
     db.add(invite)
+    db.flush()
+    audit(
+        db,
+        user,
+        "user.invite",
+        "pending_invite",
+        invite.id,
+        label=body.email,
+        meta={"email": body.email, "role": body.role, "phone": body.phone},
+    )
     db.commit()
     return {"success": True}

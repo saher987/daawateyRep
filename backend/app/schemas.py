@@ -636,3 +636,28 @@ class ProviderReviewIn(BaseModel):
 
 class ProviderContactClickIn(BaseModel):
     kind: Literal["phone", "whatsapp", "instagram", "facebook", "website", "map"]
+
+
+class AuditLogOut(BaseModel):
+    """GET /api/audit-log — admin only."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    created_at: datetime
+    environment: str
+    actor_user_id: str | None
+    actor_role: str | None
+    actor_name: str | None
+    actor_phone: str | None
+    actor_email: str | None
+    action: str
+    entity_type: str
+    entity_id: str | None
+    entity_label: str | None
+    changes: dict | None
+    meta: dict | None
+    platform: str | None
+    ip: str | None
+    user_agent: str | None
+    request_id: str | None

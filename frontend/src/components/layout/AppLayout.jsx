@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, startTransition, Suspense } from "r
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import {
-  LayoutDashboard, CalendarHeart, Bell, Menu, X, LogOut, Sparkles, UserCircle, ChevronRight, ShieldCheck, Mail, AlertCircle, MapPin, CalendarRange, Building2, Heart, FileSpreadsheet, Store, Briefcase } from
+  LayoutDashboard, CalendarHeart, Bell, Menu, X, LogOut, Sparkles, UserCircle, ChevronRight, ShieldCheck, Mail, AlertCircle, MapPin, CalendarRange, Building2, Heart, FileSpreadsheet, Store, Briefcase, History } from
 "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -53,6 +53,7 @@ function useNavItems() {
   { path: "/venue-schedule", icon: CalendarRange, label: t.venueScheduleTitle || "לוח אולמות", venueOwner: true },
   { path: "/my-venues", icon: Building2, label: t.myVenuesManage, venueOwnerOnly: true },
   { path: "/event-requests", icon: CalendarHeart, label: t.eventRequests, privileged: true },
+  { path: "/audit-log", icon: History, label: t.auditLog, adminRoleOnly: true },
   { path: "/profile", icon: UserCircle, label: t.profile }];
 
 }
@@ -198,6 +199,9 @@ export default function AppLayout() {
             const ownsVenue = isVenueOwner || !!user?.owns_venue;
             if (item.privileged && !isPrivileged) return false;
             if (item.adminOnly && !isPrivileged) return false;
+            // adminOnly above actually means admin *or* manager; this one
+            // is the admin role alone.
+            if (item.adminRoleOnly && user?.role !== "admin") return false;
             if (item.userOnly && isPrivileged) return false;
             if (item.venueOwner && !isPrivileged && !ownsVenue) return false;
             if (item.venueOwnerOnly && !ownsVenue) return false;

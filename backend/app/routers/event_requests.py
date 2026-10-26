@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app import models, schemas
+from app.audit import audit, changes_since, snapshot
 from app.auth import get_app_user, require_role
 from app.db import get_db
 
@@ -65,15 +66,28 @@ def list_event_requests(
 def update_event_request(
     request_id: str,
     body: schemas.EventRequestUpdate,
-    _: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
+    user: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
     db: Session = Depends(get_db),
 ) -> models.EventRequest:
     """Flow C step 4: mark handled (approved) or rejected, with notes."""
     request = db.get(models.EventRequest, request_id)
     if request is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Event request not found")
-    for field, value in body.model_dump(exclude_unset=True).items():
+    fields = body.model_dump(exclude_unset=True)
+    before = snapshot(request, fields)
+    for field, value in fields.items():
         setattr(request, field, value)
+    changes = changes_since(before, request)
+    if changes:
+        audit(
+            db,
+            user,
+            "event_request.update",
+            "event_request",
+            request.id,
+            label=request.title,
+            changes=changes,
+        )
     db.commit()
     db.refresh(request)
     return request

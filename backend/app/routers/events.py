@@ -17,6 +17,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app import models, schemas
+from app.audit import audit, changes_since, snapshot
 from app.auth import get_app_user, require_role
 from app.db import get_db
 from app.integrations.push import send_push_to_user
@@ -74,6 +75,8 @@ def create_event(
     data["manager_phones"] = [to_international_phone(p) for p in data["manager_phones"]]
     event = models.Event(**data, created_by_uid=user.firebase_uid)
     db.add(event)
+    db.flush()
+    audit(db, user, "event.create", "event", event.id, label=event.title)
     db.commit()
     db.refresh(event)
     return event
@@ -218,13 +221,18 @@ def update_event(
     permission rule as viewing it."""
     event = _get_event_or_404(db, event_id)
     _require_event_access(event, user)
-    for field, value in body.model_dump(exclude_unset=True).items():
+    fields = body.model_dump(exclude_unset=True)
+    before = snapshot(event, fields)
+    for field, value in fields.items():
         # Same normalization as create_event, for the same reason —
         # otherwise an edit that only touches owner_phones/manager_phones
         # could silently un-normalize a previously-correct entry.
         if field in ("owner_phones", "manager_phones") and value is not None:
             value = [to_international_phone(p) for p in value]
         setattr(event, field, value)
+    changes = changes_since(before, event)
+    if changes:
+        audit(db, user, "event.update", "event", event.id, label=event.title, changes=changes)
     db.commit()
     db.refresh(event)
     return event
@@ -291,6 +299,15 @@ def notify_event_update(
             event_id=event.id,
         )
 
+    audit(
+        db,
+        user,
+        "event.notify_update",
+        "event",
+        event.id,
+        label=event.title,
+        meta={"recipients": len(recipients), "sms_sent": sms_sent, "email_sent": email_sent},
+    )
     db.commit()
     return {"success": True, "smsSent": sms_sent, "emailSent": email_sent}
 
@@ -298,12 +315,21 @@ def notify_event_update(
 @router.delete("/events/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_event(
     event_id: str,
-    _: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
+    user: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
     db: Session = Depends(get_db),
 ) -> None:
     """spec §1: admin and manager can both delete events (unlike venues/
     planned-weddings, which are admin-only-delete)."""
     event = _get_event_or_404(db, event_id)
+    audit(
+        db,
+        user,
+        "event.delete",
+        "event",
+        event.id,
+        label=event.title,
+        meta={"status": event.status, "date": event.date},
+    )
     db.delete(event)
     db.commit()
 
@@ -311,7 +337,7 @@ def delete_event(
 @router.post("/events/{event_id}/activate", response_model=schemas.EventOut)
 def activate_event(
     event_id: str,
-    _: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
+    user: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
     db: Session = Depends(get_db),
 ) -> models.Event:
     """Flow A step 5: draft → active. Invitation links become shareable."""
@@ -321,6 +347,7 @@ def activate_event(
             status.HTTP_400_BAD_REQUEST, detail=f"Event is already {event.status.value}"
         )
     event.status = models.EventStatus.active
+    audit(db, user, "event.activate", "event", event.id, label=event.title)
     db.commit()
     db.refresh(event)
     return event
@@ -461,6 +488,19 @@ def add_recipient(
         # invited" specifically rather than every detail edit.
         send_push=True,
     )
+    audit(
+        db,
+        user,
+        "recipient.add",
+        "recipient",
+        recipient.id,
+        label=_recipient_label(recipient),
+        meta={
+            "event_id": event.id,
+            "event_title": event.title,
+            "sent": bool(recipient.sent_count),
+        },
+    )
     db.commit()
     return recipient
 
@@ -600,6 +640,23 @@ def _get_recipient_or_404(db: Session, recipient_id: str) -> models.InvitationRe
     return recipient
 
 
+def _recipient_label(recipient: models.InvitationRecipient) -> str:
+    """Audit-log label for a guest: their name, never their full phone
+    number (guests aren't app users and never agreed to be in this log)."""
+    name = _resolve_display_name(
+        recipient.external_full_name,
+        recipient.nickname,
+        recipient.first_name,
+        recipient.last_name,
+        recipient.name_suffix,
+    )
+    if name:
+        return name
+    if recipient.phone:
+        return f"…{recipient.phone[-4:]}"
+    return recipient.email or recipient.id
+
+
 @router.delete("/invitation-recipients/{recipient_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_recipient(
     recipient_id: str,
@@ -614,6 +671,15 @@ def delete_recipient(
     manager generally."""
     recipient = _get_recipient_or_404(db, recipient_id)
     _require_event_access(recipient.event, user)
+    audit(
+        db,
+        user,
+        "recipient.delete",
+        "recipient",
+        recipient.id,
+        label=_recipient_label(recipient),
+        meta={"event_id": recipient.event_id, "event_title": recipient.event.title},
+    )
     db.delete(recipient)
     db.commit()
 
@@ -634,7 +700,16 @@ def resend_invitation(
     sent = _send_invitation(event, recipient, invited_by=user)
     if sent:
         recipient.sent_count = (recipient.sent_count or 0) + 1
-        db.commit()
+    audit(
+        db,
+        user,
+        "recipient.resend",
+        "recipient",
+        recipient.id,
+        label=_recipient_label(recipient),
+        meta={"event_id": event.id, "event_title": event.title, "sent": sent},
+    )
+    db.commit()
     return {"success": sent}
 
 
@@ -642,7 +717,7 @@ def resend_invitation(
 def send_thanks(
     recipient_id: str,
     body: schemas.ThankYouSend,
-    _: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
+    user: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
     db: Session = Depends(get_db),
 ) -> dict:
     """ThankYouDialog.jsx's send button: SMS the event's thank-you message,
@@ -655,6 +730,16 @@ def send_thanks(
     if not recipient.phone:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Recipient has no phone number")
     sent = send_sms(recipient.phone, body.message.strip(), reference=recipient.id)
+    audit(
+        db,
+        user,
+        "recipient.send_thanks",
+        "recipient",
+        recipient.id,
+        label=_recipient_label(recipient),
+        meta={"event_id": recipient.event_id, "event_title": recipient.event.title, "sent": sent},
+    )
+    db.commit()
     return {"success": sent}
 
 
@@ -699,7 +784,7 @@ def _fill_reminder(template: str, event: models.Event, recipient: models.Invitat
 def send_reminders(
     event_id: str,
     body: schemas.ReminderSend,
-    _: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
+    user: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
     db: Session = Depends(get_db),
 ) -> schemas.ReminderResult:
     """ReminderDialog.jsx: remind the guests whose RSVP is in body.statuses.
@@ -767,6 +852,15 @@ def send_reminders(
             result["sms"] += int(texted)
         else:
             result["failed"] += 1
+    audit(
+        db,
+        user,
+        "event.send_reminders",
+        "event",
+        event.id,
+        label=event.title,
+        meta={**result, "statuses": sorted(statuses)},
+    )
     db.commit()
     return schemas.ReminderResult(**result)
 

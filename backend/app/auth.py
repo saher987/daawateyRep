@@ -20,6 +20,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import models
+from app.audit import set_actor
 from app.db import get_db
 
 logger = logging.getLogger(__name__)
@@ -97,6 +98,9 @@ def get_app_user(
     """
     user = db.query(models.User).filter_by(firebase_uid=current.uid).one_or_none()
     if user is not None:
+        # Before the is_active check, so a disabled account's rejected
+        # request is still logged under its user id.
+        set_actor(user)
         if not user.is_active:
             # Firebase-side disable + revoke (see users.py's deactivate
             # endpoint) blocks new sign-ins and kills the session within a
@@ -184,6 +188,7 @@ def get_app_user(
             db.refresh(user)
     else:
         db.refresh(user)
+    set_actor(user)
     return user
 
 

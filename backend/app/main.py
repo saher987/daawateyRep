@@ -10,9 +10,11 @@ from sqlalchemy.exc import DataError, IntegrityError
 from sqlalchemy.orm import Session
 
 from app import models, schemas
+from app.audit import RequestLogMiddleware
 from app.auth import get_app_user
 from app.db import get_db
 from app.routers import (
+    audit_log,
     event_requests,
     events,
     notifications,
@@ -40,6 +42,7 @@ app.include_router(support.router)
 app.include_router(uploads.router)
 app.include_router(push_tokens.router)
 app.include_router(providers.router)
+app.include_router(audit_log.router)
 
 _allowed_origins = os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
 
@@ -49,6 +52,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# Added after CORS, so it wraps it: the logged status is the one the client
+# actually got, including requests that crash (logged as 500).
+app.add_middleware(RequestLogMiddleware)
 
 
 @app.exception_handler(DataError)
