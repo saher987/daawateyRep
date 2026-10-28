@@ -14,6 +14,9 @@ export default function Footer() {
             </Link>
           </div>
         </div>
+        <p className="text-center text-sm font-medium text-foreground">
+          {t.footerByBusiness}
+        </p>
         <p className="text-center text-xs text-muted-foreground">
           {t.footerRights} © {new Date().getFullYear()}
         </p>

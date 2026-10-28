@@ -241,9 +241,11 @@ export default function EventDetails() {
               if (inviteeFilter === "not_opened") return !r.last_opened_at;
               return true;
             });
-            // Most recently updated first (opened, replied, resent…), in every filter.
-            const updatedAt = r => new Date(r.updated_at || r.created_at).getTime();
-            filtered.sort((a, b) => updatedAt(b) - updatedAt(a));
+            // Most recent RSVP first, in every filter; guests who haven't
+            // replied yet follow, newest-added first.
+            const repliedAt = r => (r.rsvp_date ? new Date(r.rsvp_date).getTime() : 0);
+            const createdAt = r => new Date(r.created_at).getTime();
+            filtered.sort((a, b) => repliedAt(b) - repliedAt(a) || createdAt(b) - createdAt(a));
 
             return (
               <>

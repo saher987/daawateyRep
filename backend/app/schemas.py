@@ -282,7 +282,7 @@ class RecipientOut(BaseModel):
     last_opened_at: datetime | None
     created_at: datetime
     # Bumped on every change to the row (opened, RSVP, resend, account
-    # link) — the admin guest list sorts by it, most recent first.
+    # link). The admin guest list sorts by rsvp_date, not this.
     updated_at: datetime | None = None
     # The linked User account's town when there is one, else the town the
     # inviter typed in for an unregistered guest (invitation_recipients.town).
