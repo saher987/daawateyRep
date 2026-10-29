@@ -594,6 +594,7 @@ const translations = {
     // Footer
     termsOfUse: "شروط الاستخدام",
     footerRights: "منصة دعوتي — جميع الحقوق محفوظة",
+    footerByBusiness: "دعوتي من بيت سكايلر",
 
     // Import invitees (admin)
     importInvitees: "استيراد مدعوين",
@@ -1465,6 +1466,7 @@ const translations = {
     // Footer
     termsOfUse: "תנאי שימוש",
     footerRights: "פלטפורמת דעוותי — כל הזכויות שמורות",
+    footerByBusiness: "דעוותי מבית סקאילר",
 
     // Import invitees (admin)
     importInvitees: "ייבוא מוזמנים",

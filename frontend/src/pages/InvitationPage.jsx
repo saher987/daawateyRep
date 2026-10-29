@@ -426,7 +426,7 @@ export default function InvitationPage() {
         <div className="text-center pt-2 pb-4">
           <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
             <Sparkles className="w-3.5 h-3.5" />
-            {isHe ? "פלטפורמת דעוותי" : "منصة دعوتي"}
+            {isHe ? "דעוותי מבית סקאילר" : "دعوتي من بيت سكايلر"}
           </p>
         </div>
       </div>
