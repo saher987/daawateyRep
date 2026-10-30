@@ -85,6 +85,50 @@ Reuses the same Pulseem/Resend accounts the Base44 app already had (same
 sender number `0508085672`, same `noreply@daawatey.com` domain) — no new
 third-party accounts needed, just the existing API keys.
 
+### 5. WhatsApp invitations (optional, either environment)
+
+Invitations (adding a guest, resending an invitation) can go out over the
+WhatsApp Cloud API instead of, or before, Pulseem SMS. OTP, thank-you
+messages, reminders and event-update notices always stay on SMS. Leaving
+all of this unset keeps invitations on SMS exactly as before.
+
+The token lives in Secret Manager in `daawatey-prod`, like the other keys
+(use a permanent System User token from Meta Business Settings, not the
+24-hour one from the developer dashboard):
+
+```bash
+# prod
+printf '%s' "$TOKEN" | gcloud secrets create whatsapp-token --project=daawatey-prod --data-file=-
+gcloud secrets add-iam-policy-binding whatsapp-token --project=daawatey-prod \
+  --member="serviceAccount:<prod RUNTIME_SA_EMAIL>" --role=roles/secretmanager.secretAccessor
+# staging (cross-project, same as database-url-staging)
+printf '%s' "$TOKEN" | gcloud secrets create whatsapp-token-staging --project=daawatey-prod --data-file=-
+gcloud secrets add-iam-policy-binding whatsapp-token-staging --project=daawatey-prod \
+  --member="serviceAccount:<staging RUNTIME_SA_EMAIL>" --role=roles/secretmanager.secretAccessor
+```
+
+Create the secret **before** setting `WHATSAPP_PHONE_NUMBER_ID`: setting
+that GitHub secret is what makes `deploy.yml` mount the token, and a
+missing Secret Manager secret fails the deploy.
+
+GitHub secrets, per environment (all optional; values must contain no
+spaces):
+
+| Secret | Value |
+|---|---|
+| `WHATSAPP_PHONE_NUMBER_ID` | the Phone number ID from Meta's WhatsApp → API Setup page |
+| `INVITATION_CHANNEL` | `sms` (default), `whatsapp`, or `whatsapp_then_sms` (try WhatsApp, SMS if Meta rejects the send) |
+| `WHATSAPP_TEST_PHONES` | comma-separated numbers, e.g. `0501234567,0527654321` — when set, only these get WhatsApp, everyone else SMS |
+| `WHATSAPP_TEMPLATE_DEFAULT` | approved template name for invitations without a custom greeting (default `daawatey_invitation`) — body variables: guest name, inviter name, event title |
+| `WHATSAPP_TEMPLATE_CUSTOM` | approved template name for invitations with the event's custom greeting (default `daawatey_invitation_custom`) — body variables: guest name, greeting |
+| `WHATSAPP_TEMPLATE_LANG` | template language code (default `ar`) |
+
+Both templates need a dynamic URL button `https://<APP_URL domain>/i/{{1}}`
+— the backend fills in only the guest's personal token. Changing any of
+these takes a redeploy: `--set-env-vars` replaces the service's whole env,
+so a value edited by hand in the Cloud Run console is lost on the next
+deploy.
+
 ## Bootstrapping `ALLOWED_ORIGINS` (first deploy only)
 
 The backend needs to know the frontend's origin for CORS, but the frontend's

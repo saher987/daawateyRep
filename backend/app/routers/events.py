@@ -24,6 +24,7 @@ from app.integrations.push import send_push_to_user
 from app.integrations.pulseem import find_by_phone, send_sms, to_international_phone
 from app.routers.venues import owned_venues
 from app.integrations.resend_email import send_email
+from app.integrations.whatsapp import invitation_channel_for, send_whatsapp_invitation
 
 router = APIRouter(prefix="/api", tags=["events"])
 
@@ -580,7 +581,8 @@ def _send_invitation(
     event: models.Event, recipient: models.InvitationRecipient, invited_by: models.User
 ) -> bool:
     """sendInvitationSms + the email half of createInvitationRecipient:
-    SMS via Pulseem if a phone was given, email via Resend if an email was
+    SMS via Pulseem (or WhatsApp, per INVITATION_CHANNEL) if a phone was
+    given, email via Resend if an email was
     given — same templates as the original, both degrading to a logged
     warning (not an error) if their API key isn't configured, since a
     recipient should still get created either way.
@@ -610,12 +612,28 @@ def _send_invitation(
     sent = False
 
     if recipient.phone:
-        text = (
-            f"حضرة {invitee_name}، {event.invitation_greeting} {invitation_link}"
-            if event.invitation_greeting
-            else f"حضرة {invitee_name}، تمت دعوتكم من {invitor_name} لحضور {event.title}. {invitation_link}"
-        )
-        sent = send_sms(recipient.phone, text, reference=recipient.id) or sent
+        # INVITATION_CHANNEL (whatsapp.py) picks SMS, WhatsApp, or WhatsApp
+        # with SMS as the fallback when Meta rejects the send outright.
+        channel = invitation_channel_for(recipient.phone)
+        whatsapp_sent = False
+        if channel in ("whatsapp", "whatsapp_then_sms"):
+            whatsapp_sent = send_whatsapp_invitation(
+                recipient.phone,
+                invitee_name,
+                recipient.personal_token,
+                reference=recipient.id,
+                greeting=event.invitation_greeting,
+                invitor_name=invitor_name,
+                event_title=event.title,
+            )
+            sent = whatsapp_sent or sent
+        if channel == "sms" or (channel == "whatsapp_then_sms" and not whatsapp_sent):
+            text = (
+                f"حضرة {invitee_name}، {event.invitation_greeting} {invitation_link}"
+                if event.invitation_greeting
+                else f"حضرة {invitee_name}، تمت دعوتكم من {invitor_name} لحضور {event.title}. {invitation_link}"
+            )
+            sent = send_sms(recipient.phone, text, reference=recipient.id) or sent
 
     if recipient.email:
         body_text = event.invitation_greeting or f"تمت دعوتكم من {invitor_name} لحضور {event.title}."

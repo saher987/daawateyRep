@@ -94,6 +94,28 @@ jobs:
           if [ -n "${{ secrets.RESEND_FROM_EMAIL }}" ]; then
             FLAGS="$FLAGS##RESEND_FROM_EMAIL=${{ secrets.RESEND_FROM_EMAIL }}"
           fi
+          # Invitation channel (app/integrations/whatsapp.py) — all optional;
+          # unset INVITATION_CHANNEL means sms, exactly as before. Phone
+          # lists must be comma-separated with no spaces (same whitespace
+          # tokenizing caveat as RESEND_FROM_EMAIL).
+          if [ -n "${{ secrets.INVITATION_CHANNEL }}" ]; then
+            FLAGS="$FLAGS##INVITATION_CHANNEL=${{ secrets.INVITATION_CHANNEL }}"
+          fi
+          if [ -n "${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}" ]; then
+            FLAGS="$FLAGS##WHATSAPP_PHONE_NUMBER_ID=${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}"
+          fi
+          if [ -n "${{ secrets.WHATSAPP_TEST_PHONES }}" ]; then
+            FLAGS="$FLAGS##WHATSAPP_TEST_PHONES=${{ secrets.WHATSAPP_TEST_PHONES }}"
+          fi
+          if [ -n "${{ secrets.WHATSAPP_TEMPLATE_DEFAULT }}" ]; then
+            FLAGS="$FLAGS##WHATSAPP_TEMPLATE_DEFAULT=${{ secrets.WHATSAPP_TEMPLATE_DEFAULT }}"
+          fi
+          if [ -n "${{ secrets.WHATSAPP_TEMPLATE_CUSTOM }}" ]; then
+            FLAGS="$FLAGS##WHATSAPP_TEMPLATE_CUSTOM=${{ secrets.WHATSAPP_TEMPLATE_CUSTOM }}"
+          fi
+          if [ -n "${{ secrets.WHATSAPP_TEMPLATE_LANG }}" ]; then
+            FLAGS="$FLAGS##WHATSAPP_TEMPLATE_LANG=${{ secrets.WHATSAPP_TEMPLATE_LANG }}"
+          fi
           if [ -n "${{ secrets.CLOUDSQL_CONNECTION_NAME }}" ]; then
             # prod's secret lives in the same project it's deploying into,
             # so the short "name:latest" form works. Staging's Cloud Run
@@ -134,6 +156,21 @@ jobs:
             # exactly that, silently.
             if [ "${{ inputs.environment }}" = "prod" ]; then
               SECRETS_FLAG="$SECRETS_FLAG,PULSEEM_API_KEY=pulseem-api-key:latest,RESEND_API_KEY=resend-api-key:latest"
+            fi
+
+            # WhatsApp's token only gets mounted once WHATSAPP_PHONE_NUMBER_ID
+            # is set for this environment — referencing a Secret Manager
+            # secret that doesn't exist yet would fail the whole deploy.
+            # Unlike Pulseem/Resend, staging can opt in too (its own
+            # whatsapp-token-staging secret, cross-project like
+            # database-url-staging) — pair it with WHATSAPP_TEST_PHONES
+            # there so staging can only message your own test numbers.
+            if [ -n "${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}" ]; then
+              if [ "${{ inputs.environment }}" = "prod" ]; then
+                SECRETS_FLAG="$SECRETS_FLAG,WHATSAPP_TOKEN=whatsapp-token:latest"
+              else
+                SECRETS_FLAG="$SECRETS_FLAG,WHATSAPP_TOKEN=projects/1046309287701/secrets/whatsapp-token-staging:latest"
+              fi
             fi
 
             FLAGS="$FLAGS --add-cloudsql-instances=${{ secrets.CLOUDSQL_CONNECTION_NAME }} --set-secrets=$SECRETS_FLAG"
