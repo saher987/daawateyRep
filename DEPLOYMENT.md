@@ -121,6 +121,7 @@ spaces):
 | `WHATSAPP_TEST_PHONES` | comma-separated numbers, e.g. `0501234567,0527654321` — when set, only these get WhatsApp, everyone else SMS |
 | `WHATSAPP_TEMPLATE_DEFAULT` | approved template name for invitations without a custom greeting (default `daawatey_invitation`) — body variables: guest name, inviter name, event title |
 | `WHATSAPP_TEMPLATE_CUSTOM` | approved template name for invitations with the event's custom greeting (default `daawatey_invitation_custom`) — body variables: guest name, greeting |
+| `WHATSAPP_TEMPLATE_TAHIL_SON` / `WHATSAPP_TEMPLATE_TAHIL_DAUGHTER` | approved template names for events whose "WhatsApp wording" is تأهيل ولده / ابنته (defaults `daawatey_tahil_son` / `daawatey_tahil_daughter`) — body variables: guest name, host, groom/bride name, day, date, time, hall |
 | `WHATSAPP_TEMPLATE_LANG` | template language code (default `ar`) |
 
 Both templates need a dynamic URL button `https://<APP_URL domain>/i/{{1}}`

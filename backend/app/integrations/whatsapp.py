@@ -8,15 +8,21 @@ regardless.
 Business-initiated WhatsApp messages must be pre-approved *templates* —
 free text isn't allowed outside a 24h window the guest opened by writing
 to us first, which an invitation never has. So instead of the SMS's text,
-this sends one of two templates mirroring the SMS's two variants
-(_send_invitation in routers/events.py):
+this sends one of these templates, picked per event by
+_whatsapp_invitation in routers/events.py (variables in order):
 
-  WHATSAPP_TEMPLATE_DEFAULT (no custom greeting on the event)
-      body:   حضرة {{1}}، تمت دعوتكم من {{2}} لحضور {{3}}. ...
-  WHATSAPP_TEMPLATE_CUSTOM (event.invitation_greeting set)
-      body:   حضرة {{1}}، {{2}} ...
-  both:   a dynamic URL button, https://<domain>/i/{{1}} — the
-          guest's personal_token goes in as the button's one parameter
+  default:         guest name, inviter name, event title
+                   حضرة {{1}}، تمت دعوتكم من {{2}} لحضور {{3}}. ...
+  custom:          guest name, invitation_greeting
+                   (the "default" choice when the event has a greeting)
+  tahil_son /
+  tahil_daughter:  guest name, host, groom/bride name, day, date, time, hall
+                   حضرة {{1}}، يدعوكم {{2}} لحضور حفل تأهيل ولده/ابنته {{3}}،
+                   وذلك يوم {{4}} الموافق {{5}} الساعة {{6}} في {{7}}. ...
+
+Every template also has a dynamic URL button, https://<domain>/i/{{1}} —
+the guest's personal_token goes in as the button's one parameter. Each
+template's name is overridable with its WHATSAPP_TEMPLATE_* env var.
 
 Same degrade-gracefully pattern as pulseem.py: WHATSAPP_TOKEN or
 WHATSAPP_PHONE_NUMBER_ID missing just logs a warning and returns False,
@@ -62,14 +68,21 @@ def _template_text(value: str) -> str:
     return re.sub(r"\s+", " ", value).strip()
 
 
+# template key -> (env var overriding its name, default name)
+_TEMPLATES = {
+    "default": ("WHATSAPP_TEMPLATE_DEFAULT", "daawatey_invitation"),
+    "custom": ("WHATSAPP_TEMPLATE_CUSTOM", "daawatey_invitation_custom"),
+    "tahil_son": ("WHATSAPP_TEMPLATE_TAHIL_SON", "daawatey_tahil_son"),
+    "tahil_daughter": ("WHATSAPP_TEMPLATE_TAHIL_DAUGHTER", "daawatey_tahil_daughter"),
+}
+
+
 def send_whatsapp_invitation(
     phone: str,
-    invitee_name: str,
+    template_key: str,
+    body_values: list[str],
     personal_token: str,
     reference: str,
-    greeting: str | None = None,
-    invitor_name: str = "",
-    event_title: str = "",
 ) -> bool:
     """Returns whether Meta accepted the message. Accepted isn't delivered —
     a number with no WhatsApp account still comes back 200 here, its
@@ -84,12 +97,8 @@ def send_whatsapp_invitation(
         )
         return False
 
-    if greeting:
-        template = os.environ.get("WHATSAPP_TEMPLATE_CUSTOM", "daawatey_invitation_custom")
-        body_values = [invitee_name, greeting]
-    else:
-        template = os.environ.get("WHATSAPP_TEMPLATE_DEFAULT", "daawatey_invitation")
-        body_values = [invitee_name, invitor_name, event_title]
+    env_var, default_name = _TEMPLATES[template_key]
+    template = os.environ.get(env_var, default_name)
     language = os.environ.get("WHATSAPP_TEMPLATE_LANG", "ar")
     api_version = os.environ.get("WHATSAPP_API_VERSION", "v23.0")
 
@@ -121,7 +130,7 @@ def send_whatsapp_invitation(
             },
             timeout=10,
         )
-        logger.info("WhatsApp response for %s: %s %s", reference, response.status_code, response.text)
+        logger.info("WhatsApp response for %s (%s): %s %s", reference, template, response.status_code, response.text)
         return response.is_success
     except httpx.HTTPError:
         logger.exception("WhatsApp request failed for %s", reference)

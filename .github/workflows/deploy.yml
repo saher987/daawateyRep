@@ -113,6 +113,12 @@ jobs:
           if [ -n "${{ secrets.WHATSAPP_TEMPLATE_CUSTOM }}" ]; then
             FLAGS="$FLAGS##WHATSAPP_TEMPLATE_CUSTOM=${{ secrets.WHATSAPP_TEMPLATE_CUSTOM }}"
           fi
+          if [ -n "${{ secrets.WHATSAPP_TEMPLATE_TAHIL_SON }}" ]; then
+            FLAGS="$FLAGS##WHATSAPP_TEMPLATE_TAHIL_SON=${{ secrets.WHATSAPP_TEMPLATE_TAHIL_SON }}"
+          fi
+          if [ -n "${{ secrets.WHATSAPP_TEMPLATE_TAHIL_DAUGHTER }}" ]; then
+            FLAGS="$FLAGS##WHATSAPP_TEMPLATE_TAHIL_DAUGHTER=${{ secrets.WHATSAPP_TEMPLATE_TAHIL_DAUGHTER }}"
+          fi
           if [ -n "${{ secrets.WHATSAPP_TEMPLATE_LANG }}" ]; then
             FLAGS="$FLAGS##WHATSAPP_TEMPLATE_LANG=${{ secrets.WHATSAPP_TEMPLATE_LANG }}"
           fi

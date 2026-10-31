@@ -13,6 +13,7 @@ import MobileSelect from "@/components/shared/MobileSelect";
 import { useBackButton } from "@/hooks/useBackButton";
 import { format } from "date-fns";
 import CitySelect from "@/components/shared/CitySelect";
+import { whatsappTemplateOptions, whatsappTemplateError } from "@/lib/whatsappTemplate";
 
 export default function EditEventDialog({ open, onOpenChange, event }) {
   const queryClient = useQueryClient();
@@ -47,6 +48,7 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
         max_guests: event.max_guests || "",
         description: event.description || "",
         invitation_greeting: event.invitation_greeting || "",
+        whatsapp_template: event.whatsapp_template || "default",
         thank_you_message: event.thank_you_message || "",
       });
       // Load existing owners from owner_phones
@@ -140,6 +142,12 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     const data = { ...form };
+    if (!isWedding) data.whatsapp_template = "default";
+    const templateError = whatsappTemplateError(data, t);
+    if (templateError) {
+      toast({ title: templateError, variant: "destructive" });
+      return;
+    }
     if (data.max_guests) data.max_guests = Number(data.max_guests);
     else delete data.max_guests;
     data.owner_phones = owners.map(o => o.phone);
@@ -354,6 +362,19 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
               placeholder={t.invitationGreetingPlaceholder}
             />
           </div>
+
+          {isWedding && (
+            <div className="space-y-2">
+              <Label>{t.whatsappTemplateLabel}</Label>
+              <MobileSelect
+                value={form.whatsapp_template}
+                onValueChange={v => handleChange("whatsapp_template", v)}
+                options={whatsappTemplateOptions(t)}
+                placeholder={t.whatsappTemplateLabel}
+              />
+              <p className="text-xs text-muted-foreground">{t.whatsappTemplateHint}</p>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>{t.thankYouSection}</Label>
