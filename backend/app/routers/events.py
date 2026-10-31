@@ -617,14 +617,13 @@ def _send_invitation(
         channel = invitation_channel_for(recipient.phone)
         whatsapp_sent = False
         if channel in ("whatsapp", "whatsapp_then_sms"):
+            template_key, body_values = _whatsapp_invitation(event, invitee_name, invitor_name)
             whatsapp_sent = send_whatsapp_invitation(
                 recipient.phone,
-                invitee_name,
+                template_key,
+                body_values,
                 recipient.personal_token,
                 reference=recipient.id,
-                greeting=event.invitation_greeting,
-                invitor_name=invitor_name,
-                event_title=event.title,
             )
             sent = whatsapp_sent or sent
         if channel == "sms" or (channel == "whatsapp_then_sms" and not whatsapp_sent):
@@ -649,6 +648,31 @@ def _send_invitation(
         sent = send_email(recipient.email, f"دعوة لحضور {event.title}", html) or sent
 
     return sent
+
+
+def _whatsapp_invitation(
+    event: models.Event, invitee_name: str, invitor_name: str
+) -> tuple[str, list[str]]:
+    """Which WhatsApp template (integrations/whatsapp.py) an invitation to
+    this event uses, and its body variables in template order. A تأهيل
+    event missing any of the details its template needs (the forms ask for
+    them, but older or API-edited events might not have them) falls back
+    to the generic templates rather than sending a message with holes."""
+    child = {"tahil_son": event.groom_name, "tahil_daughter": event.bride_name}.get(event.whatsapp_template)
+    if child and event.host_name and event.venue_name:
+        when = event.date.astimezone(_EVENT_TZ)
+        return event.whatsapp_template, [
+            invitee_name,
+            event.host_name,
+            child,
+            _WEEKDAYS_AR[when.weekday()],
+            when.strftime("%d/%m/%Y"),
+            when.strftime("%H:%M"),
+            event.venue_name,
+        ]
+    if event.invitation_greeting:
+        return "custom", [invitee_name, event.invitation_greeting]
+    return "default", [invitee_name, invitor_name, event.title]
 
 
 def _get_recipient_or_404(db: Session, recipient_id: str) -> models.InvitationRecipient:
