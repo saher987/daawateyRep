@@ -9,6 +9,7 @@ they just don't actually deliver an SMS until the secret is wired up.
 
 import logging
 import os
+import re
 
 import httpx
 from sqlalchemy.orm import Session
@@ -23,7 +24,10 @@ def to_international_phone(phone: str) -> str:
     """Israeli local (05...) or already-international (972... / +972...)
     format, normalized to Pulseem's expected 972XXXXXXXXX — same rule the
     original's toIntlPhone used."""
-    p = phone.strip().replace(" ", "")
+    # Dashes, spaces, parentheses — "054-535-1842" and "0545351842" must
+    # normalize to the same number (WHATSAPP_TEST_PHONES matching,
+    # find_by_phone).
+    p = re.sub(r"[^\d+]", "", phone)
     if p.startswith("+972"):
         return p[1:]
     if p.startswith("972"):
