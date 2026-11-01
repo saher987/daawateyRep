@@ -603,8 +603,12 @@ def _send_invitation(
         recipient.last_name,
         recipient.name_suffix,
     ) or (recipient.phone or recipient.email or "")
+    # The event's host, not whoever is signed in: an admin adding guests to
+    # a client's event shouldn't appear as the one inviting them. The
+    # adding user's name is only the fallback for events with no host_name.
     invitor_name = (
-        " ".join(p for p in (invited_by.nickname, invited_by.first_name, invited_by.last_name) if p)
+        (event.host_name or "").strip()
+        or " ".join(p for p in (invited_by.nickname, invited_by.first_name, invited_by.last_name) if p)
         or invited_by.email
         or "المنظم"
     )
