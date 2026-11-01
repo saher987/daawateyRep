@@ -30,6 +30,19 @@ from app.routers import (
 
 logger = logging.getLogger(__name__)
 
+# Nothing configured logging for our own modules, so their logger.info
+# lines (Pulseem/WhatsApp provider responses, ...) were silently dropped —
+# Python's fallback handler only prints WARNING and up. Our "app.*"
+# loggers get their own stderr handler at INFO instead; libraries (httpx
+# logs every request at INFO) stay as they were.
+_app_logger = logging.getLogger("app")
+_app_logger.setLevel(logging.INFO)
+_app_logger.propagate = False
+if not _app_logger.handlers:
+    _app_handler = logging.StreamHandler()
+    _app_handler.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
+    _app_logger.addHandler(_app_handler)
+
 app = FastAPI(title="daawatey backend")
 app.include_router(events.router)
 app.include_router(notifications.router)

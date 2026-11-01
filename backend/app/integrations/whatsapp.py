@@ -57,6 +57,7 @@ def invitation_channel_for(phone: str) -> str:
     if channel != "sms" and test_phones:
         allowed = {to_international_phone(p) for p in test_phones.split(",") if p.strip()}
         if to_international_phone(phone) not in allowed:
+            logger.info("%s not in WHATSAPP_TEST_PHONES — invitation goes by SMS", phone)
             return "sms"
     return channel
 
@@ -130,8 +131,15 @@ def send_whatsapp_invitation(
             },
             timeout=10,
         )
+        if not response.is_success:
+            # A warning, not info: this is the line that says why a guest
+            # got the SMS fallback instead (unapproved template, bad token...).
+            logger.warning(
+                "WhatsApp send failed for %s (%s): %s %s", reference, template, response.status_code, response.text
+            )
+            return False
         logger.info("WhatsApp response for %s (%s): %s %s", reference, template, response.status_code, response.text)
-        return response.is_success
+        return True
     except httpx.HTTPError:
         logger.exception("WhatsApp request failed for %s", reference)
         return False
