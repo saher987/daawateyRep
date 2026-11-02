@@ -668,9 +668,15 @@ def _whatsapp_invitation(
     to the generic wording rather than sending a message with holes.
 
     With the universal template enabled, every case sends the same
-    template and only the sentence in {{2}} differs — the wording lives
-    here, not in Meta, so changing it needs no new template review."""
+    template and only {{2}} differs: the event's invitation_greeting when
+    the host wrote one, else a sentence built here — so changing either
+    needs no new template review."""
     universal = universal_template_enabled()
+    # The host's own invitation text wins in the universal template, even
+    # over the تأهيل wording — that wording is only the fallback for events
+    # without one.
+    if universal and event.invitation_greeting:
+        return "universal", [invitee_name, event.invitation_greeting]
     child = {"tahil_son": event.groom_name, "tahil_daughter": event.bride_name}.get(event.whatsapp_template)
     if child and event.host_name and event.venue_name:
         when = event.date.astimezone(_EVENT_TZ)
