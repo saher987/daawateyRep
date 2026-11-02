@@ -20,6 +20,15 @@ _whatsapp_invitation in routers/events.py (variables in order):
                    حضرة {{1}}، يدعوكم {{2}} لحضور حفل تأهيل ولده/ابنته {{3}}،
                    وذلك يوم {{4}} الموافق {{5}} الساعة {{6}} في {{7}}. ...
 
+  universal:       guest name, the whole invitation sentence (built in code)
+                   حضرة {{1}}، بكل محبة وتقدير،
+                   {{2}}
+                   لعرض تفاصيل الدعوة وتأكيد حضوركم ... بانتظار تشريفكم.
+                   The default: used for every invitation, so changing
+                   the wording needs a deploy instead of a new Meta
+                   review. WHATSAPP_TEMPLATE_UNIVERSAL=off falls back to
+                   the per-type templates above.
+
 Every template also has a dynamic URL button, https://<domain>/i/{{1}} —
 the guest's personal_token goes in as the button's one parameter. Each
 template's name is overridable with its WHATSAPP_TEMPLATE_* env var.
@@ -75,7 +84,14 @@ _TEMPLATES = {
     "custom": ("WHATSAPP_TEMPLATE_CUSTOM", "daawatey_invitation_custom"),
     "tahil_son": ("WHATSAPP_TEMPLATE_TAHIL_SON", "daawatey_tahil_son"),
     "tahil_daughter": ("WHATSAPP_TEMPLATE_TAHIL_DAUGHTER", "daawatey_tahil_daughter"),
+    "universal": ("WHATSAPP_TEMPLATE_UNIVERSAL", "daawatey_invitation_universal"),
 }
+
+
+def universal_template_enabled() -> bool:
+    """On unless WHATSAPP_TEMPLATE_UNIVERSAL is "off" — any other value is
+    the template's name (default daawatey_invitation_universal)."""
+    return os.environ.get("WHATSAPP_TEMPLATE_UNIVERSAL", "").strip().lower() != "off"
 
 
 def send_whatsapp_invitation(
@@ -99,7 +115,7 @@ def send_whatsapp_invitation(
         return False
 
     env_var, default_name = _TEMPLATES[template_key]
-    template = os.environ.get(env_var, default_name)
+    template = os.environ.get(env_var, "").strip() or default_name
     language = os.environ.get("WHATSAPP_TEMPLATE_LANG", "ar")
     api_version = os.environ.get("WHATSAPP_API_VERSION", "v23.0")
 
