@@ -24,7 +24,11 @@ from app.integrations.push import send_push_to_user
 from app.integrations.pulseem import find_by_phone, send_sms, to_international_phone
 from app.routers.venues import owned_venues
 from app.integrations.resend_email import send_email
-from app.integrations.whatsapp import invitation_channel_for, send_whatsapp_invitation
+from app.integrations.whatsapp import (
+    invitation_channel_for,
+    send_whatsapp_invitation,
+    universal_template_enabled,
+)
 
 router = APIRouter(prefix="/api", tags=["events"])
 
@@ -661,21 +665,30 @@ def _whatsapp_invitation(
     this event uses, and its body variables in template order. A تأهيل
     event missing any of the details its template needs (the forms ask for
     them, but older or API-edited events might not have them) falls back
-    to the generic templates rather than sending a message with holes."""
+    to the generic wording rather than sending a message with holes.
+
+    With the universal template enabled, every case sends the same
+    template and only the sentence in {{2}} differs — the wording lives
+    here, not in Meta, so changing it needs no new template review."""
+    universal = universal_template_enabled()
     child = {"tahil_son": event.groom_name, "tahil_daughter": event.bride_name}.get(event.whatsapp_template)
     if child and event.host_name and event.venue_name:
         when = event.date.astimezone(_EVENT_TZ)
-        return event.whatsapp_template, [
-            invitee_name,
-            event.host_name,
-            child,
-            _WEEKDAYS_AR[when.weekday()],
-            when.strftime("%d/%m/%Y"),
-            when.strftime("%H:%M"),
-            event.venue_name,
-        ]
+        day = _WEEKDAYS_AR[when.weekday()]
+        date = when.strftime("%d/%m/%Y")
+        time = when.strftime("%H:%M")
+        if universal:
+            relation = "ولده" if event.whatsapp_template == "tahil_son" else "ابنته"
+            return "universal", [
+                invitee_name,
+                f"يدعوكم {event.host_name} لحضور حفل تأهيل {relation} {child}، "
+                f"وذلك يوم {day} الموافق {date} الساعة {time} في {event.venue_name}.",
+            ]
+        return event.whatsapp_template, [invitee_name, event.host_name, child, day, date, time, event.venue_name]
     if event.invitation_greeting:
-        return "custom", [invitee_name, event.invitation_greeting]
+        return ("universal" if universal else "custom"), [invitee_name, event.invitation_greeting]
+    if universal:
+        return "universal", [invitee_name, f"يدعوكم {invitor_name} لحضور {event.title}."]
     return "default", [invitee_name, invitor_name, event.title]
 
 
