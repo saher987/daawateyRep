@@ -102,9 +102,9 @@ function EditEventDialog({ event, open, onOpenChange }) {
             <Label>{t.thankYouWhatsappSection}</Label>
             <p className="text-xs text-muted-foreground mt-1">{t.thankYouWhatsappHint}</p>
             <Label className="text-xs mt-2 block">{t.thankYouEventNameLabel}</Label>
-            <Input value={form.thank_you_event_name} onChange={e => setForm(f => ({ ...f, thank_you_event_name: e.target.value }))} className="mt-1" placeholder={form.title} />
+            <Input value={form.thank_you_event_name} onChange={e => setForm(f => ({ ...f, thank_you_event_name: e.target.value }))} className="mt-1" placeholder={t.thankYouEventNamePlaceholder} />
             <Label className="text-xs mt-2 block">{t.thankYouEventOwnersLabel}</Label>
-            <Input value={form.thank_you_event_owners} onChange={e => setForm(f => ({ ...f, thank_you_event_owners: e.target.value }))} className="mt-1" placeholder={form.host_name} />
+            <Input value={form.thank_you_event_owners} onChange={e => setForm(f => ({ ...f, thank_you_event_owners: e.target.value }))} className="mt-1" placeholder={t.thankYouEventOwnersPlaceholder} />
           </div>
           <div className="flex gap-2 pt-2">
             <Button

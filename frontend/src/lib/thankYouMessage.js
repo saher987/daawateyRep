@@ -68,13 +68,15 @@ const WHATSAPP_THANKS_TEMPLATE =
   "{{event_owners}}.\n\n" +
   "عقبال أفراحكم، ودام عطر المحبّة في دياركم 🌹.";
 
-// The template's two variables for an event: its thank-you fields, else
-// its title / host name — same fallback as the backend's send_thanks.
+// The template's two variables, exactly as set by hand in the event — no
+// fallback to its title / host name. Null until both are set, which is
+// also when the backend's send_thanks sends SMS instead.
 export function whatsappThanksValues(event) {
-  return {
-    event_name: event?.thank_you_event_name?.trim() || event?.title?.trim() || "",
-    event_owners: event?.thank_you_event_owners?.trim() || event?.host_name?.trim() || "",
+  const values = {
+    event_name: event?.thank_you_event_name?.trim() || "",
+    event_owners: event?.thank_you_event_owners?.trim() || "",
   };
+  return values.event_name && values.event_owners ? values : null;
 }
 
 export function fillWhatsappThanks(values) {

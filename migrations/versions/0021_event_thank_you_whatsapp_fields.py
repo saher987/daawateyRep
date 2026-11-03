@@ -5,8 +5,8 @@ Revises: 0020
 Create Date: 2026-11-03
 
 The WhatsApp thank-you template's {{event_name}} and {{event_owners}},
-editable per event apart from the title / host name. Null means those.
-See app/routers/events.py's send_thanks.
+set by hand per event. Until both are set, thank-yous go by SMS. See
+app/routers/events.py's send_thanks.
 """
 
 from typing import Sequence, Union

@@ -257,8 +257,8 @@ class Event(Base):
     # filled per invitee on the frontend (lib/thankYouMessage.js).
     thank_you_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     # The WhatsApp thank-you template's {{event_name}} / {{event_owners}},
-    # set apart from title / host_name because the thank-you wording often
-    # reads better with its own phrasing. Empty means title / host_name.
+    # set by hand, never derived from title / host_name. Until both are
+    # set, thank-yous for the event go by SMS.
     thank_you_event_name: Mapped[str | None] = mapped_column(String, nullable=True)
     thank_you_event_owners: Mapped[str | None] = mapped_column(String, nullable=True)
     # Reminder texts (placeholders filled server-side, see events.py

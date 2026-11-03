@@ -17,8 +17,9 @@ import { buildThankYouMessage, smsPartCount, DEFAULT_THANK_YOU_TEMPLATE, fillWha
 // invitee record (set in AddInviteeDialog).
 //
 // Over WhatsApp (backend's INVITATION_CHANNEL) the guest gets the fixed
-// daawatey_thanks template instead, with the event's thank-you name/owners
-// (whatsappThanks); the edited SMS text is then only the fallback.
+// daawatey_thanks template instead, with the event's hand-set thank-you
+// name/owners (whatsappThanks); the edited SMS text is then only the
+// fallback. Without both values (whatsappThanks null) it's SMS only.
 export default function ThankYouDialog({ open, onOpenChange, recipient, template, whatsappThanks }) {
   const t = useT();
   const { toast } = useToast();
@@ -67,7 +68,7 @@ export default function ThankYouDialog({ open, onOpenChange, recipient, template
           <p className="text-xs text-muted-foreground">{t.thankYouDialogHint}</p>
         </div>
 
-        {whatsappThanks && (
+        {whatsappThanks ? (
           <div className="space-y-2">
             <Label>{t.thankYouWhatsappPreview}</Label>
             <div className="rounded-xl border bg-muted/30 p-3 text-sm whitespace-pre-wrap" dir="auto">
@@ -75,6 +76,8 @@ export default function ThankYouDialog({ open, onOpenChange, recipient, template
             </div>
             <p className="text-xs text-muted-foreground">{t.thankYouWhatsappDialogHint}</p>
           </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">{t.thankYouWhatsappNotSet}</p>
         )}
 
         <div className="space-y-2">

@@ -791,9 +791,10 @@ def send_thanks(
 
     Same channel rule as invitations (INVITATION_CHANNEL): over WhatsApp
     it's the fixed `thanks` template, its {{event_name}} / {{event_owners}}
-    taken from the event's thank-you fields (else title / host_name); over
-    SMS — or as the fallback — it's body.message, the event's hand-written
-    thank-you already filled in for this guest by the frontend."""
+    exactly as set in the event's two thank-you fields — never taken from
+    the title / host name. Until both are set the thank-you goes by SMS:
+    body.message, the event's hand-written thank-you already filled in for
+    this guest by the frontend (also the fallback if WhatsApp fails)."""
     recipient = _get_recipient_or_404(db, recipient_id)
     if recipient.rsvp_status != models.RsvpStatus.accepted:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Thank-you is only sent to guests who accepted")
@@ -804,9 +805,10 @@ def send_thanks(
     sent = False
     used = "sms"
     if channel in ("whatsapp", "whatsapp_then_sms"):
-        values = _thank_you_whatsapp_values(event)
-        # Meta rejects an empty variable, so an event with no owners/host
-        # name at all can only be thanked by SMS.
+        values = {
+            "event_name": (event.thank_you_event_name or "").strip(),
+            "event_owners": (event.thank_you_event_owners or "").strip(),
+        }
         if all(values.values()):
             sent = send_whatsapp_template(recipient.phone, "thanks", values, reference=recipient.id)
             used = "whatsapp" if sent else "sms"
@@ -823,15 +825,6 @@ def send_thanks(
     )
     db.commit()
     return {"success": sent, "channel": used}
-
-
-def _thank_you_whatsapp_values(event: models.Event) -> dict[str, str]:
-    """The `thanks` template's named variables. Each falls back to the
-    event's own detail when its thank-you field was left empty."""
-    return {
-        "event_name": (event.thank_you_event_name or "").strip() or (event.title or "").strip(),
-        "event_owners": (event.thank_you_event_owners or "").strip() or (event.host_name or "").strip(),
-    }
 
 
 # Event reminders — times are shown in Israel time whatever the server's zone.

@@ -397,14 +397,14 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
               value={form.thank_you_event_name}
               onChange={e => handleChange("thank_you_event_name", e.target.value)}
               className="h-11 rounded-xl"
-              placeholder={form.title}
+              placeholder={t.thankYouEventNamePlaceholder}
             />
             <Label className="text-xs">{t.thankYouEventOwnersLabel}</Label>
             <Input
               value={form.thank_you_event_owners}
               onChange={e => handleChange("thank_you_event_owners", e.target.value)}
               className="h-11 rounded-xl"
-              placeholder={form.host_name}
+              placeholder={t.thankYouEventOwnersPlaceholder}
             />
           </div>
 
