@@ -550,6 +550,7 @@ class ProviderCategoryIn(BaseModel):
     name_ar: str = Field(min_length=1)
     name_he: str = Field(min_length=1)
     icon: str = "sparkles"
+    image_url: str | None = None
     is_active: bool = True
 
 
@@ -560,6 +561,7 @@ class ProviderCategoryOut(BaseModel):
     name_ar: str
     name_he: str
     icon: str
+    image_url: str | None = None
     sort_order: int
     is_active: bool
     # Published providers for the public list; every provider for the

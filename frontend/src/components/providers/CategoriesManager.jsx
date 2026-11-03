@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ImagePlus, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { useT } from "@/lib/i18n";
@@ -11,8 +11,9 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { PROVIDER_ICONS, localized, providerIcon } from "@/lib/providerIcons";
+import CategoryCard from "@/components/providers/CategoryCard";
 
-const emptyForm = { name_ar: "", name_he: "", icon: "camera", is_active: true };
+const emptyForm = { name_ar: "", name_he: "", icon: "camera", image_url: "", is_active: true };
 
 // The categories tab of ManageProviders: add/edit/hide, move up/down (the
 // order users see), and — admin only — delete an empty category.
@@ -23,6 +24,7 @@ export default function CategoriesManager() {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(null); // null = closed, {} = new
   const [form, setForm] = useState(emptyForm);
+  const [uploading, setUploading] = useState(false);
   const isAdmin = user?.role === "admin";
 
   const { data: categories = [], isLoading } = useQuery({
@@ -68,7 +70,25 @@ export default function CategoriesManager() {
   };
 
   const openNew = () => { setForm(emptyForm); setEditing({}); };
-  const openEdit = (c) => { setForm({ name_ar: c.name_ar, name_he: c.name_he, icon: c.icon, is_active: c.is_active }); setEditing(c); };
+  const openEdit = (c) => {
+    setForm({ name_ar: c.name_ar, name_he: c.name_he, icon: c.icon, image_url: c.image_url || "", is_active: c.is_active });
+    setEditing(c);
+  };
+
+  const uploadImage = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploading(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setForm((p) => ({ ...p, image_url: file_url }));
+    } catch (err) {
+      onError(err);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   if (isLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
@@ -96,14 +116,19 @@ export default function CategoriesManager() {
                   <ArrowDown className="w-4 h-4" />
                 </button>
               </div>
-              <span className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${c.is_active ? "bg-primary/10" : "bg-muted"}`}>
-                <Icon className={`w-5 h-5 ${c.is_active ? "text-primary" : "text-muted-foreground"}`} />
-              </span>
+              {c.image_url ? (
+                <img src={c.image_url} alt="" className={`w-16 h-11 rounded-lg object-cover flex-shrink-0 ${c.is_active ? "" : "opacity-50"}`} />
+              ) : (
+                <span className={`w-16 h-11 rounded-lg border border-dashed flex items-center justify-center flex-shrink-0 ${c.is_active ? "border-primary/50 bg-primary/5" : "border-border bg-muted"}`}>
+                  <Icon className={`w-5 h-5 ${c.is_active ? "text-primary" : "text-muted-foreground"}`} />
+                </span>
+              )}
               <span className="flex-1 min-w-0">
                 <span className={`block text-sm font-semibold truncate ${c.is_active ? "" : "text-muted-foreground"}`}>{localized(c, "name", t.langCode)}</span>
                 <span className="block text-xs text-muted-foreground truncate">
                   {localized(c, "name", t.langCode === "he" ? "ar" : "he")} · {t.providerCount.replace("{n}", c.provider_count)}
                   {!c.is_active && ` · ${t.categoryHidden}`}
+                  {!c.image_url && <span className="text-primary"> · {t.categoryNoImage}</span>}
                 </span>
               </span>
               <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl" onClick={() => openEdit(c)} aria-label={t.editCategory}>
@@ -115,12 +140,12 @@ export default function CategoriesManager() {
       </div>
 
       <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
-        <DialogContent className="max-w-md" dir="rtl">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" dir="rtl">
           <DialogHeader>
             <DialogTitle>{editing?.id ? t.editCategory : t.addCategory}</DialogTitle>
           </DialogHeader>
           <form
-            onSubmit={(e) => { e.preventDefault(); save.mutate(form); }}
+            onSubmit={(e) => { e.preventDefault(); save.mutate({ ...form, image_url: form.image_url.trim() || null }); }}
             className="space-y-4"
           >
             <div className="grid grid-cols-2 gap-3">
@@ -152,12 +177,45 @@ export default function CategoriesManager() {
                 ))}
               </div>
             </div>
+            <div className="space-y-2">
+              <Label>{t.categoryImage}</Label>
+              <div className="flex gap-2">
+                <label className={`flex-1 h-11 flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-primary/50 bg-primary/5 text-sm font-semibold text-primary ${uploading ? "opacity-60" : "cursor-pointer hover:bg-primary/10"}`}>
+                  {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
+                  {t.uploadImage}
+                  <input type="file" accept="image/*" className="hidden" onChange={uploadImage} disabled={uploading} />
+                </label>
+                {form.image_url && (
+                  <Button type="button" variant="outline" size="icon" className="h-11 w-11 rounded-xl" onClick={() => setForm((p) => ({ ...p, image_url: "" }))} aria-label={t.categoryRemoveImage} title={t.categoryRemoveImage}>
+                    <X className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+              <Input
+                dir="ltr"
+                type="url"
+                value={form.image_url}
+                onChange={(e) => setForm((p) => ({ ...p, image_url: e.target.value }))}
+                placeholder={t.categoryImageUrlPlaceholder}
+                className="h-10 rounded-xl text-xs"
+              />
+              <p className="text-xs text-muted-foreground">{t.categoryImageTip}</p>
+            </div>
+            <div className="space-y-2">
+              <Label>{t.categoryPreview}</Label>
+              <CategoryCard
+                name={localized(form, "name", t.langCode) || "…"}
+                icon={form.icon}
+                imageUrl={form.image_url.trim()}
+                count={editing?.provider_count || 0}
+              />
+            </div>
             <label className="flex items-center gap-3 rounded-xl border border-border px-4 py-3 cursor-pointer">
               <span className="flex-1 text-sm font-semibold">{t.categoryActive}</span>
               <Switch checked={form.is_active} onCheckedChange={(v) => setForm((p) => ({ ...p, is_active: v }))} />
             </label>
             <div className="flex gap-3">
-              <Button type="submit" disabled={save.isPending} className="flex-1 h-11 rounded-xl gap-2">
+              <Button type="submit" disabled={save.isPending || uploading} className="flex-1 h-11 rounded-xl gap-2">
                 {save.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
                 {t.saveBtn}
               </Button>
