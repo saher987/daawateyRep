@@ -249,13 +249,6 @@ class Event(Base):
     # The WhatsApp invitation's own text ({{2}} of the universal template),
     # kept apart from invitation_greeting, which stays the SMS/email text.
     whatsapp_invitation_text: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # Which approved WhatsApp template invitations use (see
-    # integrations/whatsapp.py): "default" picks between the generic
-    # templates by whether invitation_greeting is set; "tahil_son" /
-    # "tahil_daughter" are the تأهيل ولده/ابنته wording. SMS ignores it.
-    whatsapp_template: Mapped[str] = mapped_column(
-        String, nullable=False, default="default", server_default="default"
-    )
     # Hand-written thank-you template with [first_name]-style placeholders,
     # filled per invitee on the frontend (lib/thankYouMessage.js).
     thank_you_message: Mapped[str | None] = mapped_column(Text, nullable=True)

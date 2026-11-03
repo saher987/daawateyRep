@@ -662,38 +662,15 @@ def _whatsapp_invitation(
     event: models.Event, invitee_name: str, invitor_name: str
 ) -> tuple[str, list[str]]:
     """Which WhatsApp template (integrations/whatsapp.py) an invitation to
-    this event uses, and its body variables in template order. A تأهيل
-    event missing any of the details its template needs (the forms ask for
-    them, but older or API-edited events might not have them) falls back
-    to the generic wording rather than sending a message with holes.
+    this event uses, and its body variables in template order.
 
-    With the universal template enabled, every case sends the same
-    template and only {{2}} differs: the event's WhatsApp text
-    (whatsapp_invitation_text) when one was written, else a sentence built
-    here — so changing either needs no new template review. The SMS/email
-    text (invitation_greeting) is never used for WhatsApp there."""
-    universal = universal_template_enabled()
+    With the universal template (the default) {{2}} is the event's WhatsApp
+    text (whatsapp_invitation_text), or a short default sentence when none
+    was written — changing it needs no new template review. The SMS/email
+    text (invitation_greeting) is never sent over WhatsApp there."""
     whatsapp_text = (event.whatsapp_invitation_text or "").strip()
-    # The event's own WhatsApp text wins, even over the تأهيل wording — that
-    # wording is only the fallback for events without one.
-    if universal and whatsapp_text:
-        return "universal", [invitee_name, whatsapp_text]
-    child = {"tahil_son": event.groom_name, "tahil_daughter": event.bride_name}.get(event.whatsapp_template)
-    if child and event.host_name and event.venue_name:
-        when = event.date.astimezone(_EVENT_TZ)
-        day = _WEEKDAYS_AR[when.weekday()]
-        date = when.strftime("%d/%m/%Y")
-        time = when.strftime("%H:%M")
-        if universal:
-            relation = "ولده" if event.whatsapp_template == "tahil_son" else "ابنته"
-            return "universal", [
-                invitee_name,
-                f"يدعوكم {event.host_name} لحضور حفل تأهيل {relation} {child}، "
-                f"وذلك يوم {day} الموافق {date} الساعة {time} في {event.venue_name}.",
-            ]
-        return event.whatsapp_template, [invitee_name, event.host_name, child, day, date, time, event.venue_name]
-    if universal:
-        return "universal", [invitee_name, f"يدعوكم {invitor_name} لحضور {event.title}."]
+    if universal_template_enabled():
+        return "universal", [invitee_name, whatsapp_text or f"يدعوكم {invitor_name} لحضور {event.title}."]
     # Per-type templates (universal off): the old custom template still
     # takes the SMS greeting for events without a WhatsApp text of their own.
     custom_text = whatsapp_text or (event.invitation_greeting or "").strip()
