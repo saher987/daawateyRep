@@ -26,6 +26,7 @@ from app.routers import (
     uploads,
     users,
     venues,
+    whatsapp_webhook,
 )
 
 logger = logging.getLogger(__name__)
@@ -56,6 +57,7 @@ app.include_router(uploads.router)
 app.include_router(push_tokens.router)
 app.include_router(providers.router)
 app.include_router(audit_log.router)
+app.include_router(whatsapp_webhook.router)
 
 _allowed_origins = os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
 
