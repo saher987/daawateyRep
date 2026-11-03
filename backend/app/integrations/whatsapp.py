@@ -90,7 +90,7 @@ _TEMPLATES = {
     "tahil_son": ("WHATSAPP_TEMPLATE_TAHIL_SON", "daawatey_tahil_son"),
     "tahil_daughter": ("WHATSAPP_TEMPLATE_TAHIL_DAUGHTER", "daawatey_tahil_daughter"),
     "universal": ("WHATSAPP_TEMPLATE_UNIVERSAL", "daawatey_invitation_universal"),
-    "thanks": ("WHATSAPP_TEMPLATE_THANKS", "daawatey_thanks"),
+    "thanks": ("WHATSAPP_TEMPLATE_THANKS", "daawatey_thanks_ar"),
 }
 
 
