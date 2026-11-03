@@ -132,6 +132,30 @@ these takes a redeploy: `--set-env-vars` replaces the service's whole env,
 so a value edited by hand in the Cloud Run console is lost on the next
 deploy.
 
+### 6. WhatsApp delivery-status webhook (optional, `prod`)
+
+Meta's answer when a message is sent only means "accepted". Whether it
+was then delivered, read or dropped arrives later on a webhook,
+`/api/whatsapp/webhook` (`backend/app/routers/whatsapp_webhook.py`), and
+each status is logged under `app.integrations.whatsapp`. A failed one is a
+WARNING with Meta's error code. Setup, in this order:
+
+1. **Secret Manager:** the app secret from Meta's App Dashboard → **Settings
+   → Basic → App secret**, as `whatsapp-app-secret` in `daawatey-prod`, with
+   `roles/secretmanager.secretAccessor` for the prod runtime service account
+   (same commands as `whatsapp-token` above).
+2. **GitHub secret** `WHATSAPP_WEBHOOK_VERIFY_TOKEN`: any long random string
+   you make up (no spaces). Setting it also makes `deploy.yml` mount
+   `whatsapp-app-secret`, so step 1 must come first.
+3. **Deploy.**
+4. **Meta App Dashboard → WhatsApp → Configuration → Webhook → Edit:**
+   Callback URL `<backend URL>/api/whatsapp/webhook`, Verify token = the
+   same string as step 2. Then **Manage** webhook fields and subscribe to
+   `messages`.
+
+POSTs without a valid `X-Hub-Signature-256` are rejected, so the endpoint
+needs no user login.
+
 ## Bootstrapping `ALLOWED_ORIGINS` (first deploy only)
 
 The backend needs to know the frontend's origin for CORS, but the frontend's

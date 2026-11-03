@@ -125,6 +125,9 @@ jobs:
           if [ -n "${{ secrets.WHATSAPP_TEMPLATE_THANKS }}" ]; then
             FLAGS="$FLAGS##WHATSAPP_TEMPLATE_THANKS=${{ secrets.WHATSAPP_TEMPLATE_THANKS }}"
           fi
+          if [ -n "${{ secrets.WHATSAPP_WEBHOOK_VERIFY_TOKEN }}" ]; then
+            FLAGS="$FLAGS##WHATSAPP_WEBHOOK_VERIFY_TOKEN=${{ secrets.WHATSAPP_WEBHOOK_VERIFY_TOKEN }}"
+          fi
           if [ -n "${{ secrets.WHATSAPP_TEMPLATE_LANG }}" ]; then
             FLAGS="$FLAGS##WHATSAPP_TEMPLATE_LANG=${{ secrets.WHATSAPP_TEMPLATE_LANG }}"
           fi
@@ -180,6 +183,12 @@ jobs:
             if [ -n "${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}" ]; then
               if [ "${{ inputs.environment }}" = "prod" ]; then
                 SECRETS_FLAG="$SECRETS_FLAG,WHATSAPP_TOKEN=whatsapp-token:latest"
+                # The webhook's signature key (routers/whatsapp_webhook.py),
+                # mounted once the webhook is set up — same reason as above:
+                # a missing Secret Manager secret would fail the deploy.
+                if [ -n "${{ secrets.WHATSAPP_WEBHOOK_VERIFY_TOKEN }}" ]; then
+                  SECRETS_FLAG="$SECRETS_FLAG,WHATSAPP_APP_SECRET=whatsapp-app-secret:latest"
+                fi
               else
                 SECRETS_FLAG="$SECRETS_FLAG,WHATSAPP_TOKEN=projects/1046309287701/secrets/whatsapp-token-staging:latest"
               fi

@@ -43,6 +43,8 @@ WHATSAPP_PHONE_NUMBER_ID missing just logs a warning and returns False,
 and nothing here ever raises.
 """
 
+import hashlib
+import hmac
 import logging
 import os
 import re
@@ -175,3 +177,54 @@ def send_whatsapp_template(
     except httpx.HTTPError:
         logger.exception("WhatsApp request failed for %s", reference)
         return False
+
+
+# --- delivery-status webhook (routers/whatsapp_webhook.py) -------------------
+#
+# Meta's 200 on send only means "accepted"; whether the message was then
+# delivered, read, or dropped (unapproved template, marketing limits, a
+# number with no WhatsApp...) only ever arrives here. Each status is logged
+# under this module's logger, so the same Cloud Logging query that shows a
+# send ("app.integrations") shows what became of it.
+
+
+def verify_webhook_signature(body: bytes, signature_header: str | None) -> bool:
+    """Meta signs every webhook POST with the app secret (X-Hub-Signature-256:
+    sha256=<hex HMAC of the raw body>). Without WHATSAPP_APP_SECRET nothing
+    can be verified, so nothing is accepted."""
+    app_secret = os.environ.get("WHATSAPP_APP_SECRET", "")
+    if not app_secret:
+        logger.warning("WHATSAPP_APP_SECRET not set — WhatsApp webhook POST rejected")
+        return False
+    if not signature_header or not signature_header.startswith("sha256="):
+        return False
+    expected = hmac.new(app_secret.encode(), body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, signature_header.removeprefix("sha256="))
+
+
+def log_webhook_event(payload: dict) -> None:
+    """One log line per message status / incoming message in the payload.
+    A failed status logs at WARNING with Meta's error code and details —
+    the line that says why a guest never got the WhatsApp."""
+    for entry in payload.get("entry") or []:
+        for change in entry.get("changes") or []:
+            value = change.get("value") or {}
+            for st in value.get("statuses") or []:
+                # biz_opaque_callback_data echoes back what send_whatsapp_template
+                # set ("daawatey-<recipient id>"), tying the status to its guest.
+                reference = st.get("biz_opaque_callback_data") or st.get("id")
+                status = st.get("status")
+                if status == "failed":
+                    errors = "; ".join(
+                        f"{e.get('code')} {e.get('title')}: {(e.get('error_data') or {}).get('details') or e.get('message')}"
+                        for e in st.get("errors") or []
+                    )
+                    logger.warning(
+                        "WhatsApp delivery failed for %s to %s: %s", reference, st.get("recipient_id"), errors
+                    )
+                else:
+                    logger.info("WhatsApp status %s for %s to %s", status, reference, st.get("recipient_id"))
+            for msg in value.get("messages") or []:
+                # A guest replying to the business number. Only the type is
+                # logged, not what they wrote.
+                logger.info("WhatsApp incoming %s message from %s", msg.get("type"), msg.get("from"))
