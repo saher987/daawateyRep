@@ -13,7 +13,7 @@ import MobileSelect from "@/components/shared/MobileSelect";
 import { useBackButton } from "@/hooks/useBackButton";
 import { format } from "date-fns";
 import CitySelect from "@/components/shared/CitySelect";
-import { whatsappTemplateOptions, whatsappTemplateError } from "@/lib/whatsappTemplate";
+import { whatsappTemplateOptions, whatsappTemplateError, whatsappInvitationPreview } from "@/lib/whatsappTemplate";
 import InvitationCardEditor from "@/components/events/InvitationCardEditor";
 
 export default function EditEventDialog({ open, onOpenChange, event }) {
@@ -51,6 +51,7 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
         max_guests: event.max_guests || "",
         description: event.description || "",
         invitation_greeting: event.invitation_greeting || "",
+        whatsapp_invitation_text: event.whatsapp_invitation_text || "",
         invitation_image_url: event.invitation_image_url || "",
         whatsapp_template: event.whatsapp_template || "default",
         thank_you_message: event.thank_you_message || "",
@@ -422,6 +423,22 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
               className="rounded-xl min-h-[80px]"
               placeholder={t.invitationGreetingPlaceholder}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>{t.whatsappTextSection}</Label>
+            <p className="text-xs text-muted-foreground">{t.whatsappTextHint}</p>
+            <Textarea
+              value={form.whatsapp_invitation_text}
+              onChange={e => handleChange("whatsapp_invitation_text", e.target.value)}
+              className="rounded-xl min-h-[80px]"
+              placeholder={t.whatsappTextPlaceholder}
+            />
+            {form.whatsapp_invitation_text?.trim() && (
+              <div className="rounded-xl border bg-muted/30 p-3 text-sm whitespace-pre-wrap" dir="auto">
+                {whatsappInvitationPreview(form.whatsapp_invitation_text, t)}
+              </div>
+            )}
           </div>
 
           {isWedding && (

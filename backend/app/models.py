@@ -246,6 +246,9 @@ class Event(Base):
     description_ar: Mapped[str | None] = mapped_column(Text, nullable=True)
     invitation_greeting: Mapped[str | None] = mapped_column(Text, nullable=True)
     invitation_greeting_he: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The WhatsApp invitation's own text ({{2}} of the universal template),
+    # kept apart from invitation_greeting, which stays the SMS/email text.
+    whatsapp_invitation_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Which approved WhatsApp template invitations use (see
     # integrations/whatsapp.py): "default" picks between the generic
     # templates by whether invitation_greeting is set; "tahil_son" /

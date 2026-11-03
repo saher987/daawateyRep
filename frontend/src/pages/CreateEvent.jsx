@@ -16,7 +16,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useT } from "@/lib/i18n";
 import InvitationCardEditor from "@/components/events/InvitationCardEditor";
 import CitySelect from "@/components/shared/CitySelect";
-import { whatsappTemplateOptions, whatsappTemplateError } from "@/lib/whatsappTemplate";
+import { whatsappTemplateOptions, whatsappTemplateError, whatsappInvitationPreview } from "@/lib/whatsappTemplate";
 
 export default function CreateEvent() {
   const navigate = useNavigate();
@@ -54,6 +54,7 @@ export default function CreateEvent() {
     status: "draft",
     invitation_image_url: "",
     invitation_greeting: "",
+    whatsapp_invitation_text: "",
     whatsapp_template: "default",
   });
 
@@ -460,6 +461,21 @@ export default function CreateEvent() {
             onChange={(e) => handleChange("invitation_greeting", e.target.value)}
             className="min-h-[100px] rounded-xl text-base"
           />
+          <div className="space-y-2">
+            <Label>{t.whatsappTextSection}</Label>
+            <p className="text-xs text-muted-foreground">{t.whatsappTextHint}</p>
+            <Textarea
+              placeholder={t.whatsappTextPlaceholder}
+              value={form.whatsapp_invitation_text}
+              onChange={(e) => handleChange("whatsapp_invitation_text", e.target.value)}
+              className="min-h-[100px] rounded-xl text-base"
+            />
+            {form.whatsapp_invitation_text.trim() && (
+              <div className="rounded-xl border bg-muted/30 p-3 text-sm whitespace-pre-wrap" dir="auto">
+                {whatsappInvitationPreview(form.whatsapp_invitation_text, t)}
+              </div>
+            )}
+          </div>
           {isWedding && (
             <div className="space-y-2">
               <Label>{t.whatsappTemplateLabel}</Label>
