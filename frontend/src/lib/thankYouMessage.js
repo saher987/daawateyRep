@@ -59,7 +59,7 @@ export function buildThankYouMessage(template, recipient) {
   return `${fillThankYouMessage(template, recipient)}\n\n${THANK_YOU_FOOTER}`;
 }
 
-// The approved WhatsApp thank-you template (daawatey_thanks in Meta) — only
+// The approved WhatsApp thank-you template (daawatey_thanks_ar in Meta) — only
 // for ThankYouDialog's preview; the backend sends the template by name with
 // these two values. Keep in sync with the template in WhatsApp Manager.
 const WHATSAPP_THANKS_TEMPLATE =

@@ -17,7 +17,7 @@ import { buildThankYouMessage, smsPartCount, DEFAULT_THANK_YOU_TEMPLATE, fillWha
 // invitee record (set in AddInviteeDialog).
 //
 // Over WhatsApp (backend's INVITATION_CHANNEL) the guest gets the fixed
-// daawatey_thanks template instead, with the event's hand-set thank-you
+// daawatey_thanks_ar template instead, with the event's hand-set thank-you
 // name/owners (whatsappThanks); the edited SMS text is then only the
 // fallback. Without both values (whatsappThanks null) it's SMS only.
 export default function ThankYouDialog({ open, onOpenChange, recipient, template, whatsappThanks }) {
