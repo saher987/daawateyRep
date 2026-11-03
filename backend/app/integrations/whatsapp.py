@@ -1,8 +1,9 @@
 """WhatsApp Cloud API (Meta) — an alternative channel for invitations only.
 
 Which channel an invitation's phone half goes out on is chosen by
-INVITATION_CHANNEL (see `invitation_channel_for` below); OTP, thank-you
-messages, reminders, and event-update notices all stay on Pulseem SMS
+INVITATION_CHANNEL (see `invitation_channel_for` below), and the same
+setting picks the channel for thank-you messages (the `thanks` template);
+OTP, reminders, and event-update notices all stay on Pulseem SMS
 regardless.
 
 Business-initiated WhatsApp messages must be pre-approved *templates* —
@@ -29,7 +30,11 @@ _whatsapp_invitation in routers/events.py (variables in order):
                    review. WHATSAPP_TEMPLATE_UNIVERSAL=off falls back to
                    the per-type templates above.
 
-Every template also has a dynamic URL button, https://<domain>/i/{{1}} —
+  thanks:          named variables {{event_name}}, {{event_owners}}, no
+                   button — نتقدّم إليك بجزيل الشكر ... {{event_name}}.
+                   ... {{event_owners}}. ...
+
+Every invitation template also has a dynamic URL button, https://<domain>/i/{{1}} —
 the guest's personal_token goes in as the button's one parameter. Each
 template's name is overridable with its WHATSAPP_TEMPLATE_* env var.
 
@@ -85,6 +90,7 @@ _TEMPLATES = {
     "tahil_son": ("WHATSAPP_TEMPLATE_TAHIL_SON", "daawatey_tahil_son"),
     "tahil_daughter": ("WHATSAPP_TEMPLATE_TAHIL_DAUGHTER", "daawatey_tahil_daughter"),
     "universal": ("WHATSAPP_TEMPLATE_UNIVERSAL", "daawatey_invitation_universal"),
+    "thanks": ("WHATSAPP_TEMPLATE_THANKS", "daawatey_thanks"),
 }
 
 
@@ -94,14 +100,19 @@ def universal_template_enabled() -> bool:
     return os.environ.get("WHATSAPP_TEMPLATE_UNIVERSAL", "").strip().lower() != "off"
 
 
-def send_whatsapp_invitation(
+def send_whatsapp_template(
     phone: str,
     template_key: str,
-    body_values: list[str],
-    personal_token: str,
+    body_values: list[str] | dict[str, str],
     reference: str,
+    personal_token: str | None = None,
 ) -> bool:
-    """Returns whether Meta accepted the message. Accepted isn't delivered —
+    """Sends one of _TEMPLATES. body_values is a list for templates with
+    numbered variables ({{1}}, {{2}}, ...) or a dict for named ones
+    ({{event_name}}); personal_token fills the invitation templates' URL
+    button and is left out for templates without one (thanks).
+
+    Returns whether Meta accepted the message. Accepted isn't delivered —
     a number with no WhatsApp account still comes back 200 here, its
     failure only reported later via webhook — so whatsapp_then_sms's SMS
     fallback only catches immediate errors (bad token, unapproved
@@ -110,7 +121,7 @@ def send_whatsapp_invitation(
     phone_number_id = os.environ.get("WHATSAPP_PHONE_NUMBER_ID")
     if not token or not phone_number_id:
         logger.warning(
-            "WHATSAPP_TOKEN/WHATSAPP_PHONE_NUMBER_ID not set — WhatsApp invitation to %s not sent", phone
+            "WHATSAPP_TOKEN/WHATSAPP_PHONE_NUMBER_ID not set — WhatsApp message to %s not sent", phone
         )
         return False
 
@@ -118,6 +129,22 @@ def send_whatsapp_invitation(
     template = os.environ.get(env_var, "").strip() or default_name
     language = os.environ.get("WHATSAPP_TEMPLATE_LANG", "ar")
     api_version = os.environ.get("WHATSAPP_API_VERSION", "v23.0")
+    if isinstance(body_values, dict):
+        parameters = [
+            {"type": "text", "parameter_name": name, "text": _template_text(v)} for name, v in body_values.items()
+        ]
+    else:
+        parameters = [{"type": "text", "text": _template_text(v)} for v in body_values]
+    components = [{"type": "body", "parameters": parameters}]
+    if personal_token is not None:
+        components.append(
+            {
+                "type": "button",
+                "sub_type": "url",
+                "index": "0",
+                "parameters": [{"type": "text", "text": personal_token}],
+            }
+        )
 
     try:
         response = httpx.post(
@@ -131,18 +158,7 @@ def send_whatsapp_invitation(
                 "template": {
                     "name": template,
                     "language": {"code": language},
-                    "components": [
-                        {
-                            "type": "body",
-                            "parameters": [{"type": "text", "text": _template_text(v)} for v in body_values],
-                        },
-                        {
-                            "type": "button",
-                            "sub_type": "url",
-                            "index": "0",
-                            "parameters": [{"type": "text", "text": personal_token}],
-                        },
-                    ],
+                    "components": components,
                 },
             },
             timeout=10,

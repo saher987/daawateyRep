@@ -8,14 +8,18 @@ import { useToast } from "@/components/ui/use-toast";
 import { base44 } from "@/api/base44Client";
 import { useT } from "@/lib/i18n";
 import { useBackButton } from "@/hooks/useBackButton";
-import { buildThankYouMessage, smsPartCount, DEFAULT_THANK_YOU_TEMPLATE } from "@/lib/thankYouMessage";
+import { buildThankYouMessage, smsPartCount, DEFAULT_THANK_YOU_TEMPLATE, fillWhatsappThanks } from "@/lib/thankYouMessage";
 
 // Opened from the heart button on an accepted invitee (admin/manager only).
 // The text starts from the event's thank_you_message, or a default when the
 // event has none, and can be edited before sending; the preview shows it
 // filled in for this guest. The guest's name suffix comes from their
 // invitee record (set in AddInviteeDialog).
-export default function ThankYouDialog({ open, onOpenChange, recipient, template }) {
+//
+// Over WhatsApp (backend's INVITATION_CHANNEL) the guest gets the fixed
+// daawatey_thanks template instead, with the event's thank-you name/owners
+// (whatsappThanks); the edited SMS text is then only the fallback.
+export default function ThankYouDialog({ open, onOpenChange, recipient, template, whatsappThanks }) {
   const t = useT();
   const { toast } = useToast();
   const [sending, setSending] = useState(false);
@@ -36,7 +40,7 @@ export default function ThankYouDialog({ open, onOpenChange, recipient, template
     try {
       const res = await base44.functions.invoke("sendThankYouSms", { recipientId: recipient.id, message });
       if (res?.data?.success) {
-        toast({ title: t.thankYouSent });
+        toast({ title: res.data.channel === "whatsapp" ? t.thankYouSentWhatsapp : t.thankYouSent });
         onOpenChange(false);
       } else {
         // Request went through but the SMS provider didn't send it (e.g.
@@ -63,6 +67,16 @@ export default function ThankYouDialog({ open, onOpenChange, recipient, template
           <p className="text-xs text-muted-foreground">{t.thankYouDialogHint}</p>
         </div>
 
+        {whatsappThanks && (
+          <div className="space-y-2">
+            <Label>{t.thankYouWhatsappPreview}</Label>
+            <div className="rounded-xl border bg-muted/30 p-3 text-sm whitespace-pre-wrap" dir="auto">
+              {fillWhatsappThanks(whatsappThanks)}
+            </div>
+            <p className="text-xs text-muted-foreground">{t.thankYouWhatsappDialogHint}</p>
+          </div>
+        )}
+
         <div className="space-y-2">
           <Label>{t.thankYouPreview}</Label>
           <div className="rounded-xl border bg-muted/30 p-3 text-sm whitespace-pre-wrap" dir="auto">
@@ -76,7 +90,7 @@ export default function ThankYouDialog({ open, onOpenChange, recipient, template
         <div className="flex gap-3 pt-1">
           <Button onClick={send} disabled={sending || !text.trim()} className="flex-1 h-11 rounded-xl gap-2">
             {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            {t.sendSms}
+            {t.sendThankYouBtn}
           </Button>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={sending} className="h-11 rounded-xl px-6">
             {t.cancel}

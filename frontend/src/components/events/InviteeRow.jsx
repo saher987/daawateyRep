@@ -14,7 +14,7 @@ import { publicAppOrigin } from "@/lib/publicUrl";
 import { toIntlPhone } from "@/lib/thankYouMessage";
 import ThankYouDialog from "@/components/events/ThankYouDialog";
 
-export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeting, thankYouMessage, canResend = false }) {
+export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeting, thankYouMessage, whatsappThanks, canResend = false }) {
   const [copied, setCopied] = useState(false);
   const [showThanks, setShowThanks] = useState(false);
   const queryClient = useQueryClient();
@@ -213,6 +213,7 @@ export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeti
         onOpenChange={setShowThanks}
         recipient={recipient}
         template={thankYouMessage}
+        whatsappThanks={whatsappThanks}
       />
     </div>
   );

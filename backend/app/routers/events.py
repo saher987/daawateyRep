@@ -26,7 +26,7 @@ from app.routers.venues import owned_venues
 from app.integrations.resend_email import send_email
 from app.integrations.whatsapp import (
     invitation_channel_for,
-    send_whatsapp_invitation,
+    send_whatsapp_template,
     universal_template_enabled,
 )
 
@@ -626,12 +626,12 @@ def _send_invitation(
         whatsapp_sent = False
         if channel in ("whatsapp", "whatsapp_then_sms"):
             template_key, body_values = _whatsapp_invitation(event, invitee_name, invitor_name)
-            whatsapp_sent = send_whatsapp_invitation(
+            whatsapp_sent = send_whatsapp_template(
                 recipient.phone,
                 template_key,
                 body_values,
-                recipient.personal_token,
                 reference=recipient.id,
+                personal_token=recipient.personal_token,
             )
             sent = whatsapp_sent or sent
         if channel == "sms" or (channel == "whatsapp_then_sms" and not whatsapp_sent):
@@ -785,16 +785,33 @@ def send_thanks(
     user: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
     db: Session = Depends(get_db),
 ) -> dict:
-    """ThankYouDialog.jsx's send button: SMS the event's thank-you message,
-    already filled in for this guest, to an invitee who accepted. Admin/
-    manager only — event owners don't get the button (EventDetails.jsx
-    passes canResend={isPrivileged}), and each send is a paid SMS."""
+    """ThankYouDialog.jsx's send button: thank an invitee who accepted.
+    Admin/manager only — event owners don't get the button (EventDetails.jsx
+    passes canResend={isPrivileged}), and each send is paid.
+
+    Same channel rule as invitations (INVITATION_CHANNEL): over WhatsApp
+    it's the fixed `thanks` template, its {{event_name}} / {{event_owners}}
+    taken from the event's thank-you fields (else title / host_name); over
+    SMS — or as the fallback — it's body.message, the event's hand-written
+    thank-you already filled in for this guest by the frontend."""
     recipient = _get_recipient_or_404(db, recipient_id)
     if recipient.rsvp_status != models.RsvpStatus.accepted:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Thank-you is only sent to guests who accepted")
     if not recipient.phone:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Recipient has no phone number")
-    sent = send_sms(recipient.phone, body.message.strip(), reference=recipient.id)
+    event = recipient.event
+    channel = invitation_channel_for(recipient.phone)
+    sent = False
+    used = "sms"
+    if channel in ("whatsapp", "whatsapp_then_sms"):
+        values = _thank_you_whatsapp_values(event)
+        # Meta rejects an empty variable, so an event with no owners/host
+        # name at all can only be thanked by SMS.
+        if all(values.values()):
+            sent = send_whatsapp_template(recipient.phone, "thanks", values, reference=recipient.id)
+            used = "whatsapp" if sent else "sms"
+    if not sent and channel in ("sms", "whatsapp_then_sms"):
+        sent = send_sms(recipient.phone, body.message.strip(), reference=recipient.id)
     audit(
         db,
         user,
@@ -802,10 +819,19 @@ def send_thanks(
         "recipient",
         recipient.id,
         label=_recipient_label(recipient),
-        meta={"event_id": recipient.event_id, "event_title": recipient.event.title, "sent": sent},
+        meta={"event_id": event.id, "event_title": event.title, "sent": sent, "channel": used},
     )
     db.commit()
-    return {"success": sent}
+    return {"success": sent, "channel": used}
+
+
+def _thank_you_whatsapp_values(event: models.Event) -> dict[str, str]:
+    """The `thanks` template's named variables. Each falls back to the
+    event's own detail when its thank-you field was left empty."""
+    return {
+        "event_name": (event.thank_you_event_name or "").strip() or (event.title or "").strip(),
+        "event_owners": (event.thank_you_event_owners or "").strip() or (event.host_name or "").strip(),
+    }
 
 
 # Event reminders — times are shown in Israel time whatever the server's zone.

@@ -59,6 +59,28 @@ export function buildThankYouMessage(template, recipient) {
   return `${fillThankYouMessage(template, recipient)}\n\n${THANK_YOU_FOOTER}`;
 }
 
+// The approved WhatsApp thank-you template (daawatey_thanks in Meta) — only
+// for ThankYouDialog's preview; the backend sends the template by name with
+// these two values. Keep in sync with the template in WhatsApp Manager.
+const WHATSAPP_THANKS_TEMPLATE =
+  "نتقدّم إليك بجزيل الشكر والامتنان على مشاركتك إيّانا {{event_name}}.\n" +
+  "حضورك زاد فرحتنا فرحاً، ومحبّتك ستبقى في قلوبنا.\n" +
+  "{{event_owners}}.\n\n" +
+  "عقبال أفراحكم، ودام عطر المحبّة في دياركم 🌹.";
+
+// The template's two variables for an event: its thank-you fields, else
+// its title / host name — same fallback as the backend's send_thanks.
+export function whatsappThanksValues(event) {
+  return {
+    event_name: event?.thank_you_event_name?.trim() || event?.title?.trim() || "",
+    event_owners: event?.thank_you_event_owners?.trim() || event?.host_name?.trim() || "",
+  };
+}
+
+export function fillWhatsappThanks(values) {
+  return WHATSAPP_THANKS_TEMPLATE.replace(/\{\{(\w+)\}\}/g, (match, key) => values[key] || match);
+}
+
 // Arabic/Hebrew SMS are UCS-2: 70 characters fit one message, longer texts
 // are split into 67-character parts, each billed separately.
 export function smsPartCount(text) {

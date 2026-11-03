@@ -50,6 +50,8 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
         invitation_greeting: event.invitation_greeting || "",
         whatsapp_template: event.whatsapp_template || "default",
         thank_you_message: event.thank_you_message || "",
+        thank_you_event_name: event.thank_you_event_name || "",
+        thank_you_event_owners: event.thank_you_event_owners || "",
       });
       // Load existing owners from owner_phones
       const existingPhones = event.owner_phones || [];
@@ -384,6 +386,25 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
               onChange={e => handleChange("thank_you_message", e.target.value)}
               className="rounded-xl min-h-[80px]"
               placeholder={t.thankYouPlaceholder}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>{t.thankYouWhatsappSection}</Label>
+            <p className="text-xs text-muted-foreground">{t.thankYouWhatsappHint}</p>
+            <Label className="text-xs">{t.thankYouEventNameLabel}</Label>
+            <Input
+              value={form.thank_you_event_name}
+              onChange={e => handleChange("thank_you_event_name", e.target.value)}
+              className="h-11 rounded-xl"
+              placeholder={form.title}
+            />
+            <Label className="text-xs">{t.thankYouEventOwnersLabel}</Label>
+            <Input
+              value={form.thank_you_event_owners}
+              onChange={e => handleChange("thank_you_event_owners", e.target.value)}
+              className="h-11 rounded-xl"
+              placeholder={form.host_name}
             />
           </div>
 
