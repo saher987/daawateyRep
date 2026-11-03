@@ -9,19 +9,14 @@ regardless.
 Business-initiated WhatsApp messages must be pre-approved *templates* —
 free text isn't allowed outside a 24h window the guest opened by writing
 to us first, which an invitation never has. So instead of the SMS's text,
-this sends one of these templates, picked per event by
-_whatsapp_invitation in routers/events.py (variables in order):
+this sends one of these templates, picked by _whatsapp_invitation in
+routers/events.py (variables in order):
 
   default:         guest name, inviter name, event title
                    حضرة {{1}}، تمت دعوتكم من {{2}} لحضور {{3}}. ...
-  custom:          guest name, invitation_greeting
-                   (the "default" choice when the event has a greeting)
-  tahil_son /
-  tahil_daughter:  guest name, host, groom/bride name, day, date, time, hall
-                   حضرة {{1}}، يدعوكم {{2}} لحضور حفل تأهيل ولده/ابنته {{3}}،
-                   وذلك يوم {{4}} الموافق {{5}} الساعة {{6}} في {{7}}. ...
+  custom:          guest name, the event's WhatsApp (else SMS) text
 
-  universal:       guest name, the whole invitation sentence (built in code)
+  universal:       guest name, the event's WhatsApp invitation text
                    حضرة {{1}}، بكل محبة وتقدير،
                    {{2}}
                    لعرض تفاصيل الدعوة وتأكيد حضوركم ... بانتظار تشريفكم.
@@ -89,8 +84,6 @@ def _template_text(value: str) -> str:
 _TEMPLATES = {
     "default": ("WHATSAPP_TEMPLATE_DEFAULT", "daawatey_invitation"),
     "custom": ("WHATSAPP_TEMPLATE_CUSTOM", "daawatey_invitation_custom"),
-    "tahil_son": ("WHATSAPP_TEMPLATE_TAHIL_SON", "daawatey_tahil_son"),
-    "tahil_daughter": ("WHATSAPP_TEMPLATE_TAHIL_DAUGHTER", "daawatey_tahil_daughter"),
     "universal": ("WHATSAPP_TEMPLATE_UNIVERSAL", "daawatey_invitation_universal"),
     "thanks": ("WHATSAPP_TEMPLATE_THANKS", "daawatey_thanks_ar"),
 }

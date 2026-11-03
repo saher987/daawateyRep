@@ -13,7 +13,7 @@ import MobileSelect from "@/components/shared/MobileSelect";
 import { useBackButton } from "@/hooks/useBackButton";
 import { format } from "date-fns";
 import CitySelect from "@/components/shared/CitySelect";
-import { whatsappTemplateOptions, whatsappTemplateError } from "@/lib/whatsappTemplate";
+import { whatsappInvitationPreview } from "@/lib/whatsappTemplate";
 import InvitationCardEditor from "@/components/events/InvitationCardEditor";
 
 export default function EditEventDialog({ open, onOpenChange, event }) {
@@ -51,8 +51,8 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
         max_guests: event.max_guests || "",
         description: event.description || "",
         invitation_greeting: event.invitation_greeting || "",
+        whatsapp_invitation_text: event.whatsapp_invitation_text || "",
         invitation_image_url: event.invitation_image_url || "",
-        whatsapp_template: event.whatsapp_template || "default",
         thank_you_message: event.thank_you_message || "",
         thank_you_event_name: event.thank_you_event_name || "",
         thank_you_event_owners: event.thank_you_event_owners || "",
@@ -165,12 +165,6 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     const data = { ...form };
-    if (!isWedding) data.whatsapp_template = "default";
-    const templateError = whatsappTemplateError(data, t);
-    if (templateError) {
-      toast({ title: templateError, variant: "destructive" });
-      return;
-    }
     if (data.max_guests) data.max_guests = Number(data.max_guests);
     else delete data.max_guests;
     data.owner_phones = owners.map(o => o.phone);
@@ -424,18 +418,21 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
             />
           </div>
 
-          {isWedding && (
-            <div className="space-y-2">
-              <Label>{t.whatsappTemplateLabel}</Label>
-              <MobileSelect
-                value={form.whatsapp_template}
-                onValueChange={v => handleChange("whatsapp_template", v)}
-                options={whatsappTemplateOptions(t)}
-                placeholder={t.whatsappTemplateLabel}
-              />
-              <p className="text-xs text-muted-foreground">{t.whatsappTemplateHint}</p>
-            </div>
-          )}
+          <div className="space-y-2">
+            <Label>{t.whatsappTextSection}</Label>
+            <p className="text-xs text-muted-foreground">{t.whatsappTextHint}</p>
+            <Textarea
+              value={form.whatsapp_invitation_text}
+              onChange={e => handleChange("whatsapp_invitation_text", e.target.value)}
+              className="rounded-xl min-h-[80px]"
+              placeholder={t.whatsappTextPlaceholder}
+            />
+            {form.whatsapp_invitation_text?.trim() && (
+              <div className="rounded-xl border bg-muted/30 p-3 text-sm whitespace-pre-wrap" dir="auto">
+                {whatsappInvitationPreview(form.whatsapp_invitation_text, t)}
+              </div>
+            )}
+          </div>
 
           <div className="space-y-2">
             <Label>{t.thankYouSection}</Label>

@@ -109,10 +109,6 @@ class ProfileUpdate(BaseModel):
     photo_url: str | None = None
 
 
-# Event.whatsapp_template's choices — see integrations/whatsapp.py.
-WhatsappTemplate = Literal["default", "tahil_son", "tahil_daughter"]
-
-
 class EventCreate(BaseModel):
     title: str
     title_ar: str | None = None
@@ -127,7 +123,7 @@ class EventCreate(BaseModel):
     description_ar: str | None = None
     invitation_greeting: str | None = None
     invitation_greeting_he: str | None = None
-    whatsapp_template: WhatsappTemplate = "default"
+    whatsapp_invitation_text: str | None = None
     thank_you_message: str | None = None
     thank_you_event_name: str | None = None
     thank_you_event_owners: str | None = None
@@ -157,7 +153,7 @@ class EventUpdate(BaseModel):
     description_ar: str | None = None
     invitation_greeting: str | None = None
     invitation_greeting_he: str | None = None
-    whatsapp_template: WhatsappTemplate | None = None
+    whatsapp_invitation_text: str | None = None
     thank_you_message: str | None = None
     thank_you_event_name: str | None = None
     thank_you_event_owners: str | None = None
@@ -190,7 +186,7 @@ class EventOut(BaseModel):
     description_ar: str | None
     invitation_greeting: str | None
     invitation_greeting_he: str | None
-    whatsapp_template: str = "default"
+    whatsapp_invitation_text: str | None = None
     thank_you_message: str | None
     thank_you_event_name: str | None = None
     thank_you_event_owners: str | None = None

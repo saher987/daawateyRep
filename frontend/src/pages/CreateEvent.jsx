@@ -16,7 +16,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useT } from "@/lib/i18n";
 import InvitationCardEditor from "@/components/events/InvitationCardEditor";
 import CitySelect from "@/components/shared/CitySelect";
-import { whatsappTemplateOptions, whatsappTemplateError } from "@/lib/whatsappTemplate";
+import { whatsappInvitationPreview } from "@/lib/whatsappTemplate";
 
 export default function CreateEvent() {
   const navigate = useNavigate();
@@ -54,7 +54,7 @@ export default function CreateEvent() {
     status: "draft",
     invitation_image_url: "",
     invitation_greeting: "",
-    whatsapp_template: "default",
+    whatsapp_invitation_text: "",
   });
 
   const { data: venues = [] } = useQuery({
@@ -137,12 +137,6 @@ export default function CreateEvent() {
   const handleSubmit = (e) => {
     e.preventDefault();
     const data = { ...form };
-    if (!isWedding) data.whatsapp_template = "default";
-    const templateError = whatsappTemplateError(data, t);
-    if (templateError) {
-      toast({ title: templateError, variant: "destructive" });
-      return;
-    }
     if (data.max_guests) data.max_guests = Number(data.max_guests);
     else delete data.max_guests;
     // <input type="datetime-local">'s value has no timezone info at all —
@@ -460,18 +454,21 @@ export default function CreateEvent() {
             onChange={(e) => handleChange("invitation_greeting", e.target.value)}
             className="min-h-[100px] rounded-xl text-base"
           />
-          {isWedding && (
-            <div className="space-y-2">
-              <Label>{t.whatsappTemplateLabel}</Label>
-              <MobileSelect
-                value={form.whatsapp_template}
-                onValueChange={(v) => handleChange("whatsapp_template", v)}
-                options={whatsappTemplateOptions(t)}
-                placeholder={t.whatsappTemplateLabel}
-              />
-              <p className="text-xs text-muted-foreground">{t.whatsappTemplateHint}</p>
-            </div>
-          )}
+          <div className="space-y-2">
+            <Label>{t.whatsappTextSection}</Label>
+            <p className="text-xs text-muted-foreground">{t.whatsappTextHint}</p>
+            <Textarea
+              placeholder={t.whatsappTextPlaceholder}
+              value={form.whatsapp_invitation_text}
+              onChange={(e) => handleChange("whatsapp_invitation_text", e.target.value)}
+              className="min-h-[100px] rounded-xl text-base"
+            />
+            {form.whatsapp_invitation_text.trim() && (
+              <div className="rounded-xl border bg-muted/30 p-3 text-sm whitespace-pre-wrap" dir="auto">
+                {whatsappInvitationPreview(form.whatsapp_invitation_text, t)}
+              </div>
+            )}
+          </div>
         </Card>
 
         {/* Description */}
