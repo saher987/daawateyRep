@@ -518,9 +518,11 @@ class ProviderCategory(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
     name_ar: Mapped[str] = mapped_column(String, nullable=False)
     name_he: Mapped[str] = mapped_column(String, nullable=False)
-    # A key into the frontend's fixed icon list (lib/providerIcons.js), not
-    # an uploaded image — keeps every category visually consistent.
+    # A key into the frontend's fixed icon list (lib/providerIcons.js).
     icon: Mapped[str] = mapped_column(String, nullable=False, default="sparkles")
+    # Optional cover photo for the category card on the services page. When
+    # empty the card falls back to the icon above.
+    image_url: Mapped[str | None] = mapped_column(String, nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(

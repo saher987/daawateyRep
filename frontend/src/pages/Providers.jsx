@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import CitySelect from "@/components/shared/CitySelect";
 import EmptyState from "@/components/shared/EmptyState";
 import ProviderCard from "@/components/providers/ProviderCard";
-import { localized, providerIcon } from "@/lib/providerIcons";
+import CategoryCard from "@/components/providers/CategoryCard";
+import { localized } from "@/lib/providerIcons";
 
 // The directory's home: category grid, featured providers, and a search
 // across every published provider. Public — see ProvidersLayout.
@@ -90,24 +91,15 @@ export default function Providers() {
       ) : (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-            {categories.map((c) => {
-              const Icon = providerIcon(c.icon);
-              return (
-                <Link
-                  key={c.id}
-                  to={`/providers/category/${c.id}${city !== "all" ? `?city=${city}` : ""}`}
-                  className="flex items-center gap-3 p-3 rounded-2xl bg-card border border-border hover:bg-accent/40 transition-colors"
-                >
-                  <span className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <Icon className="w-5 h-5 text-primary" />
-                  </span>
-                  <span className="flex flex-col min-w-0">
-                    <span className="font-semibold text-[15px] text-foreground truncate">{localized(c, "name", t.langCode)}</span>
-                    <span className="text-xs text-muted-foreground">{t.providerCount.replace("{n}", counts[c.id] || 0)}</span>
-                  </span>
-                </Link>
-              );
-            })}
+            {categories.map((c) => (
+              <Link
+                key={c.id}
+                to={`/providers/category/${c.id}${city !== "all" ? `?city=${city}` : ""}`}
+                className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <CategoryCard name={localized(c, "name", t.langCode)} icon={c.icon} imageUrl={c.image_url} count={counts[c.id] || 0} />
+              </Link>
+            ))}
           </div>
 
           {featured.length > 0 && (
