@@ -267,6 +267,16 @@ class Event(Base):
     # each send; null means the dialog's defaults.
     reminder_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     reminder_message_pending: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Cash gifts, link-out only: guests see the host's Bit number / PayBox
+    # link / bank details on their invitation and pay outside the app — no
+    # money ever passes through us. Shown only while gifts_enabled is on.
+    gifts_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    gift_bit_phone: Mapped[str | None] = mapped_column(String, nullable=True)
+    gift_paybox_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    gift_bank_details: Mapped[str | None] = mapped_column(Text, nullable=True)
+    gift_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     cover_image_url: Mapped[str | None] = mapped_column(String, nullable=True)
     invitation_image_url: Mapped[str | None] = mapped_column(String, nullable=True)
     groom_name: Mapped[str | None] = mapped_column(String, nullable=True)

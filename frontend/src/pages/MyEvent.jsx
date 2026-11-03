@@ -21,6 +21,8 @@ import { downloadFile } from "@/lib/downloadFile";
 import GuestStatsDashboard from "@/components/events/GuestStatsDashboard";
 import PlanningServicesCard from "@/components/providers/PlanningServicesCard";
 import { recipientDisplayName, recipientMatchesSearch } from "@/lib/recipientName";
+import GiftSettingsFields from "@/components/events/GiftSettingsFields";
+import { giftFormValues, giftSettingsError } from "@/lib/gifts";
 
 // rsvpLabel is built dynamically using t inside components
 const rsvpColor = {
@@ -47,6 +49,7 @@ function EditEventDialog({ event, open, onOpenChange }) {
     thank_you_message: event.thank_you_message || "",
     thank_you_event_name: event.thank_you_event_name || "",
     thank_you_event_owners: event.thank_you_event_owners || "",
+    ...giftFormValues(event),
   });
 
   const mutation = useMutation({
@@ -106,10 +109,21 @@ function EditEventDialog({ event, open, onOpenChange }) {
             <Label className="text-xs mt-2 block">{t.thankYouEventOwnersLabel}</Label>
             <Input value={form.thank_you_event_owners} onChange={e => setForm(f => ({ ...f, thank_you_event_owners: e.target.value }))} className="mt-1" placeholder={t.thankYouEventOwnersPlaceholder} />
           </div>
+          <div>
+            <Label>{t.giftsSection}</Label>
+            <div className="mt-1">
+              <GiftSettingsFields form={form} onChange={(field, value) => setForm(f => ({ ...f, [field]: value }))} t={t} />
+            </div>
+          </div>
           <div className="flex gap-2 pt-2">
             <Button
               className="flex-1"
               onClick={() => {
+                const giftError = giftSettingsError(form, t);
+                if (giftError) {
+                  toast({ title: giftError, variant: "destructive" });
+                  return;
+                }
                 // datetime-local has no timezone; sent as-is the backend
                 // stored the typed hour as UTC, so 20:00 came back as 23:00
                 // (same fix as components/events/EditEventDialog.jsx).

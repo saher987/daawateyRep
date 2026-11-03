@@ -15,6 +15,8 @@ import { format } from "date-fns";
 import CitySelect from "@/components/shared/CitySelect";
 import { whatsappTemplateOptions, whatsappTemplateError } from "@/lib/whatsappTemplate";
 import InvitationCardEditor from "@/components/events/InvitationCardEditor";
+import GiftSettingsFields from "@/components/events/GiftSettingsFields";
+import { giftFormValues, giftSettingsError } from "@/lib/gifts";
 
 export default function EditEventDialog({ open, onOpenChange, event }) {
   const queryClient = useQueryClient();
@@ -56,6 +58,7 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
         thank_you_message: event.thank_you_message || "",
         thank_you_event_name: event.thank_you_event_name || "",
         thank_you_event_owners: event.thank_you_event_owners || "",
+        ...giftFormValues(event),
       });
       // Load existing owners from owner_phones
       const existingPhones = event.owner_phones || [];
@@ -169,6 +172,11 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
     const templateError = whatsappTemplateError(data, t);
     if (templateError) {
       toast({ title: templateError, variant: "destructive" });
+      return;
+    }
+    const giftError = giftSettingsError(data, t);
+    if (giftError) {
+      toast({ title: giftError, variant: "destructive" });
       return;
     }
     if (data.max_guests) data.max_guests = Number(data.max_guests);
@@ -465,6 +473,11 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
               className="h-11 rounded-xl"
               placeholder={t.thankYouEventOwnersPlaceholder}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>{t.giftsSection}</Label>
+            <GiftSettingsFields form={form} onChange={handleChange} t={t} />
           </div>
 
           <div className="space-y-2">

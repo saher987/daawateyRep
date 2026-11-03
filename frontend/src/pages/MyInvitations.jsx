@@ -11,6 +11,8 @@ import { ar, he } from "date-fns/locale";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import RequestEventDialog from "@/components/shared/RequestEventDialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import GiftSection from "@/components/invitation/GiftSection";
 
 const RSVP_OPTIONS = [
   { status: "accepted", labelKey: "rsvpYes", on: "bg-success text-success-foreground border-success" },
@@ -116,6 +118,32 @@ function EventMeta({ event }) {
   );
 }
 
+// Shown on an invitation card only when the host allows gifts.
+function GiftButton({ event }) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  if (!event.gift) return null;
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="w-full h-10 rounded-xl border border-primary/30 text-primary bg-background text-sm font-semibold hover:bg-primary/5"
+      >
+        {t.giftSendBtn}
+      </button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{t.giftSendTitle}</DialogTitle>
+          </DialogHeader>
+          <GiftSection gift={event.gift} t={t} />
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 function PendingCard({ recipient, event, reply }) {
   const t = useT();
   const names = [event.groom_name, event.bride_name].filter(Boolean).join(" ❦ ");
@@ -145,6 +173,7 @@ function PendingCard({ recipient, event, reply }) {
           disabled={reply.isPending}
           onPick={(status) => reply.mutate({ recipient, status, guests: recipient.guests_count || 1 })}
         />
+        <GiftButton event={event} />
         <Link
           to={`/i/${recipient.personal_token}`}
           onClick={() => markViewed(recipient)}
@@ -242,6 +271,7 @@ function RepliedCard({ recipient, event, reply }) {
           </button>
         </div>
       )}
+      {!editing && <GiftButton event={event} />}
     </article>
   );
 }

@@ -197,7 +197,9 @@ def list_my_invitations(
     return [
         schemas.MyInvitationOut(
             recipient=schemas.MyInvitationRecipientOut.model_validate(r),
-            event=schemas.MyInvitationEventOut.model_validate(r.event),
+            event=schemas.MyInvitationEventOut.model_validate(r.event).model_copy(
+                update={"gift": _gift_options(r.event)}
+            ),
         )
         for r in recipients.values()
         if r.event is not None
@@ -1010,6 +1012,22 @@ def list_recipients(
 # --- Public invitation flow (Flow B) — looked up by token, no auth at all ---
 
 
+def _gift_options(event: models.Event) -> schemas.GiftOptionsOut | None:
+    """The gift section guests see, or None to hide it: gifts must be
+    switched on *and* at least one way to pay filled in."""
+    if not event.gifts_enabled:
+        return None
+    options = schemas.GiftOptionsOut(
+        bit_phone=(event.gift_bit_phone or "").strip() or None,
+        paybox_url=(event.gift_paybox_url or "").strip() or None,
+        bank_details=(event.gift_bank_details or "").strip() or None,
+        note=(event.gift_note or "").strip() or None,
+    )
+    if not (options.bit_phone or options.paybox_url or options.bank_details):
+        return None
+    return options
+
+
 def _to_public_invitation(recipient: models.InvitationRecipient) -> schemas.PublicInvitationOut:
     event = recipient.event
     return schemas.PublicInvitationOut(
@@ -1039,6 +1057,7 @@ def _to_public_invitation(recipient: models.InvitationRecipient) -> schemas.Publ
         rsvp_status=recipient.rsvp_status,
         rsvp_guests_count=recipient.rsvp_guests_count,
         invited_guests_count=recipient.guests_count,
+        gift=_gift_options(event),
     )
 
 

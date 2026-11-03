@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { CalendarHeart, MapPin, Clock, Heart, Sparkles, Check, X, ArrowRight, Loader2, CalendarPlus, Minus, Plus, Users, HelpCircle } from "lucide-react";
+import { CalendarHeart, MapPin, Clock, Heart, Sparkles, Check, X, ArrowRight, Loader2, CalendarPlus, Minus, Plus, Users, HelpCircle, Gift } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import MapButtons from "@/components/shared/MapButtons";
 import PhoneOtpLogin from "@/components/auth/PhoneOtpLogin";
+import GiftSection from "@/components/invitation/GiftSection";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { translations } from "@/lib/i18n";
@@ -421,6 +422,19 @@ export default function InvitationPage() {
             </AnimatePresence>
           </Card>
         </motion.div>
+
+        {/* Gift — only when the host allows gifts (event.gift is null otherwise) */}
+        {event.gift && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+            <Card className="p-6 shadow-lg space-y-4">
+              <h3 className="text-xl font-semibold text-center flex items-center justify-center gap-2">
+                <Gift className="w-5 h-5 text-primary" />
+                {translations[lang].giftSendTitle}
+              </h3>
+              <GiftSection gift={event.gift} t={translations[lang]} />
+            </Card>
+          </motion.div>
+        )}
 
         {/* Footer */}
         <div className="text-center pt-2 pb-4">

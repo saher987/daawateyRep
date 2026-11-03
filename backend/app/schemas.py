@@ -8,9 +8,9 @@ the explicit, reviewed list of what's actually accepted/returned.
 
 from datetime import date as date_type
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
 from app.models import (
     EventRequestStatus,
@@ -113,6 +113,20 @@ class ProfileUpdate(BaseModel):
 WhatsappTemplate = Literal["default", "tahil_son", "tahil_daughter"]
 
 
+def _https_link_or_blank(value: str | None) -> str | None:
+    # Rendered as a clickable link on every guest's invitation, so only a
+    # plain https:// URL — never javascript: or similar.
+    if value is None:
+        return None
+    value = value.strip()
+    if value and not value.lower().startswith("https://"):
+        raise ValueError("must be an https:// link")
+    return value
+
+
+GiftLink = Annotated[str | None, AfterValidator(_https_link_or_blank)]
+
+
 class EventCreate(BaseModel):
     title: str
     title_ar: str | None = None
@@ -131,6 +145,11 @@ class EventCreate(BaseModel):
     thank_you_message: str | None = None
     thank_you_event_name: str | None = None
     thank_you_event_owners: str | None = None
+    gifts_enabled: bool = False
+    gift_bit_phone: str | None = None
+    gift_paybox_url: GiftLink = None
+    gift_bank_details: str | None = None
+    gift_note: str | None = None
     cover_image_url: str | None = None
     invitation_image_url: str | None = None
     groom_name: str | None = None
@@ -161,6 +180,11 @@ class EventUpdate(BaseModel):
     thank_you_message: str | None = None
     thank_you_event_name: str | None = None
     thank_you_event_owners: str | None = None
+    gifts_enabled: bool | None = None
+    gift_bit_phone: str | None = None
+    gift_paybox_url: GiftLink = None
+    gift_bank_details: str | None = None
+    gift_note: str | None = None
     cover_image_url: str | None = None
     invitation_image_url: str | None = None
     groom_name: str | None = None
@@ -196,6 +220,11 @@ class EventOut(BaseModel):
     thank_you_event_owners: str | None = None
     reminder_message: str | None = None
     reminder_message_pending: str | None = None
+    gifts_enabled: bool = False
+    gift_bit_phone: str | None = None
+    gift_paybox_url: str | None = None
+    gift_bank_details: str | None = None
+    gift_note: str | None = None
     cover_image_url: str | None
     invitation_image_url: str | None
     groom_name: str | None
@@ -303,6 +332,17 @@ class RecipientOut(BaseModel):
     town: str | None = None
 
 
+class GiftOptionsOut(BaseModel):
+    """How a guest can send the host a cash gift — only the ways the host
+    filled in; the whole object is null while gifts are off (see events.py
+    _gift_options)."""
+
+    bit_phone: str | None
+    paybox_url: str | None
+    bank_details: str | None
+    note: str | None
+
+
 class PublicInvitationOut(BaseModel):
     """What the public /i/:token page (Flow B) gets — deliberately not the
     full Event/InvitationRecipient rows, so a guest link can never leak
@@ -333,6 +373,7 @@ class PublicInvitationOut(BaseModel):
     # rsvp_guests_count (how many the guest actually confirmed) — the
     # frontend uses this as the RSVP form's default.
     invited_guests_count: int
+    gift: GiftOptionsOut | None = None
 
 
 class RsvpSubmit(BaseModel):
@@ -386,6 +427,7 @@ class MyInvitationEventOut(BaseModel):
     groom_name: str | None
     bride_name: str | None
     host_name: str | None
+    gift: GiftOptionsOut | None = None
 
 
 class MyInvitationOut(BaseModel):

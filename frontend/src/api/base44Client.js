@@ -414,6 +414,7 @@ function toNestedInvitation(flat) {
       groom_name: flat.groom_name,
       bride_name: flat.bride_name,
       theme_color: flat.theme_color,
+      gift: flat.gift,
     },
     displayName: flat.display_name,
   }

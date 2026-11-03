@@ -15,6 +15,8 @@ import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/AuthContext";
 import { useT } from "@/lib/i18n";
 import InvitationCardEditor from "@/components/events/InvitationCardEditor";
+import GiftSettingsFields from "@/components/events/GiftSettingsFields";
+import { giftFormValues, giftSettingsError } from "@/lib/gifts";
 import CitySelect from "@/components/shared/CitySelect";
 import { whatsappTemplateOptions, whatsappTemplateError } from "@/lib/whatsappTemplate";
 
@@ -55,6 +57,7 @@ export default function CreateEvent() {
     invitation_image_url: "",
     invitation_greeting: "",
     whatsapp_template: "default",
+    ...giftFormValues(null),
   });
 
   const { data: venues = [] } = useQuery({
@@ -141,6 +144,11 @@ export default function CreateEvent() {
     const templateError = whatsappTemplateError(data, t);
     if (templateError) {
       toast({ title: templateError, variant: "destructive" });
+      return;
+    }
+    const giftError = giftSettingsError(data, t);
+    if (giftError) {
+      toast({ title: giftError, variant: "destructive" });
       return;
     }
     if (data.max_guests) data.max_guests = Number(data.max_guests);
@@ -483,6 +491,12 @@ export default function CreateEvent() {
             onChange={(e) => handleChange("description", e.target.value)}
             className="min-h-[120px] rounded-xl text-base"
           />
+        </Card>
+
+        {/* Gifts */}
+        <Card className="p-6 space-y-5">
+          <h2 className="font-semibold text-lg">{t.giftsSection}</h2>
+          <GiftSettingsFields form={form} onChange={handleChange} t={t} />
         </Card>
 
         <InvitationCardEditor
