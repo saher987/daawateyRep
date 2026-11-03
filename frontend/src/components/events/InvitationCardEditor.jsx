@@ -127,9 +127,9 @@ export default function InvitationCardEditor({ open, onOpenChange, event, onSave
         const file = new File([blob], "invitation-card.png", { type: "image/png" });
         const { file_url } = await base44.integrations.Core.UploadFile({ file });
         if (onSaveUrl) {
-          // Create mode: pass URL back to parent form
+          // Create/edit form: pass URL back to the parent form
           onSaveUrl(file_url);
-          toast({ title: "تم الحفظ", description: "سيتم حفظ البطاقة عند إنشاء المناسبة" });
+          toast({ title: "تم الحفظ", description: "سيتم حفظ البطاقة عند حفظ المناسبة" });
         } else if (event) {
           await base44.entities.Event.update(event.id, { invitation_image_url: file_url });
           queryClient.invalidateQueries({ queryKey: ["event", event.id] });

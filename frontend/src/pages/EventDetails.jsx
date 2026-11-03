@@ -31,6 +31,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useT } from "@/lib/i18n";
 import { Input } from "@/components/ui/input";
 import { recipientMatchesSearch } from "@/lib/recipientName";
+import { whatsappThanksValues } from "@/lib/thankYouMessage";
 
 
 export default function EventDetails() {
@@ -294,6 +295,7 @@ export default function EventDetails() {
                         eventTitle={event?.title}
                         eventGreeting={event?.invitation_greeting}
                         thankYouMessage={event?.thank_you_message}
+                        whatsappThanks={whatsappThanksValues(event)}
                         canResend={isPrivileged}
                       />
                     ))

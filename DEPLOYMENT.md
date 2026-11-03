@@ -123,6 +123,7 @@ spaces):
 | `WHATSAPP_TEMPLATE_CUSTOM` | approved template name for invitations with the event's custom greeting (default `daawatey_invitation_custom`) — body variables: guest name, greeting |
 | `WHATSAPP_TEMPLATE_TAHIL_SON` / `WHATSAPP_TEMPLATE_TAHIL_DAUGHTER` | approved template names for events whose "WhatsApp wording" is تأهيل ولده / ابنته (defaults `daawatey_tahil_son` / `daawatey_tahil_daughter`) — body variables: guest name, host, groom/bride name, day, date, time, hall |
 | `WHATSAPP_TEMPLATE_UNIVERSAL` | name of the universal template (default `daawatey_invitation_universal`: `حضرة {{1}}، بكل محبة وتقدير،` / `{{2}}` / fixed closing). **Every invitation uses it by default**: `{{2}}` is the event's invitation text, or else the تأهيل / default sentence built in code — wording changes need only a deploy, not a new Meta review. `off` falls back to the per-type templates above |
+| `WHATSAPP_TEMPLATE_THANKS` | thank-you template name (default `daawatey_thanks`) — named variables `{{event_name}}`, `{{event_owners}}`, filled only from the two thank-you fields set by hand in the event (an event without both is thanked by SMS). Thank-yous follow `INVITATION_CHANNEL` and `WHATSAPP_TEST_PHONES` like invitations |
 | `WHATSAPP_TEMPLATE_LANG` | template language code (default `ar`) |
 
 Both templates need a dynamic URL button `https://<APP_URL domain>/i/{{1}}`

@@ -122,6 +122,9 @@ jobs:
           if [ -n "${{ secrets.WHATSAPP_TEMPLATE_UNIVERSAL }}" ]; then
             FLAGS="$FLAGS##WHATSAPP_TEMPLATE_UNIVERSAL=${{ secrets.WHATSAPP_TEMPLATE_UNIVERSAL }}"
           fi
+          if [ -n "${{ secrets.WHATSAPP_TEMPLATE_THANKS }}" ]; then
+            FLAGS="$FLAGS##WHATSAPP_TEMPLATE_THANKS=${{ secrets.WHATSAPP_TEMPLATE_THANKS }}"
+          fi
           if [ -n "${{ secrets.WHATSAPP_TEMPLATE_LANG }}" ]; then
             FLAGS="$FLAGS##WHATSAPP_TEMPLATE_LANG=${{ secrets.WHATSAPP_TEMPLATE_LANG }}"
           fi

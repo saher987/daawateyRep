@@ -129,6 +129,8 @@ class EventCreate(BaseModel):
     invitation_greeting_he: str | None = None
     whatsapp_template: WhatsappTemplate = "default"
     thank_you_message: str | None = None
+    thank_you_event_name: str | None = None
+    thank_you_event_owners: str | None = None
     cover_image_url: str | None = None
     invitation_image_url: str | None = None
     groom_name: str | None = None
@@ -157,6 +159,8 @@ class EventUpdate(BaseModel):
     invitation_greeting_he: str | None = None
     whatsapp_template: WhatsappTemplate | None = None
     thank_you_message: str | None = None
+    thank_you_event_name: str | None = None
+    thank_you_event_owners: str | None = None
     cover_image_url: str | None = None
     invitation_image_url: str | None = None
     groom_name: str | None = None
@@ -188,6 +192,8 @@ class EventOut(BaseModel):
     invitation_greeting_he: str | None
     whatsapp_template: str = "default"
     thank_you_message: str | None
+    thank_you_event_name: str | None = None
+    thank_you_event_owners: str | None = None
     reminder_message: str | None = None
     reminder_message_pending: str | None = None
     cover_image_url: str | None

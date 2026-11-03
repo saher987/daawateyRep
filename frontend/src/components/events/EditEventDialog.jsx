@@ -7,13 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, Save, UserPlus, X as XIcon } from "lucide-react";
+import { Loader2, Save, UserPlus, X as XIcon, ImagePlus, Wand2 } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import MobileSelect from "@/components/shared/MobileSelect";
 import { useBackButton } from "@/hooks/useBackButton";
 import { format } from "date-fns";
 import CitySelect from "@/components/shared/CitySelect";
 import { whatsappTemplateOptions, whatsappTemplateError } from "@/lib/whatsappTemplate";
+import InvitationCardEditor from "@/components/events/InvitationCardEditor";
 
 export default function EditEventDialog({ open, onOpenChange, event }) {
   const queryClient = useQueryClient();
@@ -30,6 +31,8 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
   const [ownerSearchResults, setOwnerSearchResults] = useState([]);
   const [ownerSearching, setOwnerSearching] = useState(false);
   const [owners, setOwners] = useState([]);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [cardEditorOpen, setCardEditorOpen] = useState(false);
 
   useEffect(() => {
     if (event) {
@@ -48,8 +51,11 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
         max_guests: event.max_guests || "",
         description: event.description || "",
         invitation_greeting: event.invitation_greeting || "",
+        invitation_image_url: event.invitation_image_url || "",
         whatsapp_template: event.whatsapp_template || "default",
         thank_you_message: event.thank_you_message || "",
+        thank_you_event_name: event.thank_you_event_name || "",
+        thank_you_event_owners: event.thank_you_event_owners || "",
       });
       // Load existing owners from owner_phones
       const existingPhones = event.owner_phones || [];
@@ -138,6 +144,23 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
   });
 
   const handleChange = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
+
+  // Same upload as CreateEvent.jsx's; the new URL only reaches the event
+  // when the dialog is saved, like every other field here.
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadingImage(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      handleChange("invitation_image_url", file_url);
+    } catch {
+      toast({ title: t.addError, variant: "destructive" });
+    } finally {
+      setUploadingImage(false);
+      e.target.value = "";
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -353,6 +376,44 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
           </div>
 
           <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>{t.invitationImageSection}</Label>
+              <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => setCardEditorOpen(true)}>
+                <Wand2 className="w-4 h-4" />
+                {t.designCardBtn}
+              </Button>
+            </div>
+            {form.invitation_image_url ? (
+              <div className="relative w-full">
+                <img
+                  src={form.invitation_image_url}
+                  alt="صورة الدعوة"
+                  className="w-full max-h-64 object-contain rounded-xl border"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleChange("invitation_image_url", "")}
+                  className="absolute top-2 left-2 bg-destructive text-destructive-foreground rounded-full p-1"
+                >
+                  <XIcon className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-xl cursor-pointer hover:bg-muted/50 transition-colors">
+                {uploadingImage ? (
+                  <Loader2 className="w-7 h-7 animate-spin text-muted-foreground" />
+                ) : (
+                  <>
+                    <ImagePlus className="w-7 h-7 text-muted-foreground mb-2" />
+                    <span className="text-sm text-muted-foreground">{t.uploadInvitationImage}</span>
+                  </>
+                )}
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploadingImage} />
+              </label>
+            )}
+          </div>
+
+          <div className="space-y-2">
             <Label>{t.invitationGreetingSection}</Label>
             <p className="text-xs text-muted-foreground">{t.invitationGreetingHint}</p>
             <Textarea
@@ -388,12 +449,31 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
           </div>
 
           <div className="space-y-2">
+            <Label>{t.thankYouWhatsappSection}</Label>
+            <p className="text-xs text-muted-foreground">{t.thankYouWhatsappHint}</p>
+            <Label className="text-xs">{t.thankYouEventNameLabel}</Label>
+            <Input
+              value={form.thank_you_event_name}
+              onChange={e => handleChange("thank_you_event_name", e.target.value)}
+              className="h-11 rounded-xl"
+              placeholder={t.thankYouEventNamePlaceholder}
+            />
+            <Label className="text-xs">{t.thankYouEventOwnersLabel}</Label>
+            <Input
+              value={form.thank_you_event_owners}
+              onChange={e => handleChange("thank_you_event_owners", e.target.value)}
+              className="h-11 rounded-xl"
+              placeholder={t.thankYouEventOwnersPlaceholder}
+            />
+          </div>
+
+          <div className="space-y-2">
             <Label>{t.descriptionSection}</Label>
             <Textarea value={form.description} onChange={e => handleChange("description", e.target.value)} className="rounded-xl min-h-[80px]" />
           </div>
 
           <div className="flex gap-3 pt-2">
-            <Button type="submit" disabled={mutation.isPending || notifying} className="flex-1 h-11 rounded-xl gap-2">
+            <Button type="submit" disabled={mutation.isPending || notifying || uploadingImage} className="flex-1 h-11 rounded-xl gap-2">
               {(mutation.isPending || notifying) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               {notifying ? t.notifying : t.saveAndNotify}
             </Button>
@@ -402,6 +482,11 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
             </Button>
           </div>
         </form>
+        <InvitationCardEditor
+          open={cardEditorOpen}
+          onOpenChange={setCardEditorOpen}
+          onSaveUrl={(url) => handleChange("invitation_image_url", url)}
+        />
       </DialogContent>
     </Dialog>
   );
