@@ -17,7 +17,7 @@ from starlette.concurrency import run_in_threadpool
 
 from app import db as app_db
 from app.integrations.whatsapp import log_webhook_event, verify_webhook_signature
-from app.routers.events import send_invitation_sms_fallback
+from app.routers.events import send_invitation_sms_fallback, send_reminder_sms_fallback
 
 logger = logging.getLogger(__name__)
 
@@ -50,12 +50,17 @@ async def receive_webhook(request: Request) -> dict:
         # (and eventually disable the webhook) — log it and move on.
         logger.exception("Unreadable WhatsApp webhook payload")
         failures = []
-    # Undelivered invitations get the SMS instead. Thank-yous don't: their
-    # SMS text is written per guest in the dialog and isn't kept anywhere.
-    invites = [f for f in failures if f["kind"] == "invite"]
-    if invites:
-        await run_in_threadpool(_sms_fallbacks, invites)
+    # Undelivered invitations and reminders get the SMS instead. Thank-yous
+    # don't: their SMS text is written per guest in the dialog and isn't
+    # kept anywhere.
+    fallbacks = [f for f in failures if f["kind"] in _FALLBACKS]
+    if fallbacks:
+        await run_in_threadpool(_sms_fallbacks, fallbacks)
     return {"success": True}
+
+
+# failure kind (whatsapp.py log_webhook_event) -> its SMS fallback
+_FALLBACKS = {"invite": send_invitation_sms_fallback, "remind": send_reminder_sms_fallback}
 
 
 def _sms_fallbacks(failures: list[dict]) -> None:
@@ -68,8 +73,8 @@ def _sms_fallbacks(failures: list[dict]) -> None:
     try:
         for f in failures:
             try:
-                if send_invitation_sms_fallback(db, f["recipient_id"], f["wamid"]):
-                    logger.info("SMS fallback sent for undelivered WhatsApp invitation %s", f["recipient_id"])
+                if _FALLBACKS[f["kind"]](db, f["recipient_id"], f["wamid"]):
+                    logger.info("SMS fallback sent for undelivered WhatsApp %s %s", f["kind"], f["recipient_id"])
             except Exception:
                 db.rollback()
                 logger.exception("SMS fallback failed for %s", f["recipient_id"])

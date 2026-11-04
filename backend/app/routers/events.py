@@ -896,6 +896,78 @@ def _fill_reminder(template: str, event: models.Event, recipient: models.Invitat
     return "\n".join(lines)
 
 
+# The current reminder format (ReminderSend.details): a fixed greeting and
+# closing line around the event's free text — exactly the wording of the
+# WhatsApp templates reminder_accepted / reminder_pending (whatsapp.py), so
+# the SMS reads the same. Keep in sync with frontend/src/lib/reminderMessage.js.
+DEFAULT_REMINDER_DETAILS = "[event_title] يوم [day] [date] الساعة [time] في [venue]."
+_REMINDER_CLOSING = {
+    "accepted": "الرجاء الضغط على الرابط أدناه لعرض التفاصيل.",
+    "pending": "الرجاء الضغط على الرابط أدناه لتأكيد الحضور.",
+}
+_REMINDER_SMS_CLOSING = {
+    "accepted": "لعرض التفاصيل:",
+    "pending": "لتأكيد الحضور:",
+}
+
+
+def _reminder_messages(details: str, event: models.Event, recipient: models.InvitationRecipient) -> dict:
+    """One guest's reminder in every channel's form: the WhatsApp template
+    and its two variables, the SMS text (the link replaces the button) and
+    the push text (no link: tapping it opens the invitation)."""
+    group = "accepted" if recipient.rsvp_status == models.RsvpStatus.accepted else "pending"
+    name = (
+        _resolve_display_name(
+            recipient.external_full_name,
+            recipient.nickname,
+            recipient.first_name,
+            recipient.last_name,
+            recipient.name_suffix,
+        )
+        or "ضيفنا الكريم"
+    )
+    # One line: WhatsApp template variables can't contain line breaks.
+    filled = " ".join(_fill_reminder(details, event, recipient).split())
+    app_url = os.environ.get("APP_URL", "https://daawatey.com")
+    opening = f"حضرة {name}، نذكّركم بموعد مناسبتكم: {filled}"
+    return {
+        "template_key": f"reminder_{group}",
+        "template_values": [name, filled],
+        "sms": f"{opening} {_REMINDER_SMS_CLOSING[group]} {app_url}/i/{recipient.personal_token}",
+        "push": opening,
+    }
+
+
+def send_reminder_sms_fallback(db: Session, recipient_id: str, wamid: str | None) -> bool:
+    """The reminder counterpart of send_invitation_sms_fallback: Meta
+    reported a WhatsApp reminder it had accepted as undelivered, so the
+    guest gets the SMS reminder instead, rebuilt from the event's saved
+    reminder text. Same rules: whatsapp_then_sms only, once per failed
+    message."""
+    recipient = db.get(models.InvitationRecipient, recipient_id)
+    if recipient is None or not recipient.phone:
+        return False
+    if invitation_channel_for(recipient.phone) != "whatsapp_then_sms":
+        return False
+    if wamid and recipient.sms_fallback_wamid == wamid:
+        return False
+    event = recipient.event
+    text = _reminder_messages(event.reminder_details or DEFAULT_REMINDER_DETAILS, event, recipient)["sms"]
+    sent = send_sms(recipient.phone, text, reference=recipient.id)
+    recipient.sms_fallback_wamid = wamid
+    audit(
+        db,
+        None,
+        "recipient.whatsapp_sms_fallback",
+        "recipient",
+        recipient.id,
+        label=_recipient_label(recipient),
+        meta={"event_id": event.id, "event_title": event.title, "wamid": wamid, "sent": sent, "kind": "reminder"},
+    )
+    db.commit()
+    return sent
+
+
 @router.post("/events/{event_id}/send-reminders", response_model=schemas.ReminderResult)
 def send_reminders(
     event_id: str,
@@ -906,19 +978,30 @@ def send_reminders(
     """ReminderDialog.jsx: remind the guests whose RSVP is in body.statuses.
 
     Guests linked to an app account get a push + in-app notification; if
-    the push reaches none of their devices they get the SMS instead (and
-    with sms_app_users, the SMS as well). Everyone else gets the SMS.
-    Accepted guests get message_accepted, pending/maybe guests
-    message_pending. A guest's reminder_count goes up only when something
-    actually went out. Admin/manager only — every SMS costs money, same as
-    send_thanks. Both texts are saved on the event for next time."""
+    the push reaches none of their devices they get a phone message instead
+    (and with sms_app_users, the phone message as well). Everyone else gets
+    the phone message.
+
+    With `details` (the current format) the phone message goes out per
+    INVITATION_CHANNEL: the reminder_accepted / reminder_pending WhatsApp
+    template, SMS, or WhatsApp with SMS as the fallback — the same text
+    either way (_reminder_messages). Without it (app builds from before),
+    accepted guests get message_accepted and pending/maybe guests
+    message_pending, by SMS only, as before.
+
+    A guest's reminder_count goes up only when something actually went
+    out. Admin/manager only — every message costs money, same as
+    send_thanks. The texts are saved on the event for next time."""
     event = _get_event_or_404(db, event_id)
     if event.date and event.date <= datetime.now(timezone.utc):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="The event has already started")
 
     statuses = {s for s in body.statuses if s != models.RsvpStatus.declined}
-    event.reminder_message = body.message_accepted
-    event.reminder_message_pending = body.message_pending
+    if body.details is not None:
+        event.reminder_details = body.details
+    else:
+        event.reminder_message = body.message_accepted
+        event.reminder_message_pending = body.message_pending
 
     recipients = (
         db.query(models.InvitationRecipient)
@@ -928,7 +1011,7 @@ def send_reminders(
         )
         .all()
     )
-    result = dict(reminded=0, push=0, sms=0, failed=0, skipped_already_reminded=0, skipped_no_contact=0)
+    result = dict(reminded=0, push=0, whatsapp=0, sms=0, failed=0, skipped_already_reminded=0, skipped_no_contact=0)
     now = datetime.now(timezone.utc)
     for recipient in recipients:
         if recipient.last_reminded_at and not body.include_already_reminded:
@@ -939,32 +1022,50 @@ def send_reminders(
             result["skipped_no_contact"] += 1
             continue
 
-        template = (
-            body.message_accepted
-            if recipient.rsvp_status == models.RsvpStatus.accepted
-            else body.message_pending
-        )
-        text = _fill_reminder(template, event, recipient)
+        if body.details is not None:
+            messages = _reminder_messages(body.details, event, recipient)
+            push_text, sms_text = messages["push"], messages["sms"]
+        else:
+            template = (
+                body.message_accepted
+                if recipient.rsvp_status == models.RsvpStatus.accepted
+                else body.message_pending
+            )
+            messages = None
+            push_text = sms_text = _fill_reminder(template, event, recipient)
 
         pushed = False
         if linked_user:
-            _notify_recipient_in_app(db, recipient, title="تذكير", message=text, event_id=event.id)
+            _notify_recipient_in_app(db, recipient, title="تذكير", message=push_text, event_id=event.id)
             pushed = send_push_to_user(
                 db,
                 linked_user,
                 title="🔔 تذكير",
-                body=text,
+                body=push_text,
                 data={"path": f"/i/{recipient.personal_token}"},
             )
-        texted = False
+        whatsapp_sent = texted = False
         if recipient.phone and (not pushed or body.sms_app_users):
-            texted = send_sms(recipient.phone, text, reference=recipient.id)
+            channel = invitation_channel_for(recipient.phone) if messages else "sms"
+            if channel in ("whatsapp", "whatsapp_then_sms"):
+                whatsapp_sent = send_whatsapp_template(
+                    recipient.phone,
+                    messages["template_key"],
+                    messages["template_values"],
+                    # "remind-" tells the webhook this one gets the SMS
+                    # fallback if Meta later reports it undelivered.
+                    reference=f"remind-{recipient.id}",
+                    personal_token=recipient.personal_token,
+                )
+            if channel == "sms" or (channel == "whatsapp_then_sms" and not whatsapp_sent):
+                texted = send_sms(recipient.phone, sms_text, reference=recipient.id)
 
-        if pushed or texted:
+        if pushed or whatsapp_sent or texted:
             recipient.reminder_count = (recipient.reminder_count or 0) + 1
             recipient.last_reminded_at = now
             result["reminded"] += 1
             result["push"] += int(pushed)
+            result["whatsapp"] += int(whatsapp_sent)
             result["sms"] += int(texted)
         else:
             result["failed"] += 1

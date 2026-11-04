@@ -1,18 +1,9 @@
 // Event reminder texts. The backend fills them for each guest when sending
-// (events.py _fill_reminder); this mirrors it for the dialog's preview —
-// keep the placeholders and tidy-up rules in sync.
+// (events.py _fill_reminder / _reminder_messages); this mirrors it for the
+// dialog's preview — keep the placeholders, tidy-up rules and fixed
+// wording in sync.
 import { recipientDisplayName } from "@/lib/recipientName";
 import { publicAppOrigin } from "@/lib/publicUrl";
-
-export const REMINDER_PLACEHOLDERS = ["target_string", "event_title", "day", "date", "time", "venue", "invite_link"];
-
-// For guests who accepted.
-export const DEFAULT_REMINDER_ACCEPTED =
-  "[target_string]، نذكّركم بموعد [event_title] يوم [day] [date] الساعة [time] في [venue]. بانتظاركم! للتفاصيل والخريطة: [invite_link]";
-
-// For guests who haven't replied yet (pending / maybe).
-export const DEFAULT_REMINDER_PENDING =
-  "[target_string]، نذكّركم بدعوتكم إلى [event_title] يوم [day] [date] الساعة [time] في [venue]. نرجو تأكيد حضوركم عبر الرابط: [invite_link]";
 
 const WEEKDAYS_AR = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 
@@ -47,4 +38,27 @@ export function fillReminder(template, event, recipient) {
     .split("\n")
     .map(line => line.replace(/[ \t]{2,}/g, " ").replace(/ ([،,.!؟?])/g, "$1").trim())
     .join("\n");
+}
+
+// The current format: the event's free text (DETAILS) between a fixed
+// greeting and a fixed closing line — the wording of the WhatsApp templates
+// reminder_accepted / reminder_pending, with the link in place of the
+// button when it goes by SMS.
+export const DETAILS_PLACEHOLDERS = ["event_title", "day", "date", "time", "venue"];
+export const DEFAULT_REMINDER_DETAILS = "[event_title] يوم [day] [date] الساعة [time] في [venue].";
+const CLOSING = {
+  accepted: "الرجاء الضغط على الرابط أدناه لعرض التفاصيل.",
+  pending: "الرجاء الضغط على الرابط أدناه لتأكيد الحضور.",
+};
+const SMS_CLOSING = { accepted: "لعرض التفاصيل:", pending: "لتأكيد الحضور:" };
+
+// group: "accepted" or "pending" (pending and maybe guests).
+export function buildReminder(details, event, recipient, group) {
+  const name = recipientDisplayName(recipient) || "ضيفنا الكريم";
+  const filled = fillReminder(details, event, recipient).split(/\s+/).join(" ").trim();
+  const opening = `حضرة ${name}، نذكّركم بموعد مناسبتكم:`;
+  return {
+    whatsapp: `${opening}\n${filled}\n${CLOSING[group]}`,
+    sms: `${opening} ${filled} ${SMS_CLOSING[group]} ${publicAppOrigin()}/i/${recipient?.personal_token || ""}`,
+  };
 }
