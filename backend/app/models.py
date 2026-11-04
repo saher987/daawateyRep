@@ -333,6 +333,10 @@ class InvitationRecipient(Base):
     # Times the invitation actually went out (initial invite + resends),
     # counting only sends where at least one channel succeeded.
     sent_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    # The WhatsApp message (wamid) whose delivery failure this guest was
+    # already sent the SMS fallback for — so a webhook Meta delivers twice
+    # can't text them twice. See events.py's send_invitation_sms_fallback.
+    sms_fallback_wamid: Mapped[str | None] = mapped_column(String, nullable=True)
     # Event reminders that actually went out (push or SMS), and when the
     # last one did — the reminder dialog skips already-reminded guests.
     reminder_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")

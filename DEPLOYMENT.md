@@ -155,6 +155,14 @@ WARNING with Meta's error code. Setup, in this order:
 POSTs without a valid `X-Hub-Signature-256` are rejected, so the endpoint
 needs no user login.
 
+**SMS fallback:** with `INVITATION_CHANNEL=whatsapp_then_sms`, an invitation
+Meta accepted but then reports `failed` (e.g. `131049`, its marketing-message
+limit) is sent to the guest by SMS instead, once per failed message. Logged
+as `SMS fallback sent ...` and in the audit log. Thank-yous don't fall back.
+The webhook must be connected to the WhatsApp Business Account itself, not
+only configured in the App Dashboard: `POST /<WABA ID>/subscribed_apps` with
+the token (the WABA ID is the `asset_id` in WhatsApp Manager URLs).
+
 ## Bootstrapping `ALLOWED_ORIGINS` (first deploy only)
 
 The backend needs to know the frontend's origin for CORS, but the frontend's

@@ -195,16 +195,21 @@ def verify_webhook_signature(body: bytes, signature_header: str | None) -> bool:
     return hmac.compare_digest(expected, signature_header.removeprefix("sha256="))
 
 
-def log_webhook_event(payload: dict) -> None:
+def log_webhook_event(payload: dict) -> list[dict]:
     """One log line per message status / incoming message in the payload.
     A failed status logs at WARNING with Meta's error code and details —
-    the line that says why a guest never got the WhatsApp."""
+    the line that says why a guest never got the WhatsApp.
+
+    Returns the failed statuses as {"kind", "recipient_id", "wamid"}, from
+    the reference send_whatsapp_template set ("daawatey-invite-<id>" /
+    "daawatey-thanks-<id>"), for the webhook's SMS fallback."""
+    failures = []
     for entry in payload.get("entry") or []:
         for change in entry.get("changes") or []:
             value = change.get("value") or {}
             for st in value.get("statuses") or []:
                 # biz_opaque_callback_data echoes back what send_whatsapp_template
-                # set ("daawatey-<recipient id>"), tying the status to its guest.
+                # set ("daawatey-<reference>"), tying the status to its guest.
                 reference = st.get("biz_opaque_callback_data") or st.get("id")
                 status = st.get("status")
                 if status == "failed":
@@ -215,9 +220,15 @@ def log_webhook_event(payload: dict) -> None:
                     logger.warning(
                         "WhatsApp delivery failed for %s to %s: %s", reference, st.get("recipient_id"), errors
                     )
+                    kind, _, recipient_id = (st.get("biz_opaque_callback_data") or "").removeprefix(
+                        "daawatey-"
+                    ).partition("-")
+                    if kind in ("invite", "thanks") and recipient_id:
+                        failures.append({"kind": kind, "recipient_id": recipient_id, "wamid": st.get("id")})
                 else:
                     logger.info("WhatsApp status %s for %s to %s", status, reference, st.get("recipient_id"))
             for msg in value.get("messages") or []:
                 # A guest replying to the business number. Only the type is
                 # logged, not what they wrote.
                 logger.info("WhatsApp incoming %s message from %s", msg.get("type"), msg.get("from"))
+    return failures
