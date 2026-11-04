@@ -2,9 +2,9 @@
 
 Which channel an invitation's phone half goes out on is chosen by
 INVITATION_CHANNEL (see `invitation_channel_for` below), and the same
-setting picks the channel for thank-you messages (the `thanks` template);
-OTP, reminders, and event-update notices all stay on Pulseem SMS
-regardless.
+setting picks the channel for thank-you messages (the `thanks` template)
+and event reminders (the `reminder_*` templates); OTP and event-update
+notices stay on Pulseem SMS regardless.
 
 Business-initiated WhatsApp messages must be pre-approved *templates* —
 free text isn't allowed outside a 24h window the guest opened by writing
@@ -28,6 +28,13 @@ routers/events.py (variables in order):
   thanks:          named variables {{event_name}}, {{event_owners}}, no
                    button — نتقدّم إليك بجزيل الشكر ... {{event_name}}.
                    ... {{event_owners}}. ...
+  reminder_accepted / reminder_pending (event reminders, both groups):
+                   guest name, the event's reminder text
+                   حضرة {{1}}، نذكّركم بموعد مناسبتكم:
+                   {{2}}
+                   الرجاء الضغط على الرابط أدناه لعرض التفاصيل.
+                   (pending: ... لتأكيد الحضور.) Same URL button as the
+                   invitations. Reminders follow INVITATION_CHANNEL too.
 
 Every invitation template also has a dynamic URL button, https://<domain>/i/{{1}} —
 the guest's personal_token goes in as the button's one parameter. Each
@@ -86,6 +93,8 @@ _TEMPLATES = {
     "custom": ("WHATSAPP_TEMPLATE_CUSTOM", "daawatey_invitation_custom"),
     "universal": ("WHATSAPP_TEMPLATE_UNIVERSAL", "daawatey_invitation_universal"),
     "thanks": ("WHATSAPP_TEMPLATE_THANKS", "daawatey_thanks_ar"),
+    "reminder_accepted": ("WHATSAPP_TEMPLATE_REMINDER_ACCEPTED", "daawatey_reminder_accepted"),
+    "reminder_pending": ("WHATSAPP_TEMPLATE_REMINDER_PENDING", "daawatey_reminder_pending"),
 }
 
 
@@ -202,7 +211,8 @@ def log_webhook_event(payload: dict) -> list[dict]:
 
     Returns the failed statuses as {"kind", "recipient_id", "wamid"}, from
     the reference send_whatsapp_template set ("daawatey-invite-<id>" /
-    "daawatey-thanks-<id>"), for the webhook's SMS fallback."""
+    "daawatey-thanks-<id>" / "daawatey-remind-<id>"), for the webhook's SMS
+    fallback."""
     failures = []
     for entry in payload.get("entry") or []:
         for change in entry.get("changes") or []:
@@ -223,7 +233,7 @@ def log_webhook_event(payload: dict) -> list[dict]:
                     kind, _, recipient_id = (st.get("biz_opaque_callback_data") or "").removeprefix(
                         "daawatey-"
                     ).partition("-")
-                    if kind in ("invite", "thanks") and recipient_id:
+                    if kind in ("invite", "thanks", "remind") and recipient_id:
                         failures.append({"kind": kind, "recipient_id": recipient_id, "wamid": st.get("id")})
                 else:
                     logger.info("WhatsApp status %s for %s to %s", status, reference, st.get("recipient_id"))

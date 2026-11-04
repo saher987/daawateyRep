@@ -263,6 +263,12 @@ class Event(Base):
     # each send; null means the dialog's defaults.
     reminder_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     reminder_message_pending: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The current reminder format: just the free-text middle ({{2}} of the
+    # WhatsApp reminder templates), shared by both groups; the greeting and
+    # the closing line are fixed (events.py _reminder_messages). The two
+    # fields above are the old full-text format, still used by app builds
+    # that predate it. Null means the dialog's default.
+    reminder_details: Mapped[str | None] = mapped_column(Text, nullable=True)
     cover_image_url: Mapped[str | None] = mapped_column(String, nullable=True)
     invitation_image_url: Mapped[str | None] = mapped_column(String, nullable=True)
     groom_name: Mapped[str | None] = mapped_column(String, nullable=True)

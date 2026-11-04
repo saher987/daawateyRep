@@ -10,7 +10,7 @@ from datetime import date as date_type
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.models import (
     EventRequestStatus,
@@ -192,6 +192,7 @@ class EventOut(BaseModel):
     thank_you_event_owners: str | None = None
     reminder_message: str | None = None
     reminder_message_pending: str | None = None
+    reminder_details: str | None = None
     cover_image_url: str | None
     invitation_image_url: str | None
     groom_name: str | None
@@ -235,20 +236,33 @@ class RecipientCreate(BaseModel):
 class ReminderSend(BaseModel):
     """ReminderDialog.jsx: remind the event's guests whose RSVP is in
     `statuses` (declined guests are never reminded). Texts are templates
-    with [placeholders], filled per guest server-side."""
+    with [placeholders], filled per guest server-side.
+
+    `details` is the current format: the free-text middle of the message,
+    sent over WhatsApp (template {{2}}) or SMS. Without it, the old
+    full-text message_accepted / message_pending are sent by SMS as before
+    — app builds from before this change still send those."""
 
     statuses: list[RsvpStatus] = Field(min_length=1)
-    message_accepted: str = Field(min_length=1, max_length=1000)
-    message_pending: str = Field(min_length=1, max_length=1000)
+    details: str | None = Field(default=None, min_length=1, max_length=500)
+    message_accepted: str | None = Field(default=None, min_length=1, max_length=1000)
+    message_pending: str | None = Field(default=None, min_length=1, max_length=1000)
     # Off: guests reminded before for this event are skipped.
     include_already_reminded: bool = False
-    # Guests with the app get a push; on: they get the SMS as well.
+    # Guests with the app get a push; on: they get the WhatsApp/SMS as well.
     sms_app_users: bool = False
+
+    @model_validator(mode="after")
+    def _has_text(self) -> "ReminderSend":
+        if self.details is None and (self.message_accepted is None or self.message_pending is None):
+            raise ValueError("details (or both message_accepted and message_pending) is required")
+        return self
 
 
 class ReminderResult(BaseModel):
     reminded: int
     push: int
+    whatsapp: int = 0
     sms: int
     failed: int
     skipped_already_reminded: int

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { BellRing, Loader2 } from "lucide-react";
+import { BellRing, ExternalLink, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -11,14 +11,15 @@ import { base44 } from "@/api/base44Client";
 import { useT } from "@/lib/i18n";
 import { useBackButton } from "@/hooks/useBackButton";
 import { smsPartCount } from "@/lib/thankYouMessage";
-import { DEFAULT_REMINDER_ACCEPTED, DEFAULT_REMINDER_PENDING, REMINDER_PLACEHOLDERS, fillReminder } from "@/lib/reminderMessage";
+import { DEFAULT_REMINDER_DETAILS, DETAILS_PLACEHOLDERS, buildReminder } from "@/lib/reminderMessage";
 
 // "Send reminder" on the admin event page (admin/manager only — every SMS
 // costs money). Picks who gets it by RSVP status, shows how many guests it
-// will reach and over which channel, and the two texts (accepted / not
-// replied yet) with a preview filled in for one of those guests. The
-// backend does the sending: push for guests with the app (SMS if the push
-// reaches no device), SMS for everyone else.
+// will reach and over which channel, and the reminder's free text with a
+// preview per group (accepted / not replied yet) filled in for one of those
+// guests. The backend does the sending: push for guests with the app (a
+// phone message if the push reaches no device), and for everyone else the
+// WhatsApp reminder template or SMS, per INVITATION_CHANNEL.
 const AUDIENCES = ["accepted", "pending", "maybe"];
 
 export default function ReminderDialog({ open, onOpenChange, event, recipients }) {
@@ -28,15 +29,13 @@ export default function ReminderDialog({ open, onOpenChange, event, recipients }
   const [statuses, setStatuses] = useState(() => new Set(AUDIENCES));
   const [skipReminded, setSkipReminded] = useState(true);
   const [smsAppUsers, setSmsAppUsers] = useState(false);
-  const [textAccepted, setTextAccepted] = useState("");
-  const [textPending, setTextPending] = useState("");
+  const [details, setDetails] = useState("");
   const [sending, setSending] = useState(false);
   useBackButton({ isOpen: open, onClose: () => onOpenChange(false) });
 
   useEffect(() => {
     if (!open) return;
-    setTextAccepted(event?.reminder_message || DEFAULT_REMINDER_ACCEPTED);
-    setTextPending(event?.reminder_message_pending || DEFAULT_REMINDER_PENDING);
+    setDetails(event?.reminder_details || DEFAULT_REMINDER_DETAILS);
   }, [open, event]);
 
   const audienceLabel = { accepted: t.accepted, pending: t.pending, maybe: t.statusMaybe };
@@ -73,16 +72,14 @@ export default function ReminderDialog({ open, onOpenChange, event, recipients }
       const { data } = await base44.functions.invoke("sendEventReminders", {
         eventId: event.id,
         statuses: [...statuses],
-        // Both are required by the API; an unselected group's text may be blank.
-        message_accepted: textAccepted.trim() || DEFAULT_REMINDER_ACCEPTED,
-        message_pending: textPending.trim() || DEFAULT_REMINDER_PENDING,
+        details: details.trim(),
         include_already_reminded: !skipReminded,
         sms_app_users: smsAppUsers,
       });
       toast({
         title: t.reminderSentTitle.replace("{count}", data.reminded),
         description: [
-          t.reminderSentChannels.replace("{push}", data.push).replace("{sms}", data.sms),
+          t.reminderSentChannels.replace("{push}", data.push).replace("{whatsapp}", data.whatsapp ?? 0).replace("{sms}", data.sms),
           data.failed ? t.reminderFailedCount.replace("{count}", data.failed) : null,
         ].filter(Boolean).join(" · "),
         variant: data.reminded === 0 && data.failed > 0 ? "destructive" : undefined,
@@ -97,18 +94,22 @@ export default function ReminderDialog({ open, onOpenChange, event, recipients }
     }
   };
 
-  const textBlock = (label, value, setValue, previewFor) => {
-    const message = previewFor ? fillReminder(value, event, previewFor) : "";
+  // How one group's reminder will look: the WhatsApp message (its link is a
+  // button there) and the SMS length, for one guest of that group.
+  const preview = (label, recipient, group) => {
+    if (!recipient) return null;
+    const message = buildReminder(details, event, recipient, group);
     return (
       <div className="space-y-1.5">
-        <Label className="text-sm">{label}</Label>
-        <Textarea value={value} onChange={e => setValue(e.target.value)} className="rounded-xl min-h-[90px] text-sm" dir="rtl" />
-        {previewFor && (
-          <>
-            <div className="rounded-xl border bg-muted/30 p-2.5 text-xs whitespace-pre-wrap" dir="rtl">{message}</div>
-            <p className="text-[11px] text-muted-foreground" dir="ltr">{[...message].length} chars · {smsPartCount(message)} SMS</p>
-          </>
-        )}
+        <Label className="text-xs text-muted-foreground">{label}</Label>
+        <div className="rounded-xl border bg-muted/30 p-2.5 text-xs space-y-2" dir="rtl">
+          <p className="whitespace-pre-wrap">{message.whatsapp}</p>
+          <p className="flex items-center justify-center gap-1.5 border-t pt-2 font-medium text-primary">
+            <ExternalLink className="w-3.5 h-3.5" />
+            {group === "accepted" ? t.reminderButtonDetails : t.reminderButtonConfirm}
+          </p>
+        </div>
+        <p className="text-[11px] text-muted-foreground" dir="ltr">SMS: {[...message.sms].length} chars · {smsPartCount(message.sms)} SMS</p>
       </div>
     );
   };
@@ -160,16 +161,20 @@ export default function ReminderDialog({ open, onOpenChange, event, recipients }
           </p>
         </div>
 
-        {wantsAccepted && textBlock(t.reminderTextAccepted, textAccepted, setTextAccepted, previewAccepted)}
-        {wantsPending && textBlock(t.reminderTextPending, textPending, setTextPending, previewPending)}
-        <p className="text-[11px] text-muted-foreground" dir="ltr">
-          {REMINDER_PLACEHOLDERS.map(p => `[${p}]`).join(" ")}
-        </p>
+        <div className="space-y-1.5">
+          <Label className="text-sm">{t.reminderDetailsLabel}</Label>
+          <Textarea value={details} onChange={e => setDetails(e.target.value)} maxLength={500} className="rounded-xl min-h-[80px] text-sm" dir="rtl" />
+          <p className="text-[11px] text-muted-foreground">
+            {t.reminderDetailsHint} <span dir="ltr">{DETAILS_PLACEHOLDERS.map(p => `[${p}]`).join(" ")}</span>
+          </p>
+        </div>
+        {wantsAccepted && preview(t.reminderPreviewAccepted, previewAccepted, "accepted")}
+        {wantsPending && preview(t.reminderPreviewPending, previewPending, "pending")}
 
         <div className="flex gap-3 pt-1">
           <Button
             onClick={send}
-            disabled={sending || started || targets.length === 0 || (wantsAccepted && !textAccepted.trim()) || (wantsPending && !textPending.trim())}
+            disabled={sending || started || targets.length === 0 || !details.trim()}
             className="flex-1 h-11 rounded-xl gap-2"
           >
             {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <BellRing className="w-4 h-4" />}
