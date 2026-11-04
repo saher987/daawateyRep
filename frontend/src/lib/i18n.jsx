@@ -731,7 +731,7 @@ const translations = {
     daburiyya: "دبورية",
     sajur: "ساجور",
     peki_in: "البقيعة",
-    karmiel: "كرميئل",
+    karmiel: "كرمئيل",
     atlit: "عتليت",
     jaffa_tel_aviv: "يافا تل أبيب",
     zemer: "زيمر",
