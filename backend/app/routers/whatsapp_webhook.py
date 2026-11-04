@@ -13,8 +13,11 @@ import os
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 from fastapi.responses import PlainTextResponse
+from starlette.concurrency import run_in_threadpool
 
+from app import db as app_db
 from app.integrations.whatsapp import log_webhook_event, verify_webhook_signature
+from app.routers.events import send_invitation_sms_fallback
 
 logger = logging.getLogger(__name__)
 
@@ -41,9 +44,34 @@ async def receive_webhook(request: Request) -> dict:
     if not verify_webhook_signature(body, request.headers.get("X-Hub-Signature-256")):
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Invalid signature")
     try:
-        log_webhook_event(json.loads(body))
+        failures = log_webhook_event(json.loads(body))
     except (ValueError, AttributeError, TypeError):
         # Still 200: a payload we can't read shouldn't make Meta retry it
         # (and eventually disable the webhook) — log it and move on.
         logger.exception("Unreadable WhatsApp webhook payload")
+        failures = []
+    # Undelivered invitations get the SMS instead. Thank-yous don't: their
+    # SMS text is written per guest in the dialog and isn't kept anywhere.
+    invites = [f for f in failures if f["kind"] == "invite"]
+    if invites:
+        await run_in_threadpool(_sms_fallbacks, invites)
     return {"success": True}
+
+
+def _sms_fallbacks(failures: list[dict]) -> None:
+    """Blocking DB + SMS work, off the event loop. One failure's error never
+    stops the others or the 200 Meta is waiting for."""
+    if app_db.SessionLocal is None:
+        logger.warning("No database configured — WhatsApp SMS fallback skipped")
+        return
+    db = app_db.SessionLocal()
+    try:
+        for f in failures:
+            try:
+                if send_invitation_sms_fallback(db, f["recipient_id"], f["wamid"]):
+                    logger.info("SMS fallback sent for undelivered WhatsApp invitation %s", f["recipient_id"])
+            except Exception:
+                db.rollback()
+                logger.exception("SMS fallback failed for %s", f["recipient_id"])
+    finally:
+        db.close()

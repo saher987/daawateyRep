@@ -597,26 +597,7 @@ def _send_invitation(
     its caller needs to know whether anything actually went out. Returns
     True if at least one channel (of whichever the recipient has) sent
     successfully."""
-    app_url = os.environ.get("APP_URL", "https://daawatey.com")
-    invitation_link = f"{app_url}/i/{recipient.personal_token}"
-
-    invitee_name = _resolve_display_name(
-        recipient.external_full_name,
-        recipient.nickname,
-        recipient.first_name,
-        recipient.last_name,
-        recipient.name_suffix,
-    ) or (recipient.phone or recipient.email or "")
-    # The event's host, not whoever is signed in: an admin adding guests to
-    # a client's event shouldn't appear as the one inviting them. The
-    # adding user's name is only the fallback for events with no host_name.
-    invitor_name = (
-        (event.host_name or "").strip()
-        or " ".join(p for p in (invited_by.nickname, invited_by.first_name, invited_by.last_name) if p)
-        or invited_by.email
-        or "المنظم"
-    )
-
+    invitee_name, invitor_name, invitation_link = _invitation_parts(event, recipient, invited_by)
     sent = False
 
     if recipient.phone:
@@ -630,16 +611,14 @@ def _send_invitation(
                 recipient.phone,
                 template_key,
                 body_values,
-                reference=recipient.id,
+                # "invite-" tells the webhook this one gets the SMS fallback
+                # if Meta later reports it undelivered.
+                reference=f"invite-{recipient.id}",
                 personal_token=recipient.personal_token,
             )
             sent = whatsapp_sent or sent
         if channel == "sms" or (channel == "whatsapp_then_sms" and not whatsapp_sent):
-            text = (
-                f"حضرة {invitee_name}، {event.invitation_greeting} {invitation_link}"
-                if event.invitation_greeting
-                else f"حضرة {invitee_name}، تمت دعوتكم من {invitor_name} لحضور {event.title}. {invitation_link}"
-            )
+            text = _invitation_sms_text(event, invitee_name, invitor_name, invitation_link)
             sent = send_sms(recipient.phone, text, reference=recipient.id) or sent
 
     if recipient.email:
@@ -655,6 +634,78 @@ def _send_invitation(
         )
         sent = send_email(recipient.email, f"دعوة لحضور {event.title}", html) or sent
 
+    return sent
+
+
+def _invitation_parts(
+    event: models.Event, recipient: models.InvitationRecipient, invited_by: models.User | None
+) -> tuple[str, str, str]:
+    """The guest's display name, the inviter's name and the guest's
+    invitation link, as every invitation channel words them."""
+    app_url = os.environ.get("APP_URL", "https://daawatey.com")
+    invitation_link = f"{app_url}/i/{recipient.personal_token}"
+    invitee_name = _resolve_display_name(
+        recipient.external_full_name,
+        recipient.nickname,
+        recipient.first_name,
+        recipient.last_name,
+        recipient.name_suffix,
+    ) or (recipient.phone or recipient.email or "")
+    # The event's host, not whoever is signed in: an admin adding guests to
+    # a client's event shouldn't appear as the one inviting them. The
+    # adding user's name is only the fallback for events with no host_name.
+    invitor_name = (event.host_name or "").strip()
+    if not invitor_name and invited_by is not None:
+        invitor_name = (
+            " ".join(p for p in (invited_by.nickname, invited_by.first_name, invited_by.last_name) if p)
+            or invited_by.email
+            or ""
+        )
+    return invitee_name, invitor_name or "المنظم", invitation_link
+
+
+def _invitation_sms_text(event: models.Event, invitee_name: str, invitor_name: str, invitation_link: str) -> str:
+    if event.invitation_greeting:
+        return f"حضرة {invitee_name}، {event.invitation_greeting} {invitation_link}"
+    return f"حضرة {invitee_name}، تمت دعوتكم من {invitor_name} لحضور {event.title}. {invitation_link}"
+
+
+def send_invitation_sms_fallback(db: Session, recipient_id: str, wamid: str | None) -> bool:
+    """Called by the WhatsApp webhook (routers/whatsapp_webhook.py) when
+    Meta reports a WhatsApp invitation it had accepted as undelivered
+    (e.g. 131049, its marketing-message limit): the guest gets the SMS
+    invitation instead, as they would have if the send itself had failed.
+
+    Only under INVITATION_CHANNEL=whatsapp_then_sms, and at most once per
+    failed WhatsApp message (sms_fallback_wamid), since Meta can deliver
+    the same webhook more than once. Returns whether an SMS went out."""
+    recipient = db.get(models.InvitationRecipient, recipient_id)
+    if recipient is None or not recipient.phone:
+        return False
+    if invitation_channel_for(recipient.phone) != "whatsapp_then_sms":
+        return False
+    if wamid and recipient.sms_fallback_wamid == wamid:
+        return False
+    event = recipient.event
+    creator = (
+        db.query(models.User).filter(models.User.firebase_uid == event.created_by_uid).first()
+        if event.created_by_uid
+        else None
+    )
+    invitee_name, invitor_name, invitation_link = _invitation_parts(event, recipient, creator)
+    text = _invitation_sms_text(event, invitee_name, invitor_name, invitation_link)
+    sent = send_sms(recipient.phone, text, reference=recipient.id)
+    recipient.sms_fallback_wamid = wamid
+    audit(
+        db,
+        None,
+        "recipient.whatsapp_sms_fallback",
+        "recipient",
+        recipient.id,
+        label=_recipient_label(recipient),
+        meta={"event_id": event.id, "event_title": event.title, "wamid": wamid, "sent": sent},
+    )
+    db.commit()
     return sent
 
 
@@ -791,7 +842,7 @@ def send_thanks(
             "event_owners": (event.thank_you_event_owners or "").strip(),
         }
         if all(values.values()):
-            sent = send_whatsapp_template(recipient.phone, "thanks", values, reference=recipient.id)
+            sent = send_whatsapp_template(recipient.phone, "thanks", values, reference=f"thanks-{recipient.id}")
             used = "whatsapp" if sent else "sms"
     if not sent and channel in ("sms", "whatsapp_then_sms"):
         sent = send_sms(recipient.phone, body.message.strip(), reference=recipient.id)
