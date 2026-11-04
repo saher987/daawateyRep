@@ -1,7 +1,7 @@
 // Keys are stored in DB; labels are translated in i18n.jsx.
 //
 // Deliberately Arab towns/cities in Israel only — not the "mixed" cities
-// (Jerusalem, Haifa, Jaffa, Acre, Lod, Ramla) or Jewish-majority cities
+// (Jerusalem, Acre, Lod, Ramla) or Jewish-majority cities
 // the list used to include. Matches this app's audience: Arabic is the
 // default language, and every previous entry was already an Arab or Arab-
 // majority locality except those mixed/Jewish ones. Grouped by region
@@ -15,6 +15,9 @@ export const CITY_KEYS = [
   "nof_hagalil",
   "haifa",
   "maalot",
+  "karmiel",
+  "atlit",
+  "jaffa_tel_aviv",
   "shfaram",
   "sakhnin",
   "arrabe",
@@ -43,6 +46,11 @@ export const CITY_KEYS = [
   "reineh",
   "tur_an",
   "kabul",
+  "yafa_an_naseriyye",
+  "ibillin",
+  "daburiyya",
+  "sajur",
+  "peki_in",
   // Golan Heights
   "majdal_shams",
   "buqata",
@@ -61,6 +69,7 @@ export const CITY_KEYS = [
   "ar_ara",
   "jatt",
   "musmus",
+  "zemer",
   // Negev
   "rahat",
   "tel_sheva",
