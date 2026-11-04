@@ -726,7 +726,7 @@ const translations = {
     reineh: "الرينة",
     tur_an: "طرعان",
     kabul: "كابول",
-    yafa_an_naseriyye: "يفيع",
+    yafa_an_naseriyye: "يافا الناصرة (يفيع)",
     ibillin: "عبلين",
     daburiyya: "دبورية",
     sajur: "ساجور",
