@@ -275,6 +275,32 @@ class ThankYouSend(BaseModel):
     message: str = Field(min_length=1, max_length=1000)
 
 
+class ThankYouBatchItem(BaseModel):
+    recipient_id: str
+    # Already filled in for this guest by the frontend, as in ThankYouSend.
+    message: str = Field(min_length=1, max_length=1000)
+
+
+class ThankYouBatchSend(BaseModel):
+    """BulkThankYouDialog.jsx: one batch of thank-yous. Kept small so a
+    batch's request finishes well within the server's timeout — each item
+    is a WhatsApp/SMS provider call."""
+
+    items: list[ThankYouBatchItem] = Field(min_length=1, max_length=25)
+
+
+class ThankYouBatchItemResult(BaseModel):
+    recipient_id: str
+    success: bool
+    channel: Literal["whatsapp", "sms"] | None = None
+    # Why the guest was skipped (not this event's, not accepted, no phone).
+    error: str | None = None
+
+
+class ThankYouBatchResult(BaseModel):
+    results: list[ThankYouBatchItemResult]
+
+
 class RecipientOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

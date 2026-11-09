@@ -828,10 +828,33 @@ def send_thanks(
     body.message, the event's hand-written thank-you already filled in for
     this guest by the frontend (also the fallback if WhatsApp fails)."""
     recipient = _get_recipient_or_404(db, recipient_id)
+    error = _thanks_ineligible_reason(recipient)
+    if error:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=error)
+    sent, used = _send_thanks_to(db, user, recipient, body.message)
+    db.commit()
+    return {"success": sent, "channel": used}
+
+
+def _thanks_ineligible_reason(recipient: models.InvitationRecipient) -> str | None:
     if recipient.rsvp_status != models.RsvpStatus.accepted:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Thank-you is only sent to guests who accepted")
+        return "Thank-you is only sent to guests who accepted"
     if not recipient.phone:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Recipient has no phone number")
+        return "Recipient has no phone number"
+    return None
+
+
+def _send_thanks_to(
+    db: Session,
+    user: models.User,
+    recipient: models.InvitationRecipient,
+    message: str,
+    *,
+    batch: bool = False,
+) -> tuple[bool, str]:
+    """Sends one guest's thank-you (channel rule in send_thanks) and adds
+    its audit row. Doesn't commit — send_thanks commits per guest,
+    send_thanks_batch once per batch. Returns (sent, channel used)."""
     event = recipient.event
     channel = invitation_channel_for(recipient.phone)
     sent = False
@@ -845,7 +868,10 @@ def send_thanks(
             sent = send_whatsapp_template(recipient.phone, "thanks", values, reference=f"thanks-{recipient.id}")
             used = "whatsapp" if sent else "sms"
     if not sent and channel in ("sms", "whatsapp_then_sms"):
-        sent = send_sms(recipient.phone, body.message.strip(), reference=recipient.id)
+        sent = send_sms(recipient.phone, message.strip(), reference=recipient.id)
+    meta = {"event_id": event.id, "event_title": event.title, "sent": sent, "channel": used}
+    if batch:
+        meta["batch"] = True
     audit(
         db,
         user,
@@ -853,10 +879,45 @@ def send_thanks(
         "recipient",
         recipient.id,
         label=_recipient_label(recipient),
-        meta={"event_id": event.id, "event_title": event.title, "sent": sent, "channel": used},
+        meta=meta,
     )
+    return sent, used
+
+
+@router.post("/events/{event_id}/send-thanks-batch", response_model=schemas.ThankYouBatchResult)
+def send_thanks_batch(
+    event_id: str,
+    body: schemas.ThankYouBatchSend,
+    user: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
+    db: Session = Depends(get_db),
+) -> schemas.ThankYouBatchResult:
+    """BulkThankYouDialog.jsx: thank one batch of the event's accepted
+    guests. The dialog splits the whole list into small batches and calls
+    this once per batch, so it can show progress, pause and cancel between
+    batches, and so no single request runs long enough to time out.
+
+    Each item is sent exactly like send_thanks (same channels, same audit
+    row). A guest who can't be thanked (not this event's, not accepted, no
+    phone) gets an error in their result instead of failing the batch."""
+    event = _get_event_or_404(db, event_id)
+    ids = [item.recipient_id for item in body.items]
+    found = {
+        r.id: r
+        for r in db.query(models.InvitationRecipient)
+        .filter(models.InvitationRecipient.id.in_(ids), models.InvitationRecipient.event_id == event.id)
+        .all()
+    }
+    results: list[schemas.ThankYouBatchItemResult] = []
+    for item in body.items:
+        recipient = found.get(item.recipient_id)
+        error = "Recipient not found" if recipient is None else _thanks_ineligible_reason(recipient)
+        if error:
+            results.append(schemas.ThankYouBatchItemResult(recipient_id=item.recipient_id, success=False, error=error))
+            continue
+        sent, used = _send_thanks_to(db, user, recipient, item.message, batch=True)
+        results.append(schemas.ThankYouBatchItemResult(recipient_id=recipient.id, success=sent, channel=used))
     db.commit()
-    return {"success": sent, "channel": used}
+    return schemas.ThankYouBatchResult(results=results)
 
 
 # Event reminders — times are shown in Israel time whatever the server's zone.
