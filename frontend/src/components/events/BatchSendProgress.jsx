@@ -35,7 +35,7 @@ export function ConfirmBatchSend({ question, count, batchSize, onConfirm, onBack
 
 const formatDuration = (ms) => {
   const s = Math.max(1, Math.round(ms / 1000));
-  return s < 60 ? `${s}s` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 };
 
 const TILE = {
