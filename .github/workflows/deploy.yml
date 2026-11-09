@@ -119,6 +119,12 @@ jobs:
           if [ -n "${{ secrets.WHATSAPP_TEMPLATE_THANKS }}" ]; then
             FLAGS="$FLAGS##WHATSAPP_TEMPLATE_THANKS=${{ secrets.WHATSAPP_TEMPLATE_THANKS }}"
           fi
+          if [ -n "${{ secrets.WHATSAPP_TEMPLATE_REMINDER_ACCEPTED }}" ]; then
+            FLAGS="$FLAGS##WHATSAPP_TEMPLATE_REMINDER_ACCEPTED=${{ secrets.WHATSAPP_TEMPLATE_REMINDER_ACCEPTED }}"
+          fi
+          if [ -n "${{ secrets.WHATSAPP_TEMPLATE_REMINDER_PENDING }}" ]; then
+            FLAGS="$FLAGS##WHATSAPP_TEMPLATE_REMINDER_PENDING=${{ secrets.WHATSAPP_TEMPLATE_REMINDER_PENDING }}"
+          fi
           if [ -n "${{ secrets.WHATSAPP_WEBHOOK_VERIFY_TOKEN }}" ]; then
             FLAGS="$FLAGS##WHATSAPP_WEBHOOK_VERIFY_TOKEN=${{ secrets.WHATSAPP_WEBHOOK_VERIFY_TOKEN }}"
           fi

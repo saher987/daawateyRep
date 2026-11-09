@@ -87,10 +87,16 @@ third-party accounts needed, just the existing API keys.
 
 ### 5. WhatsApp invitations (optional, either environment)
 
-Invitations (adding a guest, resending an invitation) can go out over the
-WhatsApp Cloud API instead of, or before, Pulseem SMS. OTP, thank-you
-messages, reminders and event-update notices always stay on SMS. Leaving
-all of this unset keeps invitations on SMS exactly as before.
+Invitations (adding a guest, resending an invitation), reminders and
+thank-you messages can go out over the WhatsApp Cloud API instead of, or
+before, Pulseem SMS — all three follow `INVITATION_CHANNEL`. OTP and
+event-update notices always stay on SMS. Leaving all of this unset keeps
+everything on SMS exactly as before.
+
+Each kind of message needs its own approved template in WhatsApp Manager
+(names and variables in the table below). A template that doesn't exist or
+isn't approved yet makes Meta reject the send; with `whatsapp_then_sms` the
+guest then gets the SMS instead.
 
 The token lives in Secret Manager in `daawatey-prod`, like the other keys
 (use a permanent System User token from Meta Business Settings, not the
@@ -123,10 +129,13 @@ spaces):
 | `WHATSAPP_TEMPLATE_CUSTOM` | approved template name for invitations with the event's custom greeting (default `daawatey_invitation_custom`) — body variables: guest name, greeting |
 | `WHATSAPP_TEMPLATE_UNIVERSAL` | name of the universal template (default `daawatey_invitation_universal`: `حضرة {{1}}، بكل محبة وتقدير،` / `{{2}}` / fixed closing). **Every invitation uses it by default**: `{{2}}` is the event's WhatsApp invitation text (a field of its own, apart from the SMS text), or a short default sentence when it's empty — wording changes need only a deploy, not a new Meta review. `off` falls back to the per-type templates above |
 | `WHATSAPP_TEMPLATE_THANKS` | thank-you template name (default `daawatey_thanks_ar`) — named variables `{{event_name}}`, `{{event_owners}}`, filled only from the two thank-you fields set by hand in the event (an event without both is thanked by SMS). Thank-yous follow `INVITATION_CHANNEL` and `WHATSAPP_TEST_PHONES` like invitations |
+| `WHATSAPP_TEMPLATE_REMINDER_ACCEPTED` | reminder template for guests who accepted (default `daawatey_reminder_accepted`), Utility. Body: `حضرة {{1}}، نذكّركم بموعد مناسبتكم:` / `{{2}}` / `الرجاء الضغط على الرابط أدناه لعرض التفاصيل.` — `{{1}}` guest name, `{{2}}` the reminder text from the dialog. URL button `عرض التفاصيل` |
+| `WHATSAPP_TEMPLATE_REMINDER_PENDING` | reminder template for guests who haven't replied or aren't sure (default `daawatey_reminder_pending`), same as above but ending `…لتأكيد الحضور.`, URL button `تأكيد الحضور` |
 | `WHATSAPP_TEMPLATE_LANG` | template language code (default `ar`) |
 
-Both templates need a dynamic URL button `https://<APP_URL domain>/i/{{1}}`
-— the backend fills in only the guest's personal token. Changing any of
+Every invitation and reminder template needs a dynamic URL button
+`https://<APP_URL domain>/i/{{1}}` — the backend fills in only the guest's
+personal token. The thank-you template has no button. Changing any of
 these takes a redeploy: `--set-env-vars` replaces the service's whole env,
 so a value edited by hand in the Cloud Run console is lost on the next
 deploy.
@@ -158,7 +167,12 @@ needs no user login.
 **SMS fallback:** with `INVITATION_CHANNEL=whatsapp_then_sms`, an invitation
 Meta accepted but then reports `failed` (e.g. `131049`, its marketing-message
 limit) is sent to the guest by SMS instead, once per failed message. Logged
-as `SMS fallback sent ...` and in the audit log. Thank-yous don't fall back.
+as `SMS fallback sent ...` and in the audit log. Reminders and thank-yous
+fall back the same way: a reminder's SMS is rebuilt from the event's saved
+reminder text, a thank-you's is the exact SMS text the dialog filled in
+(saved in `invitation_recipients.thanks_sms`). A thank-you that ends up not
+reaching the guest at all has its "thanked" mark cleared, so the bulk
+thank-you doesn't skip them next time.
 The webhook must be connected to the WhatsApp Business Account itself, not
 only configured in the App Dashboard: `POST /<WABA ID>/subscribed_apps` with
 the token (the WABA ID is the `asset_id` in WhatsApp Manager URLs).

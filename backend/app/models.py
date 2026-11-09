@@ -350,6 +350,10 @@ class InvitationRecipient(Base):
     # When the last thank-you to this guest actually went out (WhatsApp or
     # SMS) — the bulk thank-you skips already-thanked guests by default.
     thanked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # The SMS text of the last thank-you that went out by WhatsApp, exactly
+    # as filled in by the dialog: if Meta later reports that WhatsApp as
+    # undelivered, the webhook sends this instead (send_thanks_sms_fallback).
+    thanks_sms: Mapped[str | None] = mapped_column(Text, nullable=True)
     phone_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     verified_phone: Mapped[str | None] = mapped_column(String, nullable=True)
     rsvp_status: Mapped[RsvpStatus] = mapped_column(
