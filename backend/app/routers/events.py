@@ -1034,6 +1034,61 @@ def send_reminder_sms_fallback(db: Session, recipient_id: str, wamid: str | None
     return sent
 
 
+def _remind_recipient(
+    db: Session,
+    event: models.Event,
+    recipient: models.InvitationRecipient,
+    linked_user: models.User | None,
+    *,
+    details: str | None,
+    message_accepted: str | None = None,
+    message_pending: str | None = None,
+    sms_app_users: bool = False,
+    now: datetime,
+) -> tuple[bool, bool, bool]:
+    """Sends one guest's reminder by the rules in send_reminders' docstring
+    and, when anything went out, bumps their reminder_count and
+    last_reminded_at. Doesn't commit. Returns (pushed, whatsapp, sms)."""
+    if details is not None:
+        messages = _reminder_messages(details, event, recipient)
+        push_text, sms_text = messages["push"], messages["sms"]
+    else:
+        template = message_accepted if recipient.rsvp_status == models.RsvpStatus.accepted else message_pending
+        messages = None
+        push_text = sms_text = _fill_reminder(template, event, recipient)
+
+    pushed = False
+    if linked_user:
+        _notify_recipient_in_app(db, recipient, title="تذكير", message=push_text, event_id=event.id)
+        pushed = send_push_to_user(
+            db,
+            linked_user,
+            title="🔔 تذكير",
+            body=push_text,
+            data={"path": f"/i/{recipient.personal_token}"},
+        )
+    whatsapp_sent = texted = False
+    if recipient.phone and (not pushed or sms_app_users):
+        channel = invitation_channel_for(recipient.phone) if messages else "sms"
+        if channel in ("whatsapp", "whatsapp_then_sms"):
+            whatsapp_sent = send_whatsapp_template(
+                recipient.phone,
+                messages["template_key"],
+                messages["template_values"],
+                # "remind-" tells the webhook this one gets the SMS
+                # fallback if Meta later reports it undelivered.
+                reference=f"remind-{recipient.id}",
+                personal_token=recipient.personal_token,
+            )
+        if channel == "sms" or (channel == "whatsapp_then_sms" and not whatsapp_sent):
+            texted = send_sms(recipient.phone, sms_text, reference=recipient.id)
+
+    if pushed or whatsapp_sent or texted:
+        recipient.reminder_count = (recipient.reminder_count or 0) + 1
+        recipient.last_reminded_at = now
+    return pushed, whatsapp_sent, texted
+
+
 @router.post("/events/{event_id}/send-reminders", response_model=schemas.ReminderResult)
 def send_reminders(
     event_id: str,
@@ -1088,47 +1143,18 @@ def send_reminders(
             result["skipped_no_contact"] += 1
             continue
 
-        if body.details is not None:
-            messages = _reminder_messages(body.details, event, recipient)
-            push_text, sms_text = messages["push"], messages["sms"]
-        else:
-            template = (
-                body.message_accepted
-                if recipient.rsvp_status == models.RsvpStatus.accepted
-                else body.message_pending
-            )
-            messages = None
-            push_text = sms_text = _fill_reminder(template, event, recipient)
-
-        pushed = False
-        if linked_user:
-            _notify_recipient_in_app(db, recipient, title="تذكير", message=push_text, event_id=event.id)
-            pushed = send_push_to_user(
-                db,
-                linked_user,
-                title="🔔 تذكير",
-                body=push_text,
-                data={"path": f"/i/{recipient.personal_token}"},
-            )
-        whatsapp_sent = texted = False
-        if recipient.phone and (not pushed or body.sms_app_users):
-            channel = invitation_channel_for(recipient.phone) if messages else "sms"
-            if channel in ("whatsapp", "whatsapp_then_sms"):
-                whatsapp_sent = send_whatsapp_template(
-                    recipient.phone,
-                    messages["template_key"],
-                    messages["template_values"],
-                    # "remind-" tells the webhook this one gets the SMS
-                    # fallback if Meta later reports it undelivered.
-                    reference=f"remind-{recipient.id}",
-                    personal_token=recipient.personal_token,
-                )
-            if channel == "sms" or (channel == "whatsapp_then_sms" and not whatsapp_sent):
-                texted = send_sms(recipient.phone, sms_text, reference=recipient.id)
-
+        pushed, whatsapp_sent, texted = _remind_recipient(
+            db,
+            event,
+            recipient,
+            linked_user,
+            details=body.details,
+            message_accepted=body.message_accepted,
+            message_pending=body.message_pending,
+            sms_app_users=body.sms_app_users,
+            now=now,
+        )
         if pushed or whatsapp_sent or texted:
-            recipient.reminder_count = (recipient.reminder_count or 0) + 1
-            recipient.last_reminded_at = now
             result["reminded"] += 1
             result["push"] += int(pushed)
             result["whatsapp"] += int(whatsapp_sent)
@@ -1146,6 +1172,80 @@ def send_reminders(
     )
     db.commit()
     return schemas.ReminderResult(**result)
+
+
+@router.post("/events/{event_id}/send-reminders-batch", response_model=schemas.ReminderBatchResult)
+def send_reminders_batch(
+    event_id: str,
+    body: schemas.ReminderBatchSend,
+    user: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
+    db: Session = Depends(get_db),
+) -> schemas.ReminderBatchResult:
+    """ReminderDialog.jsx: remind one batch of guests. The dialog picks who
+    gets it (by RSVP status, skipping already-reminded guests unless told
+    otherwise — the same choice send_reminders makes) and calls this once
+    per batch, so it can show progress and pause or stop between batches.
+
+    Each guest is reminded exactly as in send_reminders (_remind_recipient).
+    A guest who can't be reminded (not this event's, declined, no app
+    account and no phone) gets an error in their result instead of failing
+    the batch. The reminder text is saved on the event for next time."""
+    event = _get_event_or_404(db, event_id)
+    if event.date and event.date <= datetime.now(timezone.utc):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="The event has already started")
+    event.reminder_details = body.details
+
+    found = {
+        r.id: r
+        for r in db.query(models.InvitationRecipient)
+        .filter(
+            models.InvitationRecipient.id.in_(body.recipient_ids),
+            models.InvitationRecipient.event_id == event.id,
+        )
+        .all()
+    }
+    now = datetime.now(timezone.utc)
+    results: list[schemas.ReminderBatchItemResult] = []
+    counts = dict(reminded=0, push=0, whatsapp=0, sms=0, failed=0)
+    for recipient_id in body.recipient_ids:
+        recipient = found.get(recipient_id)
+        linked_user = db.get(models.User, recipient.user_id) if recipient and recipient.user_id else None
+        if recipient is None:
+            error = "Recipient not found"
+        elif recipient.rsvp_status == models.RsvpStatus.declined:
+            error = "Declined guests aren't reminded"
+        elif not linked_user and not recipient.phone:
+            error = "Recipient has no app account or phone number"
+        else:
+            error = None
+        if error:
+            counts["failed"] += 1
+            results.append(schemas.ReminderBatchItemResult(recipient_id=recipient_id, success=False, error=error))
+            continue
+        pushed, whatsapp_sent, texted = _remind_recipient(
+            db, event, recipient, linked_user, details=body.details, sms_app_users=body.sms_app_users, now=now
+        )
+        success = pushed or whatsapp_sent or texted
+        counts["reminded" if success else "failed"] += 1
+        counts["push"] += int(pushed)
+        counts["whatsapp"] += int(whatsapp_sent)
+        counts["sms"] += int(texted)
+        results.append(
+            schemas.ReminderBatchItemResult(
+                recipient_id=recipient.id, success=success, push=pushed, whatsapp=whatsapp_sent, sms=texted
+            )
+        )
+    audit(
+        db,
+        user,
+        "event.send_reminders",
+        "event",
+        event.id,
+        label=event.title,
+        meta={**counts, "batch": True},
+    )
+    db.commit()
+    return schemas.ReminderBatchResult(results=results)
 
 
 def _attach_towns(
