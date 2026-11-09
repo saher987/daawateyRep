@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Loader2, Send } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { formatDistanceToNow } from "date-fns";
+import { ar, he } from "date-fns/locale";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -7,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { base44 } from "@/api/base44Client";
 import { useT } from "@/lib/i18n";
+import { useAuth } from "@/lib/AuthContext";
 import { useBackButton } from "@/hooks/useBackButton";
 import { buildThankYouMessage, smsPartCount, DEFAULT_THANK_YOU_TEMPLATE, fillWhatsappThanks } from "@/lib/thankYouMessage";
 
@@ -23,6 +27,9 @@ import { buildThankYouMessage, smsPartCount, DEFAULT_THANK_YOU_TEMPLATE, fillWha
 export default function ThankYouDialog({ open, onOpenChange, recipient, template, whatsappThanks }) {
   const t = useT();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const dateLocale = user?.preferred_language === "he" ? he : ar;
   const [sending, setSending] = useState(false);
   const [text, setText] = useState("");
   useBackButton({ isOpen: open, onClose: () => onOpenChange(false) });
@@ -42,6 +49,7 @@ export default function ThankYouDialog({ open, onOpenChange, recipient, template
       const res = await base44.functions.invoke("sendThankYouSms", { recipientId: recipient.id, message });
       if (res?.data?.success) {
         toast({ title: res.data.channel === "whatsapp" ? t.thankYouSentWhatsapp : t.thankYouSent });
+        queryClient.invalidateQueries({ queryKey: ["event-recipients", recipient.event_id] });
         onOpenChange(false);
       } else {
         // Request went through but the SMS provider didn't send it (e.g.
@@ -61,6 +69,15 @@ export default function ThankYouDialog({ open, onOpenChange, recipient, template
         <DialogHeader>
           <DialogTitle>{t.sendThankYou}</DialogTitle>
         </DialogHeader>
+
+        {recipient.thanked_at && (
+          <p className="rounded-xl bg-warning/15 p-2.5 text-sm">
+            {t.thankYouAlreadySent.replace(
+              "{time}",
+              formatDistanceToNow(new Date(recipient.thanked_at), { addSuffix: true, locale: dateLocale })
+            )}
+          </p>
+        )}
 
         <div className="space-y-2">
           <Label>{t.thankYouSection}</Label>

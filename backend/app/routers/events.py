@@ -854,7 +854,8 @@ def _send_thanks_to(
 ) -> tuple[bool, str]:
     """Sends one guest's thank-you (channel rule in send_thanks) and adds
     its audit row. Doesn't commit — send_thanks commits per guest,
-    send_thanks_batch once per batch. Returns (sent, channel used)."""
+    send_thanks_batch once per batch. Sets the guest's thanked_at when it
+    went out. Returns (sent, channel used)."""
     event = recipient.event
     channel = invitation_channel_for(recipient.phone)
     sent = False
@@ -869,6 +870,8 @@ def _send_thanks_to(
             used = "whatsapp" if sent else "sms"
     if not sent and channel in ("sms", "whatsapp_then_sms"):
         sent = send_sms(recipient.phone, message.strip(), reference=recipient.id)
+    if sent:
+        recipient.thanked_at = datetime.now(timezone.utc)
     meta = {"event_id": event.id, "event_title": event.title, "sent": sent, "channel": used}
     if batch:
         meta["batch"] = True
@@ -897,7 +900,9 @@ def send_thanks_batch(
     batches, and so no single request runs long enough to time out.
 
     Each item is sent exactly like send_thanks (same channels, same audit
-    row). A guest who can't be thanked (not this event's, not accepted, no
+    row, thanked_at set). The dialog leaves out already-thanked guests
+    unless told otherwise; this endpoint sends to whoever it's given. A
+    guest who can't be thanked (not this event's, not accepted, no
     phone) gets an error in their result instead of failing the batch."""
     event = _get_event_or_404(db, event_id)
     ids = [item.recipient_id for item in body.items]

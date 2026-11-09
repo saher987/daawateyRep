@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Heart, Loader2, Pause, Play, RotateCcw, Square } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { base44 } from "@/api/base44Client";
@@ -16,6 +18,8 @@ import { buildThankYouMessage, smsPartCount, DEFAULT_THANK_YOU_TEMPLATE, fillWha
 // sent one request at a time (events.py send_thanks_batch), so the dialog
 // can show live progress per batch and pause or stop between batches.
 // Each message is filled in per guest here, same as ThankYouDialog.
+// Guests already thanked (thanked_at, set by the backend on every send
+// that went out) are left out unless the admin unticks the skip option.
 //
 // What a guest gets (WhatsApp template or SMS) follows the same rule as
 // the single send — see ThankYouDialog's comment.
@@ -34,7 +38,12 @@ const formatDuration = (ms) => {
 
 export default function BulkThankYouDialog({ open, onOpenChange, recipients, template, whatsappThanks, eventId }) {
   const t = useT();
+  const queryClient = useQueryClient();
   const [text, setText] = useState("");
+  const [skipThanked, setSkipThanked] = useState(true);
+  // The list this run sends to, fixed at Send: the guest list refreshes as
+  // thanked_at changes, which mustn't shift the totals mid-run.
+  const [runTargets, setRunTargets] = useState([]);
   // compose → running ⇄ paused → done | stopped
   const [phase, setPhase] = useState("compose");
   const [pausing, setPausing] = useState(false);
@@ -51,15 +60,19 @@ export default function BulkThankYouDialog({ open, onOpenChange, recipients, tem
   const requestClose = () => { if (!running) onOpenChange(false); };
   useBackButton({ isOpen: open, onClose: requestClose });
 
-  const { targets, noPhone } = useMemo(() => {
+  const { eligible, noPhone } = useMemo(() => {
     const accepted = recipients.filter(r => r.rsvp_status === "accepted");
-    return { targets: accepted.filter(r => r.phone), noPhone: accepted.filter(r => !r.phone).length };
+    return { eligible: accepted.filter(r => r.phone), noPhone: accepted.filter(r => !r.phone).length };
   }, [recipients]);
+  const alreadyThanked = eligible.filter(r => r.thanked_at).length;
+  const toSend = skipThanked ? eligible.filter(r => !r.thanked_at) : eligible;
+  const targets = phase === "compose" ? toSend : runTargets;
 
   useEffect(() => {
     // A paused run survives closing and reopening the dialog.
     if (!open || running || phase === "paused") return;
     setText(template || DEFAULT_THANK_YOU_TEMPLATE);
+    setSkipThanked(true);
     setPhase("compose");
     setResults({});
     setBatches([]);
@@ -72,6 +85,13 @@ export default function BulkThankYouDialog({ open, onOpenChange, recipients, tem
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [running]);
+
+  // Once sending stops (paused, done or stopped), refresh the guest list so
+  // the thanked marks and the skip count are current.
+  useEffect(() => {
+    if (phase === "compose" || running) return;
+    queryClient.invalidateQueries({ queryKey: ["event-recipients", eventId] });
+  }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const runFrom = async (runBatches, startIndex) => {
     const c = control.current;
@@ -130,7 +150,8 @@ export default function BulkThankYouDialog({ open, onOpenChange, recipients, tem
   const send = () => {
     control.current.text = text;
     setResults({});
-    start(targets);
+    setRunTargets(toSend);
+    start(toSend);
   };
 
   const retryFailed = () => {
@@ -208,8 +229,16 @@ export default function BulkThankYouDialog({ open, onOpenChange, recipients, tem
               <p className="text-xs text-muted-foreground">
                 {t.bulkThanksBatchesInfo.replace("{size}", BATCH_SIZE).replace("{batches}", batchCount)}
                 {noPhone > 0 && ` · ${t.bulkThanksNoPhone.replace("{count}", noPhone)}`}
+                {skipThanked && alreadyThanked > 0 && ` · ${t.bulkThanksSkippedCount.replace("{count}", alreadyThanked)}`}
               </p>
+              {total === 0 && alreadyThanked > 0 && <p className="text-xs">{t.bulkThanksAllThanked}</p>}
             </div>
+            {alreadyThanked > 0 && (
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <Checkbox checked={skipThanked} onCheckedChange={v => setSkipThanked(!!v)} />
+                {t.bulkThanksSkipThanked}
+              </label>
+            )}
 
             <div className="space-y-2">
               <Label>{t.thankYouSection}</Label>

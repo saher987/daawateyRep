@@ -319,6 +319,7 @@ class RecipientOut(BaseModel):
     sent_count: int = 0
     reminder_count: int = 0
     last_reminded_at: datetime | None = None
+    thanked_at: datetime | None = None
     phone_verified: bool
     rsvp_status: RsvpStatus
     rsvp_guests_count: int | None
