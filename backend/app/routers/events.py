@@ -868,6 +868,10 @@ def _send_thanks_to(
         if all(values.values()):
             sent = send_whatsapp_template(recipient.phone, "thanks", values, reference=f"thanks-{recipient.id}")
             used = "whatsapp" if sent else "sms"
+            if sent:
+                # Meta's 200 is only "accepted": kept for the webhook's
+                # SMS fallback if it later reports the message undelivered.
+                recipient.thanks_sms = message.strip()
     if not sent and channel in ("sms", "whatsapp_then_sms"):
         sent = send_sms(recipient.phone, message.strip(), reference=recipient.id)
     if sent:
@@ -1002,6 +1006,42 @@ def _reminder_messages(details: str, event: models.Event, recipient: models.Invi
         "sms": f"{opening} {_REMINDER_SMS_CLOSING[group]} {app_url}/i/{recipient.personal_token}",
         "push": opening,
     }
+
+
+def send_thanks_sms_fallback(db: Session, recipient_id: str, wamid: str | None) -> bool:
+    """The thank-you counterpart of send_invitation_sms_fallback: Meta
+    reported a WhatsApp thank-you it had accepted as undelivered (often
+    131049, its marketing-message limit), so the guest gets the SMS
+    thank-you instead — the text the dialog filled in for them, saved in
+    thanks_sms when the WhatsApp went out. Same rules: whatsapp_then_sms
+    only, once per failed message.
+
+    If no SMS goes out (another channel setting, no saved text, or the SMS
+    itself failed), thanked_at is cleared: the guest never got a thank-you,
+    so the bulk thank-you mustn't skip them as already thanked."""
+    recipient = db.get(models.InvitationRecipient, recipient_id)
+    if recipient is None:
+        return False
+    if wamid and recipient.sms_fallback_wamid == wamid:
+        return False
+    sent = False
+    if recipient.phone and recipient.thanks_sms and invitation_channel_for(recipient.phone) == "whatsapp_then_sms":
+        sent = send_sms(recipient.phone, recipient.thanks_sms, reference=recipient.id)
+    if not sent:
+        recipient.thanked_at = None
+    recipient.sms_fallback_wamid = wamid
+    event = recipient.event
+    audit(
+        db,
+        None,
+        "recipient.whatsapp_sms_fallback",
+        "recipient",
+        recipient.id,
+        label=_recipient_label(recipient),
+        meta={"event_id": event.id, "event_title": event.title, "wamid": wamid, "sent": sent, "kind": "thanks"},
+    )
+    db.commit()
+    return sent
 
 
 def send_reminder_sms_fallback(db: Session, recipient_id: str, wamid: str | None) -> bool:
