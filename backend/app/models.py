@@ -347,6 +347,9 @@ class InvitationRecipient(Base):
     # last one did — the reminder dialog skips already-reminded guests.
     reminder_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     last_reminded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # When the last thank-you to this guest actually went out (WhatsApp or
+    # SMS) — the bulk thank-you skips already-thanked guests by default.
+    thanked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     phone_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     verified_phone: Mapped[str | None] = mapped_column(String, nullable=True)
     rsvp_status: Mapped[RsvpStatus] = mapped_column(

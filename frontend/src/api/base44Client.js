@@ -484,6 +484,18 @@ const functionHandlers = {
       body: { message },
     })
   },
+  async sendThankYouBatch({ eventId, items }) {
+    return request(`/api/events/${eventId}/send-thanks-batch`, {
+      method: 'POST',
+      body: { items: items.map(({ recipientId, message }) => ({ recipient_id: recipientId, message })) },
+    })
+  },
+  async sendReminderBatch({ eventId, recipientIds, details, smsAppUsers }) {
+    return request(`/api/events/${eventId}/send-reminders-batch`, {
+      method: 'POST',
+      body: { recipient_ids: recipientIds, details, sms_app_users: smsAppUsers },
+    })
+  },
   async sendEventReminders({ eventId, ...body }) {
     return request(`/api/events/${eventId}/send-reminders`, { method: 'POST', body })
   },

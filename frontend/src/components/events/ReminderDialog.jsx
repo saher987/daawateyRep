@@ -1,15 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { BellRing, ExternalLink, Loader2 } from "lucide-react";
+import { BellRing, ExternalLink } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/components/ui/use-toast";
 import { base44 } from "@/api/base44Client";
 import { useT } from "@/lib/i18n";
 import { useBackButton } from "@/hooks/useBackButton";
+import { useBatchSend } from "@/hooks/useBatchSend";
+import BatchSendProgress, { ConfirmBatchSend } from "@/components/events/BatchSendProgress";
 import { smsPartCount } from "@/lib/thankYouMessage";
 import { DEFAULT_REMINDER_DETAILS, DETAILS_PLACEHOLDERS, buildReminder } from "@/lib/reminderMessage";
 
@@ -20,23 +21,49 @@ import { DEFAULT_REMINDER_DETAILS, DETAILS_PLACEHOLDERS, buildReminder } from "@
 // guests. The backend does the sending: push for guests with the app (a
 // phone message if the push reaches no device), and for everyone else the
 // WhatsApp reminder template or SMS, per INVITATION_CHANNEL.
+//
+// Like the bulk thank-you: Send asks for confirmation, then the guests go
+// out in batches (useBatchSend → events.py send_reminders_batch) with live
+// progress, pause / stop between batches and retry for the failed.
 const AUDIENCES = ["accepted", "pending", "maybe"];
 
 export default function ReminderDialog({ open, onOpenChange, event, recipients }) {
   const t = useT();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [statuses, setStatuses] = useState(() => new Set(AUDIENCES));
   const [skipReminded, setSkipReminded] = useState(true);
   const [smsAppUsers, setSmsAppUsers] = useState(false);
   const [details, setDetails] = useState("");
-  const [sending, setSending] = useState(false);
-  useBackButton({ isOpen: open, onClose: () => onOpenChange(false) });
+  const [confirming, setConfirming] = useState(false);
+
+  const sender = useBatchSend(async (batch, { details: text, smsAppUsers: alsoSms }) => {
+    const { data } = await base44.functions.invoke("sendReminderBatch", {
+      eventId: event.id,
+      recipientIds: batch.map(r => r.id),
+      details: text,
+      smsAppUsers: alsoSms,
+    });
+    return data.results;
+  });
+  const { phase, running } = sender;
+  const requestClose = () => { if (!running) onOpenChange(false); };
+  useBackButton({ isOpen: open, onClose: requestClose });
 
   useEffect(() => {
-    if (!open) return;
+    // A paused run survives closing and reopening the dialog.
+    if (!open || running || phase === "paused") return;
     setDetails(event?.reminder_details || DEFAULT_REMINDER_DETAILS);
-  }, [open, event]);
+    setConfirming(false);
+    sender.reset();
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Once sending stops, refresh the guest list (reminder counts) and the
+  // event (its saved reminder text).
+  useEffect(() => {
+    if (phase === "idle" || running) return;
+    queryClient.invalidateQueries({ queryKey: ["event-recipients", event.id] });
+    queryClient.invalidateQueries({ queryKey: ["event", event.id] });
+  }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const audienceLabel = { accepted: t.accepted, pending: t.pending, maybe: t.statusMaybe };
   const countByStatus = useMemo(
@@ -66,33 +93,15 @@ export default function ReminderDialog({ open, onOpenChange, event, recipients }
     return next;
   });
 
-  const send = async () => {
-    setSending(true);
-    try {
-      const { data } = await base44.functions.invoke("sendEventReminders", {
-        eventId: event.id,
-        statuses: [...statuses],
-        details: details.trim(),
-        include_already_reminded: !skipReminded,
-        sms_app_users: smsAppUsers,
-      });
-      toast({
-        title: t.reminderSentTitle.replace("{count}", data.reminded),
-        description: [
-          t.reminderSentChannels.replace("{push}", data.push).replace("{whatsapp}", data.whatsapp ?? 0).replace("{sms}", data.sms),
-          data.failed ? t.reminderFailedCount.replace("{count}", data.failed) : null,
-        ].filter(Boolean).join(" · "),
-        variant: data.reminded === 0 && data.failed > 0 ? "destructive" : undefined,
-      });
-      queryClient.invalidateQueries({ queryKey: ["event-recipients", event.id] });
-      queryClient.invalidateQueries({ queryKey: ["event", event.id] });
-      onOpenChange(false);
-    } catch (err) {
-      toast({ title: t.addError, description: err.message, variant: "destructive" });
-    } finally {
-      setSending(false);
-    }
+  const confirmSend = () => {
+    setConfirming(false);
+    sender.start(targets, { details: details.trim(), smsAppUsers });
   };
+
+  const channelTotals = sender.resultList.reduce(
+    (acc, r) => ({ push: acc.push + (r.push ? 1 : 0), whatsapp: acc.whatsapp + (r.whatsapp ? 1 : 0), sms: acc.sms + (r.sms ? 1 : 0) }),
+    { push: 0, whatsapp: 0, sms: 0 }
+  );
 
   // How one group's reminder will look: the WhatsApp message (its link is a
   // button there) and the SMS length, for one guest of that group.
@@ -115,8 +124,13 @@ export default function ReminderDialog({ open, onOpenChange, event, recipients }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[92dvh] overflow-y-auto" dir="rtl">
+    <Dialog open={open} onOpenChange={v => (v ? onOpenChange(true) : requestClose())}>
+      <DialogContent
+        className="sm:max-w-lg max-h-[92dvh] overflow-y-auto"
+        dir="rtl"
+        onInteractOutside={e => running && e.preventDefault()}
+        onEscapeKeyDown={e => running && e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <BellRing className="w-5 h-5 text-primary" />
@@ -124,6 +138,26 @@ export default function ReminderDialog({ open, onOpenChange, event, recipients }
           </DialogTitle>
         </DialogHeader>
 
+        {phase !== "idle" ? (
+          <BatchSendProgress
+            sender={sender}
+            doneText={t.reminderDone}
+            summary={`${t.reminderBatchSummary.replace("{sent}", sender.sent).replace("{total}", sender.total)} · ${t.reminderSentChannels
+              .replace("{push}", channelTotals.push)
+              .replace("{whatsapp}", channelTotals.whatsapp)
+              .replace("{sms}", channelTotals.sms)}`}
+            onClose={() => onOpenChange(false)}
+          />
+        ) : confirming ? (
+          <ConfirmBatchSend
+            question={t.reminderConfirm}
+            count={targets.length}
+            batchSize={sender.batchSize}
+            onConfirm={confirmSend}
+            onBack={() => setConfirming(false)}
+          />
+        ) : (
+        <>
         {started && <p className="text-sm text-destructive">{t.reminderEventStarted}</p>}
 
         <div className="space-y-2">
@@ -159,6 +193,11 @@ export default function ReminderDialog({ open, onOpenChange, event, recipients }
             {t.reminderChannelsEstimate.replace("{push}", appCount).replace("{sms}", smsCount)}
             {skipped > 0 && ` · ${t.reminderSkippedCount.replace("{count}", skipped)}`}
           </p>
+          {targets.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {t.batchInfo.replace("{size}", sender.batchSize).replace("{batches}", Math.ceil(targets.length / sender.batchSize))}
+            </p>
+          )}
         </div>
 
         <div className="space-y-1.5">
@@ -173,17 +212,19 @@ export default function ReminderDialog({ open, onOpenChange, event, recipients }
 
         <div className="flex gap-3 pt-1">
           <Button
-            onClick={send}
-            disabled={sending || started || targets.length === 0 || !details.trim()}
+            onClick={() => setConfirming(true)}
+            disabled={started || targets.length === 0 || !details.trim()}
             className="flex-1 h-11 rounded-xl gap-2"
           >
-            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <BellRing className="w-4 h-4" />}
+            <BellRing className="w-4 h-4" />
             {t.reminderSendTo.replace("{count}", targets.length)}
           </Button>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={sending} className="h-11 rounded-xl px-6">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="h-11 rounded-xl px-6">
             {t.cancel}
           </Button>
         </div>
+        </>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -269,10 +269,60 @@ class ReminderResult(BaseModel):
     skipped_no_contact: int
 
 
+class ReminderBatchSend(BaseModel):
+    """ReminderDialog.jsx: one batch of reminders, in the current
+    `details` format (see ReminderSend). The dialog chooses the guests;
+    kept small so a batch's request finishes well within the timeout."""
+
+    recipient_ids: list[str] = Field(min_length=1, max_length=25)
+    details: str = Field(min_length=1, max_length=500)
+    sms_app_users: bool = False
+
+
+class ReminderBatchItemResult(BaseModel):
+    recipient_id: str
+    success: bool
+    push: bool = False
+    whatsapp: bool = False
+    sms: bool = False
+    # Why the guest was skipped (not this event's, declined, no contact).
+    error: str | None = None
+
+
+class ReminderBatchResult(BaseModel):
+    results: list[ReminderBatchItemResult]
+
+
 class ThankYouSend(BaseModel):
     # Already filled in for this guest by the frontend (thankYouMessage.js).
     # Capped so one tap can't fire off a runaway multi-part SMS.
     message: str = Field(min_length=1, max_length=1000)
+
+
+class ThankYouBatchItem(BaseModel):
+    recipient_id: str
+    # Already filled in for this guest by the frontend, as in ThankYouSend.
+    message: str = Field(min_length=1, max_length=1000)
+
+
+class ThankYouBatchSend(BaseModel):
+    """BulkThankYouDialog.jsx: one batch of thank-yous. Kept small so a
+    batch's request finishes well within the server's timeout — each item
+    is a WhatsApp/SMS provider call."""
+
+    items: list[ThankYouBatchItem] = Field(min_length=1, max_length=25)
+
+
+class ThankYouBatchItemResult(BaseModel):
+    recipient_id: str
+    success: bool
+    channel: Literal["whatsapp", "sms"] | None = None
+    # Why the guest was skipped (not this event's, not accepted, no phone).
+    error: str | None = None
+
+
+class ThankYouBatchResult(BaseModel):
+    results: list[ThankYouBatchItemResult]
 
 
 class RecipientOut(BaseModel):
@@ -293,6 +343,7 @@ class RecipientOut(BaseModel):
     sent_count: int = 0
     reminder_count: int = 0
     last_reminded_at: datetime | None = None
+    thanked_at: datetime | None = None
     phone_verified: bool
     rsvp_status: RsvpStatus
     rsvp_guests_count: int | None
