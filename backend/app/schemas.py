@@ -333,6 +333,7 @@ class PublicInvitationOut(BaseModel):
     app's verifyOtpAndLink takes a recipientId, not a token."""
 
     recipient_id: str
+    event_id: str | None = None
     event_title: str
     event_type: str
     event_date: datetime
@@ -355,6 +356,9 @@ class PublicInvitationOut(BaseModel):
     # rsvp_guests_count (how many the guest actually confirmed) — the
     # frontend uses this as the RSVP form's default.
     invited_guests_count: int
+    # The invitation page remembers the token per event, so the entrance
+    # check-in page recognises this guest without typing a phone number.
+    checkin_enabled: bool = False
     # Filled only when the event's seating is enabled and published.
     tables: list["GuestTable"] = []
     hall_plan: "HallPlanOut | None" = None

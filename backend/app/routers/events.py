@@ -1152,6 +1152,8 @@ def _to_public_invitation(recipient: models.InvitationRecipient) -> schemas.Publ
     db = object_session(recipient)
     return schemas.PublicInvitationOut(
         recipient_id=recipient.id,
+        event_id=event.id,
+        checkin_enabled=event.checkin_enabled,
         event_title=event.title,
         event_type=event.event_type.value,
         event_date=event.date,
