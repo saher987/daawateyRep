@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
+import { seatingStrings } from '@/lib/i18nSeating';
 
 const translations = {
   ar: {
@@ -619,7 +620,7 @@ const translations = {
     importSelectEvent: "اختر المناسبة",
     importFile: "ملف المدعوين",
     importChooseFile: "اختر ملف ‎.xlsx",
-    importColumnsHint: "الأعمدة: nick name, first name, last name, suffix, phone, city, number of guests.",
+    importColumnsHint: "الأعمدة: nick name, first name, last name, suffix, phone, city, number of guests. اختياري: side (الطرف: عريس / عروس / مشترك)، group (المجموعة).",
     importLoaded: "تم تحميل {count} مدعوين",
     importReadError: "تعذّرت قراءة الملف",
     importProgress: "تم الإرسال: {sent} من {total}",
@@ -909,6 +910,7 @@ const translations = {
 
     // Layout
     dir: "rtl",
+    ...seatingStrings.ar,
   },
 
   he: {
@@ -1527,7 +1529,7 @@ const translations = {
     importSelectEvent: "בחרו אירוע",
     importFile: "קובץ מוזמנים",
     importChooseFile: "בחרו קובץ ‎.xlsx",
-    importColumnsHint: "עמודות: nick name, first name, last name, suffix, phone, city, number of guests.",
+    importColumnsHint: "עמודות: nick name, first name, last name, suffix, phone, city, number of guests. אופציונלי: side (צד: חתן / כלה / משותף), group (קבוצה).",
     importLoaded: "נטענו {count} מוזמנים",
     importReadError: "לא ניתן לקרוא את הקובץ",
     importProgress: "נשלחו: {sent} מתוך {total}",
@@ -1816,6 +1818,7 @@ const translations = {
 
     // Layout
     dir: "rtl",
+    ...seatingStrings.he,
   },
 };
 

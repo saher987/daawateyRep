@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import CitySelect from "@/components/shared/CitySelect";
 import { whatsappInvitationPreview } from "@/lib/whatsappTemplate";
 import InvitationCardEditor from "@/components/events/InvitationCardEditor";
+import EventFeaturesFields from "@/components/events/EventFeaturesFields";
 
 export default function EditEventDialog({ open, onOpenChange, event }) {
   const queryClient = useQueryClient();
@@ -56,6 +57,8 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
         thank_you_message: event.thank_you_message || "",
         thank_you_event_name: event.thank_you_event_name || "",
         thank_you_event_owners: event.thank_you_event_owners || "",
+        seating_enabled: !!event.seating_enabled,
+        checkin_enabled: !!event.checkin_enabled,
       });
       // Load existing owners from owner_phones
       const existingPhones = event.owner_phones || [];
@@ -314,6 +317,12 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
             <Label>{t.maxGuestsLabel}</Label>
             <Input type="number" value={form.max_guests} onChange={e => handleChange("max_guests", e.target.value)} className="h-11 rounded-xl" placeholder={t.optional} />
           </div>
+
+          <EventFeaturesFields
+            seatingEnabled={form.seating_enabled}
+            checkinEnabled={form.checkin_enabled}
+            onChange={handleChange}
+          />
 
           <div className="space-y-3">
             <Label>{t.eventOwners}</Label>

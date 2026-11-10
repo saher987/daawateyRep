@@ -17,6 +17,7 @@ import { CITY_KEYS } from "@/lib/cities";
 import SuffixPicker from "@/components/events/SuffixPicker";
 import { FileSpreadsheet, Send, CheckCircle2, Phone, MapPin, Users as UsersIcon, Search, UserPlus, X } from "lucide-react";
 import CitySelect from "@/components/shared/CitySelect";
+import { SIDES, SIDE_COLOR, parseSide, sideLabel } from "@/lib/seating";
 
 // Header names accepted per column (lower-cased, trimmed), so the import
 // works with the English headers of the template file as well as Arabic/
@@ -30,7 +31,11 @@ const HEADER_ALIASES = {
   phone: ["phone", "الهاتف", "رقم الهاتف", "טלפון"],
   city: ["city", "town", "المدينة", "البلد", "עיר", "ישוב"],
   guests_count: ["number of guests", "guests", "العدد", "عدد المدعوين", "מספר אורחים"],
+  // Seating groups — optional, read only when the file has a header row.
+  side: ["side", "الطرف", "طرف", "צד"],
+  group_label: ["group", "المجموعة", "مجموعة", "קבוצה"],
 };
+const OPTIONAL_FIELDS = ["side", "group_label"];
 const FIELD_ORDER = ["nickname", "first_name", "last_name", "name_suffix", "phone", "city", "guests_count"];
 
 // City cell (Arabic label, Hebrew label, or the key itself) → city key.
@@ -64,11 +69,13 @@ function parseRows(sheet) {
   if (!sheet.length) return [];
   const header = sheet[0].map((h) => clean(h).toLowerCase());
   const columns = {};
-  for (const field of FIELD_ORDER) {
+  for (const field of [...FIELD_ORDER, ...OPTIONAL_FIELDS]) {
     const idx = header.findIndex((h) => HEADER_ALIASES[field].includes(h));
     if (idx !== -1) columns[field] = idx;
   }
   const hasHeader = Object.keys(columns).length > 0;
+  // Without a header row, the fixed column order — never the optional
+  // side/group columns, so existing files keep importing the same way.
   if (!hasHeader) FIELD_ORDER.forEach((field, i) => (columns[field] = i));
 
   return sheet
@@ -77,6 +84,8 @@ function parseRows(sheet) {
       const get = (field) => (columns[field] === undefined ? "" : cells[columns[field]]);
       const cityText = clean(get("city"));
       const guests = parseInt(clean(get("guests_count")), 10);
+      const sideText = clean(get("side"));
+      const { side, unknown } = parseSide(sideText);
       return {
         id: i,
         nickname: clean(get("nickname")),
@@ -88,6 +97,10 @@ function parseRows(sheet) {
         city: cityText ? CITY_LOOKUP.get(cityText) || null : null,
         cityText,
         guests_count: Number.isFinite(guests) && guests >= 1 ? guests : 1,
+        // A side typed in the file wins over the "side for this file" picker.
+        side,
+        sideText: unknown ? sideText : "",
+        group_label: clean(get("group_label")),
       };
     })
     .filter((row) => row.nickname || row.first_name || row.last_name || row.phone);
@@ -96,7 +109,7 @@ function parseRows(sheet) {
 // Stands in for "no city" in the city picker.
 const NO_CITY = "__none__";
 
-const EMPTY_MANUAL = { nickname: "", first_name: "", last_name: "", name_suffix: "", phone: "", city: "", guests_count: "1" };
+const EMPTY_MANUAL = { nickname: "", first_name: "", last_name: "", name_suffix: "", phone: "", city: "", guests_count: "1", side: "", group_label: "" };
 
 export default function ImportInvitees() {
   const { user } = useAuth();
@@ -110,6 +123,8 @@ export default function ImportInvitees() {
   const isPrivileged = user?.role === "admin" || user?.role === "manager";
 
   const [eventId, setEventId] = useState("");
+  // "Side for this file": applied to every row without its own Side cell.
+  const [fileSide, setFileSide] = useState("");
   const [rows, setRows] = useState([]);
   const [fileName, setFileName] = useState("");
   const [search, setSearch] = useState("");
@@ -149,6 +164,11 @@ export default function ImportInvitees() {
   }, [rows, search, sentIds, sentPhones]);
 
   const sentCount = rows.filter(isSent).length;
+  const selectedEvent = events.find((ev) => ev.id === eventId);
+  // Sides are a wedding thing; other event types use the group only.
+  const usesSides = !selectedEvent || ["wedding", "engagement"].includes(selectedEvent.event_type);
+  const rowSide = (row) => (usesSides ? row.side || (row.manual ? null : fileSide || null) : null);
+  const groupSuggestions = [...new Set(recipients.map((r) => r.group_label).filter(Boolean))].sort();
 
   if (!isPrivileged) {
     navigate("/profile");
@@ -183,6 +203,8 @@ export default function ImportInvitees() {
         phone: row.phone,
         town: row.city || undefined,
         guestsCount: row.guests_count,
+        side: rowSide(row),
+        groupLabel: row.group_label || undefined,
       });
       setSentIds((s) => new Set(s).add(row.id));
       toast({ title: t.importSent, description: [row.nickname, row.first_name, row.last_name, row.name_suffix].filter(Boolean).join(" ") });
@@ -224,9 +246,12 @@ export default function ImportInvitees() {
       city: manual.city || null,
       cityText: "",
       guests_count: Number.isFinite(guests) && guests >= 1 ? guests : 1,
+      side: manual.side || null,
+      sideText: "",
+      group_label: clean(manual.group_label),
     };
     setRows((prev) => [row, ...prev]);
-    setManual(EMPTY_MANUAL);
+    setManual({ ...EMPTY_MANUAL, side: fileSide });
     toast({ title: t.importRowAdded });
   };
 
@@ -257,6 +282,30 @@ export default function ImportInvitees() {
             </Button>
           </div>
         </div>
+        {usesSides && (
+          <div className="space-y-2">
+            <Label>{t.sideForFile}</Label>
+            <div className="flex flex-wrap gap-2">
+              {["", ...SIDES].map((s) => (
+                <Button
+                  key={s || "none"}
+                  type="button"
+                  size="sm"
+                  variant={fileSide === s ? "default" : "outline"}
+                  className="rounded-full"
+                  aria-pressed={fileSide === s}
+                  onClick={() => {
+                    setFileSide(s);
+                    setManual((m) => ({ ...m, side: s }));
+                  }}
+                >
+                  {s ? sideLabel(s, t) : t.sideNone}
+                </Button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">{t.sideForFileHint}</p>
+          </div>
+        )}
         <p className="text-xs text-muted-foreground">{t.importColumnsHint}</p>
         {!showManual && (
           <Button type="button" variant="outline" className="w-full rounded-xl gap-2" onClick={() => setShowManual(true)}>
@@ -315,6 +364,46 @@ export default function ImportInvitees() {
                 <Input type="number" min={1} value={manual.guests_count} onChange={setManualField("guests_count")} className="h-10 rounded-xl" />
               </div>
             </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {usesSides && (
+                <div className="space-y-1.5">
+                  <Label className="text-sm">{t.sideLabel}</Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {["", ...SIDES].map((s) => (
+                      <Button
+                        key={s || "none"}
+                        type="button"
+                        size="sm"
+                        variant={manual.side === s ? "default" : "outline"}
+                        className="rounded-full h-8"
+                        aria-pressed={manual.side === s}
+                        onClick={() => setManual((m) => ({ ...m, side: s }))}
+                      >
+                        {s ? sideLabel(s, t) : t.sideNone}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="space-y-1.5">
+                <Label htmlFor="manual-group" className="text-sm">
+                  {t.groupNameLabel} <span className="text-muted-foreground text-xs font-normal">({t.optional})</span>
+                </Label>
+                <Input
+                  id="manual-group"
+                  list="import-group-names"
+                  value={manual.group_label}
+                  onChange={setManualField("group_label")}
+                  placeholder={t.groupNamePlaceholder}
+                  className="h-10 rounded-xl"
+                />
+                <datalist id="import-group-names">
+                  {groupSuggestions.map((g) => (
+                    <option key={g} value={g} />
+                  ))}
+                </datalist>
+              </div>
+            </div>
             <Button type="submit" className="w-full sm:w-auto gap-2">
               <UserPlus className="w-4 h-4" />
               {t.importAddRow}
@@ -367,6 +456,14 @@ export default function ImportInvitees() {
                         <UsersIcon className="w-3 h-3" />
                         {row.guests_count}
                       </span>
+                      {(rowSide(row) || row.group_label || row.sideText) && (
+                        <span className={`flex items-center gap-1 ${row.sideText ? "text-destructive" : ""}`}>
+                          <span className="w-2 h-2 rounded-full" style={{ background: SIDE_COLOR[rowSide(row) || "none"] }} />
+                          {row.sideText
+                            ? `${row.sideText} (${t.sideUnknownWarning})`
+                            : [rowSide(row) ? sideLabel(rowSide(row), t) : null, row.group_label].filter(Boolean).join(" › ")}
+                        </span>
+                      )}
                     </div>
                   </div>
                   {sent ? (

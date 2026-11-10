@@ -416,6 +416,12 @@ function toNestedInvitation(flat) {
       theme_color: flat.theme_color,
     },
     displayName: flat.display_name,
+    // Table arrangement / entrance check-in (empty unless the event uses
+    // them and the host published the seating).
+    eventId: flat.event_id,
+    checkinEnabled: !!flat.checkin_enabled,
+    tables: flat.tables || [],
+    hallPlan: flat.hall_plan || null,
   }
 }
 
@@ -428,7 +434,7 @@ const functionHandlers = {
     return { recipients }
   },
   async createInvitationRecipient(data) {
-    const { eventId, externalFullName, guestsCount, groupLabel, userId, ...rest } = data
+    const { eventId, externalFullName, guestsCount, groupLabel, side, userId, ...rest } = data
     return request(`/api/events/${eventId}/recipients`, {
       method: 'POST',
       body: {
@@ -436,6 +442,7 @@ const functionHandlers = {
         external_full_name: externalFullName,
         guests_count: guestsCount,
         group_label: groupLabel,
+        side: side || null,
         user_id: userId,
       },
     })
@@ -538,6 +545,97 @@ const integrationsApi = {
   },
 }
 
+// --- table arrangement + entrance check-in -------------------------------
+// See backend app/routers/seating.py and checkin.py. Every seating call
+// returns the whole SeatingState, so the page just replaces its copy.
+
+const seatingApi = {
+  get(eventId) {
+    return request(`/api/events/${eventId}/seating`)
+  },
+  settings(eventId, body) {
+    return request(`/api/events/${eventId}/seating/settings`, { method: 'PUT', body })
+  },
+  addTable(eventId, body) {
+    return request(`/api/events/${eventId}/tables`, { method: 'POST', body })
+  },
+  addTables(eventId, body) {
+    return request(`/api/events/${eventId}/tables/bulk`, { method: 'POST', body })
+  },
+  updateTable(eventId, tableId, body) {
+    return request(`/api/events/${eventId}/tables/${tableId}`, { method: 'PATCH', body })
+  },
+  deleteTable(eventId, tableId) {
+    return request(`/api/events/${eventId}/tables/${tableId}`, { method: 'DELETE' })
+  },
+  addElement(eventId, body) {
+    return request(`/api/events/${eventId}/hall-elements`, { method: 'POST', body })
+  },
+  updateElement(eventId, elementId, body) {
+    return request(`/api/events/${eventId}/hall-elements/${elementId}`, { method: 'PATCH', body })
+  },
+  deleteElement(eventId, elementId) {
+    return request(`/api/events/${eventId}/hall-elements/${elementId}`, { method: 'DELETE' })
+  },
+  // recipients: [{recipient_id, allocations: [{table_id, seats}]}]
+  assign(eventId, recipients) {
+    return request(`/api/events/${eventId}/seating`, { method: 'PUT', body: { recipients } })
+  },
+  clear(eventId) {
+    return request(`/api/events/${eventId}/seating`, { method: 'DELETE' })
+  },
+  autoAssign(eventId) {
+    return request(`/api/events/${eventId}/seating/auto-assign`, { method: 'POST' })
+  },
+  // Only the keys present in `fields` change: {side}, {group_label} or both.
+  setGrouping(eventId, recipientIds, fields) {
+    return request(`/api/events/${eventId}/recipients/grouping`, {
+      method: 'PATCH',
+      body: { recipient_ids: recipientIds, ...fields },
+    })
+  },
+  groupNames(eventId) {
+    return request(`/api/events/${eventId}/groups`)
+  },
+}
+
+const checkinApi = {
+  // Public, no auth: the page behind the QR sign at the entrance.
+  event(eventId) {
+    return request(`/api/public/checkin/${eventId}`, { auth: false })
+  },
+  lookup(eventId, { personalToken, phone }) {
+    return request(`/api/public/checkin/${eventId}/lookup`, {
+      method: 'POST',
+      auth: false,
+      body: { personal_token: personalToken || null, phone: phone || null },
+    })
+  },
+  checkIn(eventId, { personalToken, phone, peopleArrived }) {
+    return request(`/api/public/checkin/${eventId}`, {
+      method: 'POST',
+      auth: false,
+      body: { personal_token: personalToken || null, phone: phone || null, people_arrived: peopleArrived },
+    })
+  },
+  // Host side.
+  arrivals(eventId) {
+    return request(`/api/events/${eventId}/arrivals`)
+  },
+  mark(eventId, recipientId, peopleArrived) {
+    return request(`/api/events/${eventId}/arrivals`, {
+      method: 'POST',
+      body: { recipient_id: recipientId, people_arrived: peopleArrived },
+    })
+  },
+  unmark(eventId, recipientId) {
+    return request(`/api/events/${eventId}/arrivals/${recipientId}`, { method: 'DELETE' })
+  },
+  venueCounts(venueId) {
+    return request(`/api/venues/${venueId}/arrivals`)
+  },
+}
+
 export const base44 = {
   auth: authApi,
   users: usersNamespaceApi,
@@ -551,6 +649,8 @@ export const base44 = {
     PlannedWedding: plannedWeddingsApi,
   },
   functions: functionsApi,
+  seating: seatingApi,
+  checkin: checkinApi,
   integrations: integrationsApi,
   push: pushApi,
   app: appApi,

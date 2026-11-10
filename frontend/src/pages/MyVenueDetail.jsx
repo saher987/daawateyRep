@@ -10,6 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { useT } from "@/lib/i18n";
+import { fmt } from "@/lib/i18nSeating";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, MapPin, Users, Phone, Loader2 } from "lucide-react";
@@ -32,6 +33,14 @@ export default function MyVenueDetail() {
   const { data: allEvents = [] } = useQuery({
     queryKey: ["events-schedule"],
     queryFn: () => base44.entities.Event.filter({ status: { $in: ["active", "draft"] } }),
+  });
+
+  // Entrance check-in counts for this venue's events (counts only, no names).
+  const { data: arrivalCounts = [] } = useQuery({
+    queryKey: ["venue-arrivals", id],
+    queryFn: () => base44.checkin.venueCounts(id),
+    enabled: !!venue,
+    refetchInterval: 60000,
   });
 
   const events = useMemo(() => {
@@ -91,6 +100,21 @@ export default function MyVenueDetail() {
           {venue.notes && <p className="text-sm text-muted-foreground pt-1">{venue.notes}</p>}
         </div>
       </Card>
+
+      {arrivalCounts.length > 0 && (
+        <Card className="p-5 mb-6 space-y-2">
+          <h3 className="font-semibold">{t.venueArrivalsTitle}</h3>
+          <p className="text-xs text-muted-foreground">{t.venueArrivalsHint}</p>
+          {arrivalCounts.map((c) => (
+            <div key={c.event_id} className="flex items-center justify-between gap-2 rounded-lg border border-border px-3 py-2 text-sm">
+              <span className="truncate">{c.event_title}</span>
+              <span className="font-semibold shrink-0">
+                {fmt(t.arrivalsCount, { n: c.people_arrived, total: c.expected_people })}
+              </span>
+            </div>
+          ))}
+        </Card>
+      )}
 
       <VenueMonthCalendar events={events} dateLocale={dateLocale} />
     </div>
