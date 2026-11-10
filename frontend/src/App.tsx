@@ -7,6 +7,7 @@ import { I18nProvider } from './lib/i18n'
 import ProtectedRoute from './components/ProtectedRoute'
 import AppLayout from './components/layout/AppLayout'
 import ProvidersLayout from './components/providers/ProvidersLayout'
+import HomeLayout from './components/layout/HomeLayout'
 import PageNotFound from './lib/PageNotFound'
 import { Login } from './pages/Login'
 import GetApp from './pages/GetApp'
@@ -15,6 +16,7 @@ import DeepLinkHandler from './components/DeepLinkHandler'
 import PushNotificationHandler from './components/PushNotificationHandler'
 
 // Route-level code splitting, same pattern as the original app.
+const Home = lazy(() => import('./pages/Home'))
 const MyInvitations = lazy(() => import('./pages/MyInvitations'))
 const MyEvent = lazy(() => import('./pages/MyEvent'))
 const Events = lazy(() => import('./pages/Events'))
@@ -133,6 +135,19 @@ function App() {
                 }
               />
 
+              {/* Public home page: signed-in users get it inside AppLayout,
+                  visitors on its own with a login button. */}
+              <Route element={<HomeLayout />}>
+                <Route
+                  path="/"
+                  element={
+                    <Suspense fallback={<PageSpinner />}>
+                      <Home />
+                    </Suspense>
+                  }
+                />
+              </Route>
+
               {/* Public: signed-in users see these inside AppLayout, anyone
                   else in ProvidersLayout's guest shell. */}
               <Route element={<ProvidersLayout />}>
@@ -165,14 +180,6 @@ function App() {
                     element={
                       <Suspense fallback={<PageSpinner />}>
                         <Seating />
-                      </Suspense>
-                    }
-                  />
-                  <Route
-                    path="/"
-                    element={
-                      <Suspense fallback={<PageSpinner />}>
-                        <MyInvitations />
                       </Suspense>
                     }
                   />
