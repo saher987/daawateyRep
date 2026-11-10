@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
 from app import models, schemas
 from app.audit import audit, changes_since, snapshot
@@ -473,7 +473,8 @@ def add_recipient(
         phone=body.phone,
         email=body.email,
         guests_count=body.guests_count,
-        group_label=body.group_label,
+        side=body.side,
+        group_label=(body.group_label or "").strip() or None,
         town=body.town,
     )
     db.add(recipient)
@@ -1144,7 +1145,11 @@ def list_recipients(
 
 
 def _to_public_invitation(recipient: models.InvitationRecipient) -> schemas.PublicInvitationOut:
+    # Imported here: seating.py imports this module's helpers.
+    from app.routers.seating import guest_tables, hall_plan
+
     event = recipient.event
+    db = object_session(recipient)
     return schemas.PublicInvitationOut(
         recipient_id=recipient.id,
         event_title=event.title,
@@ -1172,6 +1177,8 @@ def _to_public_invitation(recipient: models.InvitationRecipient) -> schemas.Publ
         rsvp_status=recipient.rsvp_status,
         rsvp_guests_count=recipient.rsvp_guests_count,
         invited_guests_count=recipient.guests_count,
+        tables=guest_tables(db, recipient) if db is not None else [],
+        hall_plan=hall_plan(db, event) if db is not None else None,
     )
 
 

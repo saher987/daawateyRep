@@ -15,6 +15,7 @@ from app.auth import get_app_user
 from app.db import get_db
 from app.routers import (
     audit_log,
+    checkin,
     event_requests,
     events,
     notifications,
@@ -22,6 +23,7 @@ from app.routers import (
     planned_weddings,
     providers,
     push_tokens,
+    seating,
     support,
     uploads,
     users,
@@ -58,6 +60,8 @@ app.include_router(push_tokens.router)
 app.include_router(providers.router)
 app.include_router(audit_log.router)
 app.include_router(whatsapp_webhook.router)
+app.include_router(seating.router)
+app.include_router(checkin.router)
 
 _allowed_origins = os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
 

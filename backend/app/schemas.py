@@ -17,6 +17,7 @@ from app.models import (
     EventStatus,
     EventType,
     NotificationType,
+    RecipientSide,
     RecipientStatus,
     Role,
     RsvpStatus,
@@ -137,6 +138,8 @@ class EventCreate(BaseModel):
     theme_color: str = "#B8860B"
     owner_phones: list[str] = []
     manager_phones: list[str] = []
+    seating_enabled: bool = False
+    checkin_enabled: bool = False
 
 
 class EventUpdate(BaseModel):
@@ -167,6 +170,9 @@ class EventUpdate(BaseModel):
     theme_color: str | None = None
     owner_phones: list[str] | None = None
     manager_phones: list[str] | None = None
+    seating_enabled: bool | None = None
+    checkin_enabled: bool | None = None
+    seating_published: bool | None = None
 
 
 class EventOut(BaseModel):
@@ -204,6 +210,10 @@ class EventOut(BaseModel):
     theme_color: str
     owner_phones: list[str]
     manager_phones: list[str]
+    seating_enabled: bool = False
+    checkin_enabled: bool = False
+    seating_published: bool = False
+    seating_locked_at: datetime | None = None
     created_at: datetime
 
 
@@ -228,6 +238,7 @@ class RecipientCreate(BaseModel):
     # negative or zero value here previously stored literally, corrupting
     # GuestStatsDashboard's totalGuests sum with no error anywhere.
     guests_count: int = Field(default=1, ge=1)
+    side: RecipientSide | None = None
     group_label: str | None = None
     town: str | None = None
     user_id: str | None = None
@@ -299,6 +310,7 @@ class RecipientOut(BaseModel):
     rsvp_message: str | None
     rsvp_date: datetime | None
     guests_count: int
+    side: RecipientSide | None = None
     group_label: str | None
     notes: str | None
     first_opened_at: datetime | None
@@ -343,6 +355,9 @@ class PublicInvitationOut(BaseModel):
     # rsvp_guests_count (how many the guest actually confirmed) — the
     # frontend uses this as the RSVP form's default.
     invited_guests_count: int
+    # Filled only when the event's seating is enabled and published.
+    tables: list["GuestTable"] = []
+    hall_plan: "HallPlanOut | None" = None
 
 
 class RsvpSubmit(BaseModel):
@@ -686,3 +701,271 @@ class AuditLogOut(BaseModel):
     ip: str | None
     user_agent: str | None
     request_id: str | None
+
+
+# --- Table arrangement (app/routers/seating.py) ---
+
+TableShape = Literal["round", "rect", "square"]
+
+
+class TableIn(BaseModel):
+    number: str | None = Field(default=None, max_length=20)
+    label: str | None = Field(default=None, max_length=60)
+    zone: str | None = Field(default=None, max_length=60)
+    shape: TableShape = "round"
+    seats_round: int = Field(default=10, ge=1, le=30)
+    seats_top: int = Field(default=0, ge=0, le=20)
+    seats_bottom: int = Field(default=0, ge=0, le=20)
+    seats_left: int = Field(default=0, ge=0, le=4)
+    seats_right: int = Field(default=0, ge=0, le=4)
+    # Omitted: the server puts the table in the first free spot.
+    x: int | None = Field(default=None, ge=0, le=760)
+    y: int | None = Field(default=None, ge=0, le=560)
+    rotation: Literal[0, 90] = 0
+
+
+class TablePatch(BaseModel):
+    number: str | None = Field(default=None, min_length=1, max_length=20)
+    label: str | None = Field(default=None, max_length=60)
+    zone: str | None = Field(default=None, max_length=60)
+    shape: TableShape | None = None
+    seats_round: int | None = Field(default=None, ge=1, le=30)
+    seats_top: int | None = Field(default=None, ge=0, le=20)
+    seats_bottom: int | None = Field(default=None, ge=0, le=20)
+    seats_left: int | None = Field(default=None, ge=0, le=4)
+    seats_right: int | None = Field(default=None, ge=0, le=4)
+    x: int | None = Field(default=None, ge=0, le=760)
+    y: int | None = Field(default=None, ge=0, le=560)
+    rotation: Literal[0, 90] | None = None
+    sort_order: int | None = None
+
+
+class TablesBulkCreate(BaseModel):
+    """Quick setup: N identical tables placed in free spots on the plan."""
+
+    count: int = Field(ge=1, le=60)
+    shape: TableShape = "round"
+    seats_round: int = Field(default=10, ge=1, le=30)
+    seats_per_side: int = Field(default=5, ge=1, le=20)
+
+
+class TableOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    number: str
+    label: str | None
+    zone: str | None
+    shape: str
+    seats_round: int
+    seats_top: int
+    seats_bottom: int
+    seats_left: int
+    seats_right: int
+    x: int
+    y: int
+    rotation: int
+    sort_order: int
+    capacity: int
+    seated: int = 0
+
+
+class HallElementIn(BaseModel):
+    kind: Literal["stage", "dance_floor", "buffet", "entrance", "photo", "other"]
+    label: str | None = Field(default=None, max_length=60)
+    x: int = Field(ge=0, le=760)
+    y: int = Field(ge=0, le=560)
+    w: int = Field(ge=20, le=760)
+    h: int = Field(ge=10, le=560)
+
+
+class HallElementPatch(BaseModel):
+    label: str | None = Field(default=None, max_length=60)
+    x: int | None = Field(default=None, ge=0, le=760)
+    y: int | None = Field(default=None, ge=0, le=560)
+    w: int | None = Field(default=None, ge=20, le=760)
+    h: int | None = Field(default=None, ge=10, le=560)
+
+
+class HallElementOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    kind: str
+    label: str | None
+    x: int
+    y: int
+    w: int
+    h: int
+
+
+class Allocation(BaseModel):
+    table_id: str
+    seats: int = Field(ge=1, le=200)
+
+
+class RecipientSeating(BaseModel):
+    recipient_id: str
+    # Empty list: the invitation goes back to "waiting for a table".
+    allocations: list[Allocation]
+
+
+class SeatingUpdate(BaseModel):
+    """Replaces the allocations of every recipient listed (others untouched)."""
+
+    recipients: list[RecipientSeating] = Field(min_length=1, max_length=500)
+
+
+class AssignmentOut(BaseModel):
+    recipient_id: str
+    table_id: str
+    seats: int
+
+
+class SeatingState(BaseModel):
+    seating_enabled: bool
+    seating_published: bool
+    seating_locked_at: datetime | None
+    tables: list[TableOut]
+    hall_elements: list[HallElementOut]
+    assignments: list[AssignmentOut]
+
+
+class AutoAssignResult(BaseModel):
+    state: SeatingState
+    placed: int
+    split: int
+    left: int
+
+
+class SeatingSettings(BaseModel):
+    seating_published: bool | None = None
+    locked: bool | None = None
+
+
+class GroupingUpdate(BaseModel):
+    """Bulk set side and/or group. Only the fields actually sent change, so
+    `{"side": null}` clears the side while leaving group_label alone."""
+
+    recipient_ids: list[str] = Field(min_length=1, max_length=1000)
+    side: RecipientSide | None = None
+    group_label: str | None = Field(default=None, max_length=80)
+
+
+class GroupNames(BaseModel):
+    groom: list[str] = []
+    bride: list[str] = []
+    both: list[str] = []
+    none: list[str] = []
+
+
+class GuestTable(BaseModel):
+    """A guest's own table, as the invitation page / check-in page shows it."""
+
+    table_id: str
+    number: str
+    label: str | None = None
+    zone: str | None = None
+    seats: int
+
+
+class PlanTableOut(BaseModel):
+    id: str
+    number: str
+    shape: str
+    x: int
+    y: int
+    rotation: int
+    capacity: int
+
+
+class HallPlanOut(BaseModel):
+    """Positions only (no names), for the mini map on the guest's pages."""
+
+    tables: list[PlanTableOut]
+    hall_elements: list[HallElementOut]
+
+
+# --- Entrance check-in (app/routers/checkin.py) ---
+
+
+class CheckInEventOut(BaseModel):
+    event_id: str
+    event_title: str
+    event_date: datetime
+    venue_name: str
+    theme_color: str
+    open: bool
+    opens_at: datetime
+    closes_at: datetime
+    seating: bool
+
+
+class CheckInLookup(BaseModel):
+    """Exactly one of personal_token (remembered on the guest's phone from
+    the invitation link) or phone (typed in at the entrance)."""
+
+    personal_token: str | None = Field(default=None, max_length=100)
+    phone: str | None = Field(default=None, max_length=30)
+
+    @model_validator(mode="after")
+    def _one_key(self) -> "CheckInLookup":
+        if not (self.personal_token or self.phone):
+            raise ValueError("personal_token or phone is required")
+        return self
+
+
+class CheckInSubmit(CheckInLookup):
+    people_arrived: int = Field(ge=1, le=100)
+
+
+class CheckInGuestOut(BaseModel):
+    display_name: str | None
+    expected_people: int
+    tables: list[GuestTable]
+    hall_plan: HallPlanOut | None = None
+    checked_in: bool
+    people_arrived: int | None = None
+
+
+class ArrivalOut(BaseModel):
+    recipient_id: str
+    display_name: str | None
+    people_arrived: int
+    method: str
+    checked_in_at: datetime | None
+
+
+class TableArrivals(BaseModel):
+    table_id: str
+    number: str
+    arrived: int
+    capacity: int
+    seated: int
+
+
+class ArrivalsOut(BaseModel):
+    checked_in_invitations: int
+    people_arrived: int
+    expected_people: int
+    accepted_invitations: int
+    per_table: list[TableArrivals]
+    arrivals: list[ArrivalOut]
+
+
+class ArrivalCounts(BaseModel):
+    """What a venue owner sees: counts, never names."""
+
+    event_id: str
+    event_title: str
+    checked_in_invitations: int
+    people_arrived: int
+    expected_people: int
+
+
+class ManualArrival(BaseModel):
+    recipient_id: str
+    people_arrived: int = Field(ge=1, le=100)
+
+
+PublicInvitationOut.model_rebuild()

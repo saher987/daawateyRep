@@ -79,6 +79,16 @@ class RsvpStatus(str, enum.Enum):
     maybe = "maybe"
 
 
+class RecipientSide(str, enum.Enum):
+    """Which side of the couple an invitee belongs to — the first level of
+    seating groups (the second is group_label). Wedding-flavoured on purpose;
+    other event types just leave it empty."""
+
+    groom = "groom"
+    bride = "bride"
+    both = "both"
+
+
 class EventRequestStatus(str, enum.Enum):
     pending = "pending"
     in_review = "in_review"
@@ -290,6 +300,23 @@ class Event(Base):
     manager_phones: Mapped[list[str]] = mapped_column(
         ARRAY(String), nullable=False, default=list
     )
+    # Table arrangement and entrance check-in are optional per event, each
+    # behind its own switch (off = the event works exactly as before). See
+    # app/routers/seating.py and app/routers/checkin.py.
+    seating_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    checkin_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    # Guests see their table (invitation page, entrance check-in) only once
+    # the host publishes the seating.
+    seating_published: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    seating_locked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_by_uid: Mapped[str] = mapped_column(String, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow
@@ -356,6 +383,11 @@ class InvitationRecipient(Base):
     rsvp_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     rsvp_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     guests_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    # Seating groups, two levels: the side (groom/bride/both, empty = none)
+    # and the host's own group name within it ("school friends").
+    side: Mapped[RecipientSide | None] = mapped_column(
+        SqlEnum(RecipientSide, name="recipient_side"), nullable=True
+    )
     group_label: Mapped[str | None] = mapped_column(String, nullable=True)
     # CITY_KEYS key, optionally typed in by the inviter for a guest with no
     # account. A linked User's own town takes precedence (_attach_towns).
@@ -372,6 +404,120 @@ class InvitationRecipient(Base):
     )
 
     event: Mapped[Event] = relationship(back_populates="recipients")
+
+
+class EventTable(Base):
+    """One table on an event's hall plan. Positions are in plan units on a
+    fixed 760x560 plan (the frontend scales it). Capacity is derived from
+    the chair fields, never stored: a round table uses seats_round, a
+    rectangular one the four sides (seats_bottom = 0 is "one side only")."""
+
+    __tablename__ = "event_tables"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    event_id: Mapped[str] = mapped_column(
+        ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # Text, so "A1" / "VIP" work as well as "12".
+    number: Mapped[str] = mapped_column(String, nullable=False)
+    label: Mapped[str | None] = mapped_column(String, nullable=True)
+    zone: Mapped[str | None] = mapped_column(String, nullable=True)
+    shape: Mapped[str] = mapped_column(String, nullable=False, default="round")
+    seats_round: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
+    seats_top: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    seats_bottom: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    seats_left: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    seats_right: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    x: Mapped[int] = mapped_column(Integer, nullable=False, default=380)
+    y: Mapped[int] = mapped_column(Integer, nullable=False, default=280)
+    rotation: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    @property
+    def capacity(self) -> int:
+        if self.shape == "round":
+            return self.seats_round
+        return self.seats_top + self.seats_bottom + self.seats_left + self.seats_right
+
+
+class SeatingAssignment(Base):
+    """How many of an invitation's guests sit at one table. Usually one row
+    per invitation; several rows mean the family is split across tables."""
+
+    __tablename__ = "seating_assignments"
+    __table_args__ = (
+        UniqueConstraint("recipient_id", "table_id", name="uq_seating_assignment_recipient_table"),
+    )
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    recipient_id: Mapped[str] = mapped_column(
+        ForeignKey("invitation_recipients.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    table_id: Mapped[str] = mapped_column(
+        ForeignKey("event_tables.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    seats: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow
+    )
+
+
+HALL_ELEMENT_KINDS = ("stage", "dance_floor", "buffet", "entrance", "photo", "other")
+
+
+class HallElement(Base):
+    """Something drawn on the hall plan that isn't a table (stage, dance
+    floor, ...). x/y is the centre, in the same plan units as EventTable."""
+
+    __tablename__ = "event_hall_elements"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    event_id: Mapped[str] = mapped_column(
+        ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    kind: Mapped[str] = mapped_column(String, nullable=False)
+    label: Mapped[str | None] = mapped_column(String, nullable=True)
+    x: Mapped[int] = mapped_column(Integer, nullable=False)
+    y: Mapped[int] = mapped_column(Integer, nullable=False)
+    w: Mapped[int] = mapped_column(Integer, nullable=False)
+    h: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow
+    )
+
+
+CHECK_IN_METHODS = ("qr_self", "usher", "host_manual")
+
+
+class CheckIn(Base):
+    """An invitation's arrival at the entrance. One row per invitation: a
+    second scan updates people_arrived instead of counting them twice."""
+
+    __tablename__ = "check_ins"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    event_id: Mapped[str] = mapped_column(
+        ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    recipient_id: Mapped[str] = mapped_column(
+        ForeignKey("invitation_recipients.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    people_arrived: Mapped[int] = mapped_column(Integer, nullable=False)
+    method: Mapped[str] = mapped_column(String, nullable=False, default="qr_self")
+    checked_in_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
 
 class PlannedWedding(Base):
