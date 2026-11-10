@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Arabic:wght@300;400;500;600;700&family=Amiri:wght@400;700&family=Frank+Ruhl+Libre:wght@500;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -103,4 +103,19 @@
 
 #root {
   min-height: 100vh;
+}
+
+/* Home page (pages/Home.jsx): the envelope, the card rising out of it and
+   the evening sky. Scroll reveals use framer-motion in the page itself. */
+.home-display { font-family: "Amiri", "Frank Ruhl Libre", serif; }
+@keyframes home-rise { from { transform: translateY(70px); } to { transform: translateY(0); } }
+@keyframes home-sway { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(-1deg) translateY(-6px); } }
+@keyframes home-twinkle { 0%, 100% { opacity: .25; } 50% { opacity: .9; } }
+.home-rise { animation: home-rise 1.4s 1s cubic-bezier(.2,.7,.2,1) both; }
+.home-sway { transform: rotate(-3deg); animation: home-sway 8s ease-in-out 2.4s infinite; }
+.home-twinkle { animation: home-twinkle 4s ease-in-out infinite; }
+.home-twinkle-2 { animation: home-twinkle 5s ease-in-out 1.3s infinite; }
+.home-twinkle-3 { animation: home-twinkle 6s ease-in-out 2.1s infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .home-rise, .home-sway, .home-twinkle, .home-twinkle-2, .home-twinkle-3 { animation: none; }
 }
