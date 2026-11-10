@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, startTransition, Suspense } from "react";
+import React, { useState, useEffect, startTransition, Suspense } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import {
@@ -64,6 +64,13 @@ const getPageVariants = (direction) => ({
   exit: { opacity: 0, x: direction === "back" ? 24 : -24, pointerEvents: "none" }
 });
 
+// The one-time "just signed in" redirect below runs once per signed-in user,
+// not once per mount: "/" (HomeLayout) and "/providers" (ProvidersLayout)
+// each mount their own AppLayout, so moving from the home page to /profile
+// mounts a fresh one — with a per-mount ref it re-ran and bounced a
+// complete profile from /profile back to "/", leaving no way to log out.
+let loginRedirectDoneFor = null;
+
 export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
@@ -71,7 +78,6 @@ export default function AppLayout() {
   const { user, isAuthenticated } = useAuth();
   const t = useT();
   const navItems = useNavItems();
-  const hasRedirectedOnLogin = useRef(false);
 
   // Android back button: close sidebar if open
   useEffect(() => {
@@ -97,8 +103,9 @@ export default function AppLayout() {
 
   useEffect(() => {
     if (!user) return;
-    if (!hasRedirectedOnLogin.current) {
-      hasRedirectedOnLogin.current = true;
+    const who = user.id ?? user.email;
+    if (loginRedirectDoneFor !== who) {
+      loginRedirectDoneFor = who;
       if (isProfileIncomplete) {
         navigate("/profile", { replace: true });
       } else if (isOnProfilePage) {
