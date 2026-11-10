@@ -145,6 +145,14 @@ export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeti
               <Send className="w-3 h-3" />
               {recipient.sent_count || 0}
             </span>
+            {recipient.thanked_at && (
+              <span
+                className="flex items-center gap-1 text-primary"
+                title={`${t.thankedAtTitle} ${formatDistanceToNow(new Date(recipient.thanked_at), { addSuffix: true, locale: dateLocale })}`}
+              >
+                <Heart className="w-3 h-3 fill-current" />
+              </span>
+            )}
             {recipient.reminder_count > 0 && (
               <span className="flex items-center gap-1" title={t.reminderSentCount}>
                 <BellRing className="w-3 h-3" />

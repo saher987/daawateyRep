@@ -60,3 +60,8 @@ export function parseSide(value) {
   }
   return { side: null, unknown: true };
 }
+
+// "{name}"-style placeholders in the seating/check-in strings.
+export function fmt(template, values = {}) {
+  return String(template ?? "").replace(/\{(\w+)\}/g, (m, key) => (key in values ? String(values[key]) : m));
+}

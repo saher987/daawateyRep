@@ -6,9 +6,8 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import LoadingSpinner from "@/components/shared/LoadingSpinner";
 import { useT } from "@/lib/i18n";
-import { fmt } from "@/lib/i18nSeating";
 import { recipientDisplayName } from "@/lib/recipientName";
-import { allocationsByRecipient, groupingLabel, partySize } from "@/lib/seating";
+import { allocationsByRecipient, groupingLabel, partySize, fmt } from "@/lib/seating";
 
 // Printable seating lists (the browser's print dialog also saves as PDF):
 // an A–Z board for the entrance, and per-table lists for the hall staff.

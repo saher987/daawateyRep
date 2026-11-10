@@ -10,7 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { useT } from "@/lib/i18n";
-import { fmt } from "@/lib/i18nSeating";
+import { fmt } from "@/lib/seating";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, MapPin, Users, Phone, Loader2 } from "lucide-react";

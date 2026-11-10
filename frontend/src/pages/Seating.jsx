@@ -41,19 +41,9 @@ import EmptyState from "@/components/shared/EmptyState";
 import HallPlan from "@/components/seating/HallPlan";
 import { useToast } from "@/components/ui/use-toast";
 import { useT } from "@/lib/i18n";
-import { fmt } from "@/lib/i18nSeating";
 import { recipientDisplayName } from "@/lib/recipientName";
 import { downloadFile } from "@/lib/downloadFile";
-import {
-  SIDES,
-  SIDE_COLOR,
-  allocationsByRecipient,
-  groupingLabel,
-  matchingGroupNames,
-  partySize,
-  seatedByTable as seatedByTableOf,
-  sideLabel,
-} from "@/lib/seating";
+import { SIDES, SIDE_COLOR, allocationsByRecipient, groupingLabel, matchingGroupNames, partySize, seatedByTable as seatedByTableOf, sideLabel, fmt } from "@/lib/seating";
 import { PLAN_H, PLAN_W, SNAP, hallLabel, overlaps, snapClamp, tableGeometry } from "@/lib/seatingGeometry";
 
 export default function Seating() {

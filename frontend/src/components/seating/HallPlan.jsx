@@ -1,6 +1,6 @@
 import React, { useRef } from "react";
 import { useT } from "@/lib/i18n";
-import { fmt } from "@/lib/i18nSeating";
+import { fmt } from "@/lib/seating";
 import { HALL_STYLE, PLAN_H, PLAN_W, hallLabel, tableGeometry } from "@/lib/seatingGeometry";
 
 const STATE_STYLE = {

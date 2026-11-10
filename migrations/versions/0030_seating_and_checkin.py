@@ -1,7 +1,7 @@
 """table arrangement (seating) and entrance check-in
 
-Revision ID: 0028
-Revises: 0027
+Revision ID: 0030
+Revises: 0029
 Create Date: 2026-11-10
 
 Both features are optional per event and off by default, so every existing
@@ -25,8 +25,8 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = "0028"
-down_revision: Union[str, None] = "0027"
+revision: str = "0030"
+down_revision: Union[str, None] = "0029"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

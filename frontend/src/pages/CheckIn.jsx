@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import GuestTableCard from "@/components/seating/GuestTableCard";
 import { useT } from "@/lib/i18n";
-import { fmt } from "@/lib/i18nSeating";
+import { fmt } from "@/lib/seating";
 
 const MAX_PEOPLE = 30;
 

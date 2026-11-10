@@ -7,9 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { useT } from "@/lib/i18n";
-import { fmt } from "@/lib/i18nSeating";
 import { recipientDisplayName } from "@/lib/recipientName";
-import { partySize } from "@/lib/seating";
+import { partySize, fmt } from "@/lib/seating";
 
 // Host view of the entrance check-in: live "N of M arrived", the QR sign,
 // who arrived and which confirmed guests haven't (with a manual "arrived"

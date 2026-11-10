@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import HallPlan from "@/components/seating/HallPlan";
 import { useT } from "@/lib/i18n";
-import { fmt } from "@/lib/i18nSeating";
+import { fmt } from "@/lib/seating";
 import { PLAN_W } from "@/lib/seatingGeometry";
 
 // "Your table" for the guest: the number(s), and a small hall map with the

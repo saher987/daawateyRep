@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { Link, useNavigate } from "react-router-dom";
 import {
   CalendarHeart, MapPin, Users, Phone, Copy, Check, Plus,
-  ArrowRight, Settings, Trash2, Send, ExternalLink, Pencil, Sparkles, Search, BellRing, LayoutGrid
+  ArrowRight, Settings, Trash2, Send, ExternalLink, Pencil, Sparkles, Search, BellRing, Heart, LayoutGrid
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import EmptyState from "@/components/shared/EmptyState";
 import InviteeRow from "@/components/events/InviteeRow";
 import AddInviteeDialog from "@/components/events/AddInviteeDialog";
 import ReminderDialog from "@/components/events/ReminderDialog";
+import BulkThankYouDialog from "@/components/events/BulkThankYouDialog";
 import EditEventDialog from "@/components/events/EditEventDialog";
 import InvitationCardEditor from "@/components/events/InvitationCardEditor";
 import GuestStatsDashboard from "@/components/events/GuestStatsDashboard";
@@ -45,6 +46,7 @@ export default function EventDetails() {
   const t = useT();
   const [showAddInvitee, setShowAddInvitee] = useState(false);
   const [showReminder, setShowReminder] = useState(false);
+  const [showBulkThanks, setShowBulkThanks] = useState(false);
   const [showEditEvent, setShowEditEvent] = useState(false);
   const [showCardEditor, setShowCardEditor] = useState(false);
   const [inviteeFilter, setInviteeFilter] = useState("all");
@@ -228,13 +230,19 @@ export default function EventDetails() {
       {/* Invitees Section — only for owner / admin / manager */}
       {canSeeRsvpDetails && (
         <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
             <h3 className="font-semibold text-lg">{t.guestListTitle}</h3>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {isPrivileged && recipients.length > 0 && (
                 <Button variant="outline" className="gap-2 rounded-xl" onClick={() => setShowReminder(true)}>
                   <BellRing className="w-4 h-4" />
                   {t.sendReminder}
+                </Button>
+              )}
+              {isPrivileged && recipients.some(r => r.rsvp_status === "accepted" && r.phone) && (
+                <Button variant="outline" className="gap-2 rounded-xl" onClick={() => setShowBulkThanks(true)}>
+                  <Heart className="w-4 h-4" />
+                  {t.bulkThanksBtn}
                 </Button>
               )}
               <Button className="gap-2 rounded-xl" onClick={() => setShowAddInvitee(true)}>
@@ -397,6 +405,17 @@ export default function EventDetails() {
           onOpenChange={setShowReminder}
           event={event}
           recipients={recipients}
+        />
+      )}
+      {isPrivileged && event && (
+        <BulkThankYouDialog
+          open={showBulkThanks}
+          onOpenChange={setShowBulkThanks}
+          eventId={eventId}
+          recipients={recipients}
+          template={event.thank_you_message}
+          whatsappThanks={whatsappThanksValues(event)}
+          arrivedIds={event.checkin_enabled ? new Set(Object.keys(arrivedById)) : null}
         />
       )}
       <EditEventDialog
