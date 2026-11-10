@@ -24,11 +24,14 @@ import BatchSendProgress, { ConfirmBatchSend } from "@/components/events/BatchSe
 //
 // What a guest gets (WhatsApp template or SMS) follows the same rule as
 // the single send — see ThankYouDialog's comment.
-export default function BulkThankYouDialog({ open, onOpenChange, recipients, template, whatsappThanks, eventId }) {
+// arrivedIds: invitees who checked in at the entrance (ArrivalsCard's
+// query) — only passed when the event uses check-in.
+export default function BulkThankYouDialog({ open, onOpenChange, recipients, template, whatsappThanks, eventId, arrivedIds = null }) {
   const t = useT();
   const queryClient = useQueryClient();
   const [text, setText] = useState("");
   const [skipThanked, setSkipThanked] = useState(true);
+  const [onlyArrived, setOnlyArrived] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
   const sender = useBatchSend(async (batch, messageText) => {
@@ -44,9 +47,11 @@ export default function BulkThankYouDialog({ open, onOpenChange, recipients, tem
   useBackButton({ isOpen: open, onClose: requestClose });
 
   const { eligible, noPhone } = useMemo(() => {
-    const accepted = recipients.filter(r => r.rsvp_status === "accepted");
+    const accepted = recipients
+      .filter(r => r.rsvp_status === "accepted")
+      .filter(r => !(onlyArrived && arrivedIds) || arrivedIds.has(r.id));
     return { eligible: accepted.filter(r => r.phone), noPhone: accepted.filter(r => !r.phone).length };
-  }, [recipients]);
+  }, [recipients, onlyArrived, arrivedIds]);
   const alreadyThanked = eligible.filter(r => r.thanked_at).length;
   const toSend = skipThanked ? eligible.filter(r => !r.thanked_at) : eligible;
 
@@ -120,6 +125,12 @@ export default function BulkThankYouDialog({ open, onOpenChange, recipients, tem
               </p>
               {toSend.length === 0 && alreadyThanked > 0 && <p className="text-xs">{t.bulkThanksAllThanked}</p>}
             </div>
+            {arrivedIds && (
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <Checkbox checked={onlyArrived} onCheckedChange={v => setOnlyArrived(!!v)} />
+                {t.bulkThanksOnlyArrived}
+              </label>
+            )}
             {alreadyThanked > 0 && (
               <label className="flex items-center gap-2 text-sm cursor-pointer">
                 <Checkbox checked={skipThanked} onCheckedChange={v => setSkipThanked(!!v)} />

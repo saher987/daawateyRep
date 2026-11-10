@@ -14,6 +14,7 @@ import { useT } from "@/lib/i18n";
 import { useBackButton } from "@/hooks/useBackButton";
 import SuffixPicker from "@/components/events/SuffixPicker";
 import CitySelect from "@/components/shared/CitySelect";
+import { SIDES, sideLabel } from "@/lib/seating";
 
 const emptyDetails = {
   nickname: "",
@@ -24,10 +25,11 @@ const emptyDetails = {
   email: "",
   guests_count: "1",
   group_label: "",
+  side: "",
   town: "",
 };
 
-export default function AddInviteeDialog({ open, onOpenChange, eventId }) {
+export default function AddInviteeDialog({ open, onOpenChange, eventId, eventType, groupNames = [] }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -143,7 +145,8 @@ export default function AddInviteeDialog({ open, onOpenChange, eventId }) {
       email: details.email || null,
       eventId,
       guestsCount: Number(details.guests_count) || 1,
-      groupLabel: details.group_label || null,
+      groupLabel: details.group_label.trim() || null,
+      side: usesSides ? details.side || null : null,
       town: details.town || null,
     });
   };
@@ -158,6 +161,8 @@ export default function AddInviteeDialog({ open, onOpenChange, eventId }) {
   };
 
   const t = useT();
+  // Sides (groom/bride/both) are a wedding thing; other events use groups only.
+  const usesSides = !eventType || ["wedding", "engagement"].includes(eventType);
   useBackButton({ isOpen: open, onClose: () => handleClose(false) });
   const hasContact = details.phone.trim() || details.email.trim();
   const hasName = details.first_name.trim() || details.last_name.trim();
@@ -305,9 +310,41 @@ export default function AddInviteeDialog({ open, onOpenChange, eventId }) {
                   <Input type="number" min="1" value={details.guests_count} onChange={set("guests_count")} className="h-10 rounded-xl text-base" />
                 </div>
               </div>
+              {usesSides && (
+                <div className="space-y-1.5">
+                  <Label className="text-sm">{t.sideLabel} <span className="text-muted-foreground text-xs font-normal">({t.optional})</span></Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {["", ...SIDES].map((s) => (
+                      <Button
+                        key={s || "none"}
+                        type="button"
+                        size="sm"
+                        variant={details.side === s ? "default" : "outline"}
+                        className="rounded-full h-8"
+                        aria-pressed={details.side === s}
+                        onClick={() => setDetails((prev) => ({ ...prev, side: s }))}
+                      >
+                        {s ? sideLabel(s, t) : t.sideNone}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="space-y-1.5">
-                <Label className="text-sm">{t.groupLabel}</Label>
-                <Input placeholder={t.groupPlaceholder} value={details.group_label} onChange={set("group_label")} className="h-10 rounded-xl text-base" />
+                <Label htmlFor="invitee-group" className="text-sm">{t.groupLabel}</Label>
+                <Input
+                  id="invitee-group"
+                  list="invitee-group-names"
+                  placeholder={t.groupNamePlaceholder}
+                  value={details.group_label}
+                  onChange={set("group_label")}
+                  className="h-10 rounded-xl text-base"
+                />
+                <datalist id="invitee-group-names">
+                  {groupNames.map((g) => (
+                    <option key={g} value={g} />
+                  ))}
+                </datalist>
               </div>
               {!hasContact && (hasName || details.nickname.trim()) && (
                 <p className="text-xs text-destructive">{t.contactRequired}</p>

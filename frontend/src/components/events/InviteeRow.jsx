@@ -13,8 +13,9 @@ import { recipientDisplayName } from "@/lib/recipientName";
 import { publicAppOrigin } from "@/lib/publicUrl";
 import { toIntlPhone } from "@/lib/thankYouMessage";
 import ThankYouDialog from "@/components/events/ThankYouDialog";
+import { sideLabel } from "@/lib/seating";
 
-export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeting, thankYouMessage, whatsappThanks, canResend = false }) {
+export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeting, thankYouMessage, whatsappThanks, canResend = false, arrived = null }) {
   const [copied, setCopied] = useState(false);
   const [showThanks, setShowThanks] = useState(false);
   const queryClient = useQueryClient();
@@ -132,7 +133,14 @@ export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeti
           </div>
           <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground flex-wrap">
             {recipient.phone && <span dir="ltr">{recipient.phone}</span>}
-            {recipient.group_label && <span>· {recipient.group_label}</span>}
+            {(recipient.side || recipient.group_label) && (
+              <span>· {[recipient.side ? sideLabel(recipient.side, t) : null, recipient.group_label].filter(Boolean).join(" › ")}</span>
+            )}
+            {arrived != null && (
+              <span className="rounded-full bg-[#E6F2EF] text-[#1D5A50] px-2 font-semibold">
+                {t.arrivedBadge} · {arrived}
+              </span>
+            )}
             <span className="flex items-center gap-1" title={t.invitationSentCount}>
               <Send className="w-3 h-3" />
               {recipient.sent_count || 0}

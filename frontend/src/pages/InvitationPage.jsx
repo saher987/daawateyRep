@@ -9,6 +9,7 @@ import PhoneOtpLogin from "@/components/auth/PhoneOtpLogin";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { translations } from "@/lib/i18n";
+import GuestTableCard from "@/components/seating/GuestTableCard";
 
 // Upper bound for the guest-count picker — just a sanity cap so a stray
 // tap-and-hold can't report an absurd number.
@@ -64,6 +65,17 @@ export default function InvitationPage() {
       }
     }
   });
+
+  // Remembered per event so the entrance check-in page (QR sign at the
+  // door) recognises this guest on this phone without typing a number.
+  useEffect(() => {
+    if (!data?.eventId || !data?.checkinEnabled || !token) return;
+    try {
+      localStorage.setItem(`daawatey_checkin_${data.eventId}`, token);
+    } catch {
+      /* private mode */
+    }
+  }, [data?.eventId, data?.checkinEnabled, token]);
 
   const rsvpMutation = useMutation({
     mutationFn: async (status) => {
@@ -254,6 +266,13 @@ export default function InvitationPage() {
             </div>
           </Card>
         </motion.div>
+
+        {/* Your table — only when the host uses seating and published it */}
+        {data?.tables?.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.27 }}>
+            <GuestTableCard tables={data.tables} hallPlan={data.hallPlan} />
+          </motion.div>
+        )}
 
         {/* Add to Google Calendar */}
         {event.date && (

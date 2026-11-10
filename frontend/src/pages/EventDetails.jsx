@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { Link, useNavigate } from "react-router-dom";
 import {
   CalendarHeart, MapPin, Users, Phone, Copy, Check, Plus,
-  ArrowRight, Settings, Trash2, Send, ExternalLink, Pencil, Sparkles, Search, BellRing, Heart
+  ArrowRight, Settings, Trash2, Send, ExternalLink, Pencil, Sparkles, Search, BellRing, Heart, LayoutGrid
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ import BulkThankYouDialog from "@/components/events/BulkThankYouDialog";
 import EditEventDialog from "@/components/events/EditEventDialog";
 import InvitationCardEditor from "@/components/events/InvitationCardEditor";
 import GuestStatsDashboard from "@/components/events/GuestStatsDashboard";
+import ArrivalsCard from "@/components/events/ArrivalsCard";
 import { format } from "date-fns";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/AuthContext";
@@ -77,6 +78,16 @@ export default function EventDetails() {
     });
     return unsubscribe;
   }, [eventId]);
+
+  // Entrance check-in: who arrived, for the guest list's "arrived" badge
+  // (same query and refresh as ArrivalsCard).
+  const { data: arrivals } = useQuery({
+    queryKey: ["arrivals", eventId],
+    queryFn: () => base44.checkin.arrivals(eventId),
+    enabled: !!event?.checkin_enabled,
+    refetchInterval: 30000,
+  });
+  const arrivedById = Object.fromEntries((arrivals?.arrivals || []).map((a) => [a.recipient_id, a.people_arrived]));
 
   const deleteMutation = useMutation({
     mutationFn: () => base44.entities.Event.delete(eventId),
@@ -195,6 +206,27 @@ export default function EventDetails() {
         <GuestStatsDashboard recipients={recipients} event={event} />
       )}
 
+      {/* Optional services: table arrangement and entrance check-in */}
+      {canSeeRsvpDetails && event.seating_enabled && (
+        <Card className="p-5 mb-6 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <LayoutGrid className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <p className="font-semibold">{t.seatingTitle}</p>
+              <p className="text-xs text-muted-foreground">
+                {event.seating_published ? t.seatingPublishOn : t.seatingPublishOff}
+              </p>
+            </div>
+          </div>
+          <Button className="gap-2 rounded-xl" asChild>
+            <Link to={`/events/${event.id}/seating`}>{t.seatingOpen}</Link>
+          </Button>
+        </Card>
+      )}
+      {canSeeRsvpDetails && event.checkin_enabled && <ArrivalsCard event={event} recipients={recipients} />}
+
       {/* Invitees Section — only for owner / admin / manager */}
       {canSeeRsvpDetails && (
         <div className="mb-6">
@@ -305,6 +337,7 @@ export default function EventDetails() {
                         thankYouMessage={event?.thank_you_message}
                         whatsappThanks={whatsappThanksValues(event)}
                         canResend={isPrivileged}
+                        arrived={arrivedById[recipient.id] ?? null}
                       />
                     ))
                   )}
@@ -360,6 +393,8 @@ export default function EventDetails() {
       )}
 
       <AddInviteeDialog
+        eventType={event.event_type}
+        groupNames={[...new Set(recipients.map((r) => r.group_label).filter(Boolean))].sort()}
         open={showAddInvitee}
         onOpenChange={setShowAddInvitee}
         eventId={eventId}
@@ -380,6 +415,7 @@ export default function EventDetails() {
           recipients={recipients}
           template={event.thank_you_message}
           whatsappThanks={whatsappThanksValues(event)}
+          arrivedIds={event.checkin_enabled ? new Set(Object.keys(arrivedById)) : null}
         />
       )}
       <EditEventDialog

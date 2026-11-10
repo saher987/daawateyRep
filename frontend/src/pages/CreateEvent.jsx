@@ -17,6 +17,7 @@ import { useT } from "@/lib/i18n";
 import InvitationCardEditor from "@/components/events/InvitationCardEditor";
 import CitySelect from "@/components/shared/CitySelect";
 import { whatsappInvitationPreview } from "@/lib/whatsappTemplate";
+import EventFeaturesFields from "@/components/events/EventFeaturesFields";
 
 export default function CreateEvent() {
   const navigate = useNavigate();
@@ -55,6 +56,8 @@ export default function CreateEvent() {
     invitation_image_url: "",
     invitation_greeting: "",
     whatsapp_invitation_text: "",
+    seating_enabled: false,
+    checkin_enabled: false,
   });
 
   const { data: venues = [] } = useQuery({
@@ -224,6 +227,12 @@ export default function CreateEvent() {
               className="h-12 rounded-xl text-base"
             />
           </div>
+
+          <EventFeaturesFields
+            seatingEnabled={form.seating_enabled}
+            checkinEnabled={form.checkin_enabled}
+            onChange={handleChange}
+          />
 
           {isPrivileged && (
             <div className="space-y-3">

@@ -45,6 +45,10 @@ const ProviderCategory = lazy(() => import('./pages/ProviderCategory'))
 const ProviderDetail = lazy(() => import('./pages/ProviderDetail'))
 const ManageProviders = lazy(() => import('./pages/ManageProviders'))
 const MyBusiness = lazy(() => import('./pages/MyBusiness'))
+const Seating = lazy(() => import('./pages/Seating'))
+const SeatingPrint = lazy(() => import('./pages/SeatingPrint'))
+const CheckIn = lazy(() => import('./pages/CheckIn'))
+const CheckInSign = lazy(() => import('./pages/CheckInSign'))
 
 const PageSpinner = () => (
   <div className="fixed inset-0 flex items-center justify-center bg-background">
@@ -95,6 +99,15 @@ function App() {
                   </Suspense>
                 }
               />
+              {/* Public: the page behind the QR sign at the event entrance. */}
+              <Route
+                path="/checkin/:eventId"
+                element={
+                  <Suspense fallback={<PageSpinner />}>
+                    <CheckIn />
+                  </Suspense>
+                }
+              />
               <Route
                 path="/terms"
                 element={
@@ -129,7 +142,32 @@ function App() {
               </Route>
 
               <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
+                {/* Printables, outside AppLayout so the menu isn't printed. */}
+                <Route
+                  path="/events/:id/seating/print"
+                  element={
+                    <Suspense fallback={<PageSpinner />}>
+                      <SeatingPrint />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/events/:id/checkin-sign"
+                  element={
+                    <Suspense fallback={<PageSpinner />}>
+                      <CheckInSign />
+                    </Suspense>
+                  }
+                />
                 <Route element={<AppLayout />}>
+                  <Route
+                    path="/events/:id/seating"
+                    element={
+                      <Suspense fallback={<PageSpinner />}>
+                        <Seating />
+                      </Suspense>
+                    }
+                  />
                   <Route
                     path="/"
                     element={
