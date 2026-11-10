@@ -2,6 +2,7 @@ import React, { useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { readSheet } from "read-excel-file/browser";
+import writeExcelFile from "write-excel-file/browser";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,9 +16,10 @@ import { useAuth } from "@/lib/AuthContext";
 import { useT, translations } from "@/lib/i18n";
 import { CITY_KEYS } from "@/lib/cities";
 import SuffixPicker from "@/components/events/SuffixPicker";
-import { FileSpreadsheet, Send, CheckCircle2, Phone, MapPin, Users as UsersIcon, Search, UserPlus, X } from "lucide-react";
+import { FileSpreadsheet, Send, CheckCircle2, Phone, MapPin, Users as UsersIcon, Search, UserPlus, X, Download } from "lucide-react";
 import CitySelect from "@/components/shared/CitySelect";
 import { SIDES, SIDE_COLOR, parseSide, sideLabel } from "@/lib/seating";
+import { downloadFile } from "@/lib/downloadFile";
 
 // Header names accepted per column (lower-cased, trimmed), so the import
 // works with the English headers of the template file as well as Arabic/
@@ -37,6 +39,48 @@ const HEADER_ALIASES = {
 };
 const OPTIONAL_FIELDS = ["side", "group_label"];
 const FIELD_ORDER = ["nickname", "first_name", "last_name", "name_suffix", "phone", "city", "guests_count"];
+
+// The example file behind "download example file": headers in the host's
+// language, each one an entry of HEADER_ALIASES above so the same file
+// imports back unchanged, plus three sample rows to overwrite. Side values
+// are words parseSide() knows and cities are labels CITY_LOOKUP knows.
+const TEMPLATE_HEADERS = {
+  ar: { nickname: "اللقب", first_name: "الاسم الأول", last_name: "اسم العائلة", name_suffix: "إضافة", phone: "رقم الهاتف", city: "المدينة", guests_count: "عدد المدعوين", side: "الطرف", group_label: "المجموعة" },
+  he: { nickname: "כינוי", first_name: "שם פרטי", last_name: "שם משפחה", name_suffix: "תוספת", phone: "טלפון", city: "עיר", guests_count: "מספר אורחים", side: "צד", group_label: "קבוצה" },
+};
+const TEMPLATE_ROWS = {
+  ar: [
+    { nickname: "السيد", first_name: "محمد", last_name: "خليل", name_suffix: "وعائلته", phone: "0501234567", city: "nazareth", guests_count: 4, side: "عريس", group_label: "أصدقاء العمل" },
+    { nickname: "", first_name: "سارة", last_name: "عيسى", name_suffix: "وزوجها", phone: "0529876543", city: "haifa", guests_count: 2, side: "عروس", group_label: "أصدقاء المدرسة" },
+    { nickname: "الحاج", first_name: "أحمد", last_name: "منصور", name_suffix: "", phone: "0541112233", city: "", guests_count: 1, side: "مشترك", group_label: "" },
+  ],
+  he: [
+    { nickname: "מר", first_name: "דוד", last_name: "כהן", name_suffix: "ומשפחתו", phone: "0501234567", city: "nazareth", guests_count: 4, side: "חתן", group_label: "חברים מהעבודה" },
+    { nickname: "", first_name: "שרה", last_name: "לוי", name_suffix: "ובעלה", phone: "0529876543", city: "haifa", guests_count: 2, side: "כלה", group_label: "חברות מבית הספר" },
+    { nickname: "הרב", first_name: "משה", last_name: "מזרחי", name_suffix: "", phone: "0541112233", city: "", guests_count: 1, side: "משותף", group_label: "" },
+  ],
+};
+
+// withSide: false for event types without groom/bride sides, so the
+// example doesn't suggest a column the import would ignore.
+async function buildTemplateFile(lang, withSide) {
+  const code = TEMPLATE_HEADERS[lang] ? lang : "ar";
+  const fields = [...FIELD_ORDER, ...OPTIONAL_FIELDS].filter((f) => withSide || f !== "side");
+  const header = fields.map((f) => ({ value: TEMPLATE_HEADERS[code][f], fontWeight: "bold" }));
+  const rows = TEMPLATE_ROWS[code].map((row) =>
+    fields.map((f) => {
+      if (f === "guests_count") return { type: Number, value: row[f] };
+      // Phone as text, so Excel keeps the leading 0.
+      const value = f === "city" ? (row.city ? translations[code][row.city] : "") : row[f];
+      return value ? { type: String, value } : null;
+    }),
+  );
+  return writeExcelFile([header, ...rows], {
+    columns: fields.map((f) => ({ width: ["phone", "group_label"].includes(f) ? 18 : 14 })),
+    rightToLeft: true,
+    stickyRowsCount: 1,
+  }).toBlob();
+}
 
 // City cell (Arabic label, Hebrew label, or the key itself) → city key.
 const CITY_LOOKUP = (() => {
@@ -169,6 +213,15 @@ export default function ImportInvitees() {
   const usesSides = !selectedEvent || ["wedding", "engagement"].includes(selectedEvent.event_type);
   const rowSide = (row) => (usesSides ? row.side || (row.manual ? null : fileSide || null) : null);
   const groupSuggestions = [...new Set(recipients.map((r) => r.group_label).filter(Boolean))].sort();
+
+  const downloadTemplate = async () => {
+    try {
+      // Latin file name: some browsers drop an Arabic/Hebrew one and save "download".
+      await downloadFile(await buildTemplateFile(t.langCode, usesSides), "daawatey_invitees_example.xlsx");
+    } catch {
+      toast({ title: t.importTemplateFailed, variant: "destructive" });
+    }
+  };
 
   if (!isPrivileged) {
     navigate("/profile");
@@ -306,7 +359,13 @@ export default function ImportInvitees() {
             <p className="text-xs text-muted-foreground">{t.sideForFileHint}</p>
           </div>
         )}
-        <p className="text-xs text-muted-foreground">{t.importColumnsHint}</p>
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">{t.importColumnsHint}</p>
+          <Button type="button" variant="link" className="h-auto p-0 gap-1.5 text-sm" onClick={downloadTemplate}>
+            <Download className="w-4 h-4" />
+            {t.importTemplateDownload}
+          </Button>
+        </div>
         {!showManual && (
           <Button type="button" variant="outline" className="w-full rounded-xl gap-2" onClick={() => setShowManual(true)}>
             <UserPlus className="w-4 h-4" />
