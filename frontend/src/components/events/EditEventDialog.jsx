@@ -16,6 +16,7 @@ import CitySelect from "@/components/shared/CitySelect";
 import { whatsappInvitationPreview } from "@/lib/whatsappTemplate";
 import InvitationCardEditor from "@/components/events/InvitationCardEditor";
 import EventFeaturesFields from "@/components/events/EventFeaturesFields";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function EditEventDialog({ open, onOpenChange, event }) {
   const queryClient = useQueryClient();
@@ -26,6 +27,8 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
     queryFn: () => base44.entities.Venue.list("-name"),
   });
 
+  const { user } = useAuth();
+  const isTeam = user?.role === "admin" || user?.role === "manager";
   const [form, setForm] = useState({});
   const [selectedVenueId, setSelectedVenueId] = useState("");
   const [ownerSearchInput, setOwnerSearchInput] = useState("");
@@ -171,6 +174,13 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
     if (data.max_guests) data.max_guests = Number(data.max_guests);
     else delete data.max_guests;
     data.owner_phones = owners.map(o => o.phone);
+    if (!isTeam) {
+      // Not the owner's to change; leave them out rather than resend.
+      delete data.owner_phones;
+      delete data.manager_phones;
+      delete data.seating_enabled;
+      delete data.checkin_enabled;
+    }
 
     // Check if date or venue changed — compare using form.date (still the
     // raw local datetime-local string here) before it's converted below;
@@ -318,12 +328,17 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
             <Input type="number" value={form.max_guests} onChange={e => handleChange("max_guests", e.target.value)} className="h-11 rounded-xl" placeholder={t.optional} />
           </div>
 
+          {/* Services and owners are set by the team (update_event refuses
+              changes from anyone else). */}
+          {isTeam && (
           <EventFeaturesFields
             seatingEnabled={form.seating_enabled}
             checkinEnabled={form.checkin_enabled}
             onChange={handleChange}
           />
+          )}
 
+          {isTeam && (
           <div className="space-y-3">
             <Label>{t.eventOwners}</Label>
             {owners.length > 0 && (
@@ -377,6 +392,7 @@ export default function EditEventDialog({ open, onOpenChange, event }) {
               )}
             </div>
           </div>
+          )}
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">

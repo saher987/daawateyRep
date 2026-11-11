@@ -19,6 +19,7 @@ import { ar, he } from "date-fns/locale";
 import { useToast } from "@/components/ui/use-toast";
 import { downloadFile } from "@/lib/downloadFile";
 import GuestStatsDashboard from "@/components/events/GuestStatsDashboard";
+import EventToolsSection from "@/components/events/EventToolsSection";
 import PlanningServicesCard from "@/components/providers/PlanningServicesCard";
 import { recipientDisplayName, recipientMatchesSearch } from "@/lib/recipientName";
 
@@ -217,6 +218,9 @@ function EventControlPanel({ event }) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Table arrangement and entrance check-in, when the team turned them on */}
+      <EventToolsSection event={event} recipients={recipients} />
 
       {/* Same stats dashboard (cards, charts, exports) the admin sees on EventDetails */}
       <GuestStatsDashboard recipients={recipients} event={event} />

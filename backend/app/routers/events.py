@@ -215,6 +215,17 @@ def get_event(
     return event
 
 
+# Fields only admin/manager may change on PUT /events/{id} (update_event).
+_TEAM_ONLY_EVENT_FIELDS = ("seating_enabled", "checkin_enabled", "owner_phones", "manager_phones")
+
+
+def _same_value(current, new) -> bool:
+    """Phone lists compare as sets (order and duplicates don't matter)."""
+    if isinstance(current, list) or isinstance(new, list):
+        return set(current or []) == set(new or [])
+    return bool(current) == bool(new) if isinstance(new, bool) else current == new
+
+
 @router.put("/events/{event_id}", response_model=schemas.EventOut)
 def update_event(
     event_id: str,
@@ -227,13 +238,22 @@ def update_event(
     event = _get_event_or_404(db, event_id)
     _require_event_access(event, user)
     fields = body.model_dump(exclude_unset=True)
-    before = snapshot(event, fields)
-    for field, value in fields.items():
+    for field in ("owner_phones", "manager_phones"):
         # Same normalization as create_event, for the same reason —
         # otherwise an edit that only touches owner_phones/manager_phones
         # could silently un-normalize a previously-correct entry.
-        if field in ("owner_phones", "manager_phones") and value is not None:
-            value = [to_international_phone(p) for p in value]
+        if fields.get(field) is not None:
+            fields[field] = [to_international_phone(p) for p in fields[field]]
+    if user.role not in (models.Role.admin, models.Role.manager):
+        # Event owners/managers edit their own event's details, but which
+        # paid services it has (seating, check-in) and who owns or manages
+        # it are set by the team. The edit dialogs still send unchanged
+        # values back, so only an actual change is refused.
+        for field in _TEAM_ONLY_EVENT_FIELDS:
+            if field in fields and not _same_value(getattr(event, field), fields[field]):
+                raise HTTPException(status.HTTP_403_FORBIDDEN, detail=f"Only the Daawatey team can change {field}")
+    before = snapshot(event, fields)
+    for field, value in fields.items():
         setattr(event, field, value)
     changes = changes_since(before, event)
     if changes:
