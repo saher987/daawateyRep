@@ -1,10 +1,11 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { motion, MotionConfig } from "framer-motion";
-import { Check, Download, Headphones, MessageCircle, UserRound } from "lucide-react";
+import { Check, Download, Headphones, MessageCircle, Star, UserRound } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { usePublicLanguage, useT } from "@/lib/i18n";
 import { fmt } from "@/lib/seating";
+import samirDinaNames from "@/assets/home/samir-dina.jpg";
 
 // "ابدأ مناسبتك معنا" opens a WhatsApp chat with us: new events are set up
 // by the team with the host, not self-serve.
@@ -20,6 +21,20 @@ function myEventsPath(role) {
 
 const STEPS = [1, 2, 3, 4, 5];
 const STEP_NUMERALS = ["١", "٢", "٣", "٤", "٥"];
+// Real customers' words, shown as they wrote them (Arabic) in both UI
+// languages. Add new ones here; the section lays them out in a grid.
+const REVIEWS = [
+  {
+    id: "samir-dina",
+    namesImage: samirDinaNames,
+    couple: "سمير ودينا مجدلاني",
+    author: "سامي مجدلاني",
+    stars: 5,
+    quote:
+      "عنجد تجربة رائعة من كل النواحي! أكتر إشي ميّزهم هو المعاملة الحلوة والراقية، وسهولة التواصل معهم، وسرعتهم بالرد على أي سؤال أو طلب. كانوا دايمًا متعاونين ومهتمين بأدق التفاصيل، وساعدوني كتير بتنظيم معازيم العرس. شكرًا من القلب على الخدمة الرائعة، وبنصح فيهم بكل محبة!",
+  },
+];
+
 const OCCASIONS = ["homeOcc1", "homeOcc2", "homeOcc3", "homeOcc4", "homeOcc5", "homeOcc6"];
 
 // Fade-up used for the hero on load and for sections as they scroll in.
@@ -191,6 +206,40 @@ export default function Home() {
           </motion.div>
         </section>
 
+        <section id="reviews" className="max-w-6xl mx-auto px-5 pt-4 pb-12 scroll-mt-16">
+          <div className="text-center mb-6">
+            <p className="text-sm font-bold text-[#8C6422] mb-1.5">{t.homeReviewsKicker}</p>
+            <h2 className={`${display} text-[27px] sm:text-[32px]`}>{t.homeReviewsTitle}</h2>
+          </div>
+          <div className={`grid gap-5 ${REVIEWS.length > 1 ? "md:grid-cols-2" : "max-w-2xl mx-auto"}`}>
+            {REVIEWS.map((r) => (
+              <motion.figure
+                key={r.id}
+                {...reveal()}
+                className="bg-white border border-[#EFE7DA] rounded-[28px] overflow-hidden shadow-[0_12px_40px_rgba(140,100,34,0.08)]"
+              >
+                <div className="bg-[#F5F2E9] px-6 pt-5 pb-3 flex justify-center">
+                  <img src={r.namesImage} alt={r.couple} className="h-16 sm:h-20 w-auto" loading="lazy" />
+                </div>
+                <div className="px-6 sm:px-8 pt-4 pb-7 flex flex-col items-center text-center gap-3">
+                  <div className="flex gap-1" role="img" aria-label={fmt(t.homeReviewStars, { n: r.stars })}>
+                    {Array.from({ length: r.stars }, (_, i) => (
+                      <Star key={i} className="w-5 h-5 fill-[#E2A93B] text-[#E2A93B]" aria-hidden="true" />
+                    ))}
+                  </div>
+                  <blockquote dir="rtl" lang="ar" className="text-[16px] sm:text-[17px] leading-8 text-[#2A2F3A]">
+                    «{r.quote}»
+                  </blockquote>
+                  <figcaption className="flex flex-col items-center gap-0.5">
+                    <strong className="text-[#171C26]">{r.author}</strong>
+                    <span className="text-sm text-[#5E4216]">{fmt(t.homeReviewWedding, { names: r.couple })}</span>
+                  </figcaption>
+                </div>
+              </motion.figure>
+            ))}
+          </div>
+        </section>
+
         <section id="occasions" className="max-w-6xl mx-auto px-5 pt-4 pb-12 text-center scroll-mt-16">
           <h2 className={`${display} text-[27px] sm:text-[32px] mb-5`}>{t.homeOccasionsTitle}</h2>
           <ul className="flex flex-wrap justify-center gap-2.5">
@@ -291,6 +340,7 @@ function GuestHeader({ t }) {
       <nav className="hidden sm:flex flex-1 gap-6 text-[15px]">
         <a href="#how" className="py-2.5 text-[#D5D8DE] hover:text-white">{t.homeNavHow}</a>
         <a href="#sides" className="py-2.5 text-[#D5D8DE] hover:text-white">{t.homeNavSides}</a>
+        <a href="#reviews" className="py-2.5 text-[#D5D8DE] hover:text-white">{t.homeNavReviews}</a>
         <a href="#occasions" className="py-2.5 text-[#D5D8DE] hover:text-white">{t.homeNavOccasions}</a>
       </nav>
       <div className="flex items-center gap-1 rounded-full border border-white/20 p-1">
