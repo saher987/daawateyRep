@@ -366,3 +366,38 @@ def test_deleting_invitee_and_event_cleans_up(client, db):
     db.expire_all()
     assert db.query(models.EventTable).count() == 0
     assert db.query(models.HallElement).count() == 0
+
+
+def test_owner_cannot_switch_services_or_owners(client, db, admin):
+    ev = _event(client, owner_phones=["0521234567"])
+    owner = models.User(
+        firebase_uid="uid-owner", email="owner@example.com", role=models.Role.user,
+        first_name="Owner", phone="972521234567",
+    )
+    db.add(owner)
+    db.commit()
+    db.refresh(owner)
+    app.dependency_overrides[get_app_user] = lambda: owner
+    try:
+        # Own details, and the dialog's unchanged values sent back: fine.
+        r = client.put(f"/api/events/{ev['id']}", json={
+            "description": "أهلاً بكم", "seating_enabled": False, "checkin_enabled": False,
+            "owner_phones": ["0521234567"],
+        })
+        assert r.status_code == 200, r.text
+        assert r.json()["description"] == "أهلاً بكم"
+        # Switching a service on, or changing who owns it: team only.
+        for body in ({"seating_enabled": True}, {"checkin_enabled": True},
+                     {"owner_phones": ["0521234567", "0539999999"]}, {"manager_phones": ["0539999999"]}):
+            r = client.put(f"/api/events/{ev['id']}", json=body)
+            assert r.status_code == 403, (body, r.text)
+        # Once the team turns seating on, the owner manages it.
+        app.dependency_overrides[get_app_user] = lambda: admin
+        assert client.put(f"/api/events/{ev['id']}", json={"seating_enabled": True}).status_code == 200
+        app.dependency_overrides[get_app_user] = lambda: owner
+        r = client.post(f"/api/events/{ev['id']}/tables", json={"shape": "round", "seats_round": 10})
+        assert r.status_code in (200, 201), r.text
+        r = client.put(f"/api/events/{ev['id']}/seating/settings", json={"seating_published": True})
+        assert r.status_code == 200, r.text
+    finally:
+        app.dependency_overrides[get_app_user] = lambda: admin
