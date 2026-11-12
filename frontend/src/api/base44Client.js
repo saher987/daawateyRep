@@ -507,6 +507,16 @@ const functionHandlers = {
       body: { recipient_ids: recipientIds, details, sms_app_users: smsAppUsers },
     })
   },
+  // Bulk invitations, one batch per call (InvitationsDialog / ImportInvitees).
+  async sendInvitationBatch({ eventId, recipientIds }) {
+    return request(`/api/events/${eventId}/send-invitations-batch`, {
+      method: 'POST',
+      body: { recipient_ids: recipientIds },
+    })
+  },
+  async importInvitationBatch({ eventId, guests }) {
+    return request(`/api/events/${eventId}/import-invitations-batch`, { method: 'POST', body: { guests } })
+  },
   async sendEventReminders({ eventId, ...body }) {
     return request(`/api/events/${eventId}/send-reminders`, { method: 'POST', body })
   },

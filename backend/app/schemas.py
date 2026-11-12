@@ -304,6 +304,49 @@ class ReminderBatchResult(BaseModel):
     results: list[ReminderBatchItemResult]
 
 
+class InvitationBatchSend(BaseModel):
+    """InvitationsDialog.jsx (event page): (re)send the invitation to one
+    batch of guests already on the list. Small, like the reminder batch."""
+
+    recipient_ids: list[str] = Field(min_length=1, max_length=25)
+
+
+class InvitationBatchItemResult(BaseModel):
+    recipient_id: str
+    success: bool
+    # Why the guest wasn't sent (not this event's, no phone/email, delivery failed).
+    error: str | None = None
+
+
+class InvitationBatchResult(BaseModel):
+    results: list[InvitationBatchItemResult]
+
+
+class ImportGuest(RecipientCreate):
+    # The import page's own row id, echoed back so it can mark the row.
+    client_id: str = Field(min_length=1, max_length=64)
+
+
+class ImportInvitationBatch(BaseModel):
+    """ImportInvitees.jsx «إرسال الدعوات للجميع»: add and invite one batch
+    of rows from the file."""
+
+    guests: list[ImportGuest] = Field(min_length=1, max_length=25)
+
+
+class ImportInvitationItemResult(BaseModel):
+    client_id: str
+    success: bool
+    recipient_id: str | None = None
+    # Already a guest of this event (counts as done on the import page).
+    already_invited: bool = False
+    error: str | None = None
+
+
+class ImportInvitationBatchResult(BaseModel):
+    results: list[ImportInvitationItemResult]
+
+
 class ThankYouSend(BaseModel):
     # Already filled in for this guest by the frontend (thankYouMessage.js).
     # Capped so one tap can't fire off a runaway multi-part SMS.
