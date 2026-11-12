@@ -58,6 +58,7 @@ def _clean_provider_data(db: Session, body: schemas.ProviderDetailsIn) -> dict:
     if db.get(models.ProviderCategory, body.category_id) is None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Unknown category")
     data = body.model_dump()
+    data.pop("accepted_terms", None)  # recorded in the audit row, not a column
     for field in _URL_FIELDS:
         data[field] = _safe_url(data[field])
     data["gallery_urls"] = [u for u in (_safe_url(u) for u in data["gallery_urls"]) if u]
@@ -222,6 +223,8 @@ def submit_provider(
     user: models.User = Depends(get_app_user),
     db: Session = Depends(get_db),
 ) -> models.Provider:
+    if body.accepted_terms is False:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="terms_not_accepted")
     owned = db.query(models.Provider).filter(models.Provider.owner_user_id == user.id).count()
     if owned >= _MAX_LISTINGS_PER_USER:
         raise HTTPException(status.HTTP_409_CONFLICT, detail="listing_limit_reached")
@@ -240,6 +243,13 @@ def submit_provider(
         db,
         "طلب إضافة خدمة جديد",
         f'{_display_name(user)} يطلب إضافة "{provider.name}" إلى صفحة الخدمات',
+    )
+    db.flush()
+    # Who listed it, and that they accepted the Privacy Policy and Terms
+    # (false only for old app builds that don't show the box yet).
+    audit(
+        db, user, "provider.submit", "provider", provider.id, label=provider.name,
+        meta={"accepted_terms": bool(body.accepted_terms)},
     )
     db.commit()
     db.refresh(provider)

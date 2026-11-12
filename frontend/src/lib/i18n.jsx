@@ -69,6 +69,7 @@ const translations = {
       "planned_wedding.delete": "حذف عرساً قادماً",
       "event_request.update": "عالج طلب مناسبة",
       "provider.create": "أضاف خدمة",
+      "provider.submit": "طلب إضافة خدمة",
       "provider.update": "عدّل خدمة",
       "provider.delete": "حذف خدمة",
       "provider.approve": "وافق على خدمة",
@@ -657,6 +658,10 @@ const translations = {
 
     // Footer
     termsOfUse: "شروط الاستخدام",
+    providerTermsPrefix: "قرأت وأوافق على ",
+    providerTermsPrivacy: "سياسة الخصوصية",
+    providerTermsAnd: " و",
+    providerTermsAria: "أوافق على سياسة الخصوصية وشروط الاستخدام",
     footerRights: "منصة دعوتي — جميع الحقوق محفوظة",
     footerByBusiness: "دعوتي من بيت سكايلر",
 
@@ -1263,6 +1268,7 @@ const translations = {
       "planned_wedding.delete": "מחק/ה חתונה קרובה",
       "event_request.update": "טיפל/ה בבקשת אירוע",
       "provider.create": "הוסיף/ה ספק",
+      "provider.submit": "ביקש/ה להוסיף שירות",
       "provider.update": "ערך/ה ספק",
       "provider.delete": "מחק/ה ספק",
       "provider.approve": "אישר/ה ספק",
@@ -1850,6 +1856,10 @@ const translations = {
 
     // Footer
     termsOfUse: "תנאי שימוש",
+    providerTermsPrefix: "קראתי ואני מסכים/ה ל",
+    providerTermsPrivacy: "מדיניות הפרטיות",
+    providerTermsAnd: " ול",
+    providerTermsAria: "אני מסכים/ה למדיניות הפרטיות ולתנאי השימוש",
     footerRights: "פלטפורמת דעוותי — כל הזכויות שמורות",
     footerByBusiness: "דעוותי מבית סקאילר",
 

@@ -684,6 +684,10 @@ class ProviderSubmitIn(ProviderDetailsIn):
     # A self-listed business has to be reachable — the whole point of the
     # directory is the call/WhatsApp buttons.
     phone: str = Field(min_length=1)
+    # The "I agree to the Privacy Policy and Terms" box in
+    # ProviderFormDialog, required when listing a new service. None from
+    # app builds older than the box (accepted as before); False is refused.
+    accepted_terms: bool | None = None
 
 
 class ProviderOut(BaseModel):
