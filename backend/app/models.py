@@ -598,6 +598,10 @@ class Notification(Base):
     message: Mapped[str] = mapped_column(Text, nullable=False)
     is_read: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     target_user_email: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    # In-app path the Notifications page opens on tap, for notifications
+    # that aren't about one event (e.g. "/event-requests"). event_id's own
+    # page is used when this is empty.
+    link: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow
     )
