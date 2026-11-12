@@ -20,7 +20,9 @@ function myEventsPath(role) {
 }
 
 const STEPS = [1, 2, 3, 4, 5];
-const STEP_NUMERALS = ["١", "٢", "٣", "٤", "٥"];
+// Step numbers: Arabic-Indic digits in the Arabic page, the digits Hebrew
+// readers use (1, 2, 3…) in the Hebrew one.
+const STEP_NUMERALS = { ar: ["١", "٢", "٣", "٤", "٥"], he: ["1", "2", "3", "4", "5"] };
 // Real customers' words, shown as they wrote them (Arabic) in both UI
 // languages. Add new ones here; the section lays them out in a grid.
 const REVIEWS = [
@@ -142,7 +144,7 @@ export default function Home() {
             {STEPS.map((n, i) => (
               <motion.li key={n} {...reveal(i * 0.12)} className="flex flex-col gap-2 py-3.5 border-b border-[#EFE7DA] sm:border-0 sm:py-1">
                 <span className={`${display} text-[40px] leading-none text-[#C9A86A]`} aria-hidden="true">
-                  {STEP_NUMERALS[i]}
+                  {(STEP_NUMERALS[t.langCode] || STEP_NUMERALS.ar)[i]}
                 </span>
                 <span
                   className={`self-start text-xs font-bold rounded-full px-2.5 py-1 ${
