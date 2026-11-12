@@ -13,7 +13,9 @@ import logging
 import firebase_admin
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from firebase_admin import auth as firebase_auth
-from sqlalchemy import or_
+import re
+
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app import models, schemas
@@ -80,6 +82,81 @@ def list_users(
             )
         )
     return list(query.order_by(models.User.created_at.desc()).limit(limit).all())
+
+
+def _phone_core(phone: str | None) -> str:
+    """Last 9 digits: "0501234567", "972501234567" and "+972 50-123-4567"
+    are the same number."""
+    return re.sub(r"\D", "", phone or "")[-9:]
+
+
+@router.get("/invitee-suggestions", response_model=list[schemas.InviteeSuggestion])
+def invitee_suggestions(
+    q: str = Query(min_length=2, max_length=60),
+    limit: int = Query(default=10, le=30),
+    _: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
+    db: Session = Depends(get_db),
+) -> list[schemas.InviteeSuggestion]:
+    """AddInviteeDialog's search: people invited to earlier events, so the
+    team can add them again without retyping (the Privacy Policy says we
+    keep guests' names and phones for this). Registered users are left out
+    here — GET /users already returns them, with their own profile names.
+    One suggestion per phone number, from its most recent invitation."""
+    from app.routers.events import _resolve_display_name
+
+    term = q.strip()
+    digits = re.sub(r"\D", "", term)
+    if digits.startswith("972"):
+        digits = digits[3:]
+    digits = digits.lstrip("0")
+    conditions = []
+    if len(digits) >= 3:
+        conditions.append(func.regexp_replace(models.InvitationRecipient.phone, r"\D", "", "g").contains(digits))
+    if not digits or len(digits) < len(term.replace(" ", "")):
+        pattern = f"%{term}%"
+        conditions += [
+            models.InvitationRecipient.first_name.ilike(pattern),
+            models.InvitationRecipient.last_name.ilike(pattern),
+            models.InvitationRecipient.nickname.ilike(pattern),
+            models.InvitationRecipient.external_full_name.ilike(pattern),
+        ]
+    if not conditions:
+        return []
+    rows = (
+        db.query(models.InvitationRecipient)
+        .filter(models.InvitationRecipient.phone.isnot(None), models.InvitationRecipient.phone != "", or_(*conditions))
+        .order_by(models.InvitationRecipient.created_at.desc())
+        .limit(300)
+        .all()
+    )
+    registered = {
+        _phone_core(p)
+        for (p,) in db.query(models.User.phone)
+        .filter(models.User.phone.in_({r.phone for r in rows} | {"972" + _phone_core(r.phone) for r in rows}))
+        .all()
+    }
+    seen: set[str] = set()
+    out: list[schemas.InviteeSuggestion] = []
+    for r in rows:
+        core = _phone_core(r.phone)
+        if len(core) < 9 or core in seen or core in registered:
+            continue
+        seen.add(core)
+        out.append(
+            schemas.InviteeSuggestion(
+                nickname=r.nickname,
+                first_name=r.first_name,
+                last_name=r.last_name,
+                name_suffix=r.name_suffix,
+                phone="0" + core,
+                town=r.town,
+                display_name=_resolve_display_name(r.external_full_name, r.nickname, r.first_name, r.last_name, None)
+                or "0" + core,
+            )
+        )
+        if len(out) >= limit:
+            break
+    return out
 
 
 @router.put("/users/{user_id}", response_model=schemas.UserOut)

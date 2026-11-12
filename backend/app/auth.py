@@ -20,7 +20,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import models
-from app.audit import set_actor
+from app.audit import audit, display_name, set_actor
 from app.db import get_db
 
 logger = logging.getLogger(__name__)
@@ -55,6 +55,10 @@ _bearer_scheme = HTTPBearer(auto_error=False)
 class CurrentUser:
     uid: str
     email: str | None
+    # When this Firebase session was signed in (the token's auth_time; token
+    # refreshes keep it) and how ("phone", "google.com", "custom" = our OTP).
+    auth_time: int | None = None
+    sign_in_provider: str | None = None
 
 
 def get_current_user(
@@ -77,7 +81,53 @@ def get_current_user(
             detail="Invalid or expired token",
         ) from exc
 
-    return CurrentUser(uid=decoded["uid"], email=decoded.get("email"))
+    return CurrentUser(
+        uid=decoded["uid"],
+        email=decoded.get("email"),
+        auth_time=decoded.get("auth_time"),
+        sign_in_provider=(decoded.get("firebase") or {}).get("sign_in_provider"),
+    )
+
+
+# A sign-in counts as new while its auth_time is this recent: the app calls
+# the API right after signing in, and a session that was already open when
+# this was deployed must not show up as a fresh login.
+_LOGIN_WINDOW = timedelta(minutes=10)
+# user id -> auth_time already handled by this instance, so the audit query
+# below runs about once per sign-in, not on every request.
+_logins_seen: dict[str, int] = {}
+
+
+def _record_login(db: Session, user: models.User, current: CurrentUser) -> None:
+    """Audit row "user.login" once per Firebase sign-in (Audit log page).
+    There is no login endpoint — sign-in happens in Firebase — so a new
+    auth_time on the token is what marks one."""
+    if not current.auth_time or _logins_seen.get(user.id) == current.auth_time:
+        return
+    signed_in_at = datetime.fromtimestamp(current.auth_time, timezone.utc)
+    if datetime.now(timezone.utc) - signed_in_at <= _LOGIN_WINDOW:
+        # The sign-in time, readable on the Audit log page, also marks which
+        # sign-in a row belongs to, so another server instance (or a quick
+        # sign-out/sign-in) neither repeats nor misses one.
+        stamp = signed_in_at.isoformat(timespec="seconds")
+        already = (
+            db.query(models.AuditLog.id)
+            .filter(
+                models.AuditLog.actor_user_id == user.id,
+                models.AuditLog.action == "user.login",
+                models.AuditLog.meta["signed_in_at"].astext == stamp,
+            )
+            .first()
+        )
+        if already is None:
+            meta = {"signed_in_at": stamp}
+            if current.sign_in_provider:
+                meta["method"] = current.sign_in_provider
+            audit(db, user, "user.login", "user", user.id, label=display_name(user), meta=meta)
+            db.commit()
+    if len(_logins_seen) > 20000:
+        _logins_seen.clear()
+    _logins_seen[user.id] = current.auth_time
 
 
 def get_app_user(
@@ -123,6 +173,7 @@ def get_app_user(
         if last_login is None or now - last_login > timedelta(hours=1):
             user.last_login = now
             db.commit()
+        _record_login(db, user, current)
         return user
 
     invite = (
@@ -189,6 +240,7 @@ def get_app_user(
     else:
         db.refresh(user)
     set_actor(user)
+    _record_login(db, user, current)
     return user
 
 

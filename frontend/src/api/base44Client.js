@@ -317,6 +317,10 @@ const usersNamespaceApi = {
   async inviteUser(email, role, phone) {
     return request('/api/invites', { method: 'POST', body: { email, role, phone } })
   },
+  // People from earlier guest lists (not registered), for AddInviteeDialog.
+  async inviteeSuggestions(q) {
+    return request(`/api/invitee-suggestions?q=${encodeURIComponent(q)}`)
+  },
 }
 
 const eventRequestsApi = {

@@ -52,14 +52,18 @@ export default function AddInviteeDialog({ open, onOpenChange, eventId, eventTyp
         // 200 users and filtering client-side, which silently missed
         // anyone beyond that page.
         const trimmed = q.trim();
-        const [byPhone, byName] = await Promise.all([
-          base44.entities.User.filter({ phone: trimmed }),
-          base44.entities.User.filter({ name: trimmed }),
+        // Plus people invited to earlier events (not registered), so they
+        // can be added again without retyping (DAW-52). Each request can
+        // fail on its own without hiding the others' results.
+        const [byPhone, byName, earlier] = await Promise.all([
+          base44.entities.User.filter({ phone: trimmed }).catch(() => []),
+          base44.entities.User.filter({ name: trimmed }).catch(() => []),
+          trimmed.length >= 2 ? base44.users.inviteeSuggestions(trimmed).catch(() => []) : [],
         ]);
         const merged = [...byPhone, ...byName].filter(
           (u, i, arr) => arr.findIndex(x => x.id === u.id) === i
         );
-        setResults(merged);
+        setResults([...merged, ...earlier.map((p) => ({ ...p, id: `prev:${p.phone}`, previous: true }))]);
       } catch {
         setResults([]);
       } finally {
@@ -79,6 +83,21 @@ export default function AddInviteeDialog({ open, onOpenChange, eventId, eventTyp
   };
 
   const handleSelectUser = (user) => {
+    if (user.previous) {
+      // Not an account: fill the new-invitee form from their last invitation.
+      setDetails({
+        ...emptyDetails,
+        nickname: user.nickname || "",
+        first_name: user.first_name || "",
+        last_name: user.last_name || "",
+        name_suffix: user.name_suffix || "",
+        phone: user.phone || "",
+        town: user.town || "",
+      });
+      setSelectedUser(null);
+      setShowNewForm(true);
+      return;
+    }
     setSelectedUser(user);
     setShowNewForm(false);
     // Pre-fill with the user's own nickname; the inviter can change it
@@ -202,7 +221,9 @@ export default function AddInviteeDialog({ open, onOpenChange, eventId, eventTyp
                   <p className="text-xs text-muted-foreground">{t.selectOrAdd}</p>
                   <div className="max-h-48 overflow-y-auto space-y-1 rounded-xl border p-1">
                     {results.map(user => {
-                      const displayName = [user.nickname, user.first_name, user.last_name].filter(Boolean).join(' ') || user.full_name || user.phone;
+                      const displayName = user.previous
+                        ? user.display_name
+                        : [user.nickname, user.first_name, user.last_name].filter(Boolean).join(' ') || user.full_name || user.phone;
                       return (
                       <button
                         key={user.id}
@@ -218,6 +239,9 @@ export default function AddInviteeDialog({ open, onOpenChange, eventId, eventTyp
                           <p className="font-medium text-sm truncate">{displayName}</p>
                           {user.phone && <p className="text-xs text-muted-foreground" dir="ltr">{user.phone}</p>}
                         </div>
+                        {user.previous && (
+                          <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">{t.previousInvitee}</span>
+                        )}
                         {selectedUser?.id === user.id && <UserCheck className="w-4 h-4 text-primary flex-shrink-0" />}
                       </button>
                       );

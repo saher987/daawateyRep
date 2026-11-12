@@ -15,7 +15,9 @@ import { toIntlPhone } from "@/lib/thankYouMessage";
 import ThankYouDialog from "@/components/events/ThankYouDialog";
 import { sideLabel } from "@/lib/seating";
 
-export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeting, thankYouMessage, whatsappThanks, canResend = false, arrived = null }) {
+// readOnly: the event owner's view on MyEvent (DAW-56) — the same row the
+// admin sees (status, opened, sent, reminders, arrived) without any actions.
+export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeting, thankYouMessage, whatsappThanks, canResend = false, arrived = null, readOnly = false }) {
   const [copied, setCopied] = useState(false);
   const [showThanks, setShowThanks] = useState(false);
   const queryClient = useQueryClient();
@@ -177,6 +179,7 @@ export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeti
       </div>
 
       {/* Actions */}
+      {!readOnly && (
       <div className="flex items-center gap-1 flex-shrink-0 self-end sm:self-auto">
         {canResend && recipient.phone && (
           <Button
@@ -224,6 +227,8 @@ export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeti
           <Trash2 className="w-4 h-4" />
         </Button>
       </div>
+      )}
+      {!readOnly && (
       <ThankYouDialog
         open={showThanks}
         onOpenChange={setShowThanks}
@@ -231,6 +236,7 @@ export default function InviteeRow({ recipient, eventId, eventTitle, eventGreeti
         template={thankYouMessage}
         whatsappThanks={whatsappThanks}
       />
+      )}
     </div>
   );
 }
