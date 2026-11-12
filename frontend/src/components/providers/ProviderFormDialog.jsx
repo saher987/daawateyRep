@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { publicAppOrigin } from "@/lib/publicUrl";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -84,12 +86,17 @@ export default function ProviderFormDialog({ open, onOpenChange, provider, categ
   const [form, setForm] = useState(emptyForm);
   const [uploading, setUploading] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // A business owner listing a new service accepts the Privacy Policy and
+  // Terms first; submit_provider records it in the audit log.
+  const askTerms = owner && !provider;
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const isAdmin = user?.role === "admin";
 
   // Reset only when the dialog opens — not on every categories refetch,
   // which would wipe what's being typed.
   useEffect(() => {
     if (open) setForm(provider ? toForm(provider) : { ...emptyForm, category_id: categories[0]?.id || "" });
+    if (open) setAcceptedTerms(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, provider]);
 
@@ -156,7 +163,8 @@ export default function ProviderFormDialog({ open, onOpenChange, provider, categ
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    save.mutate(toPayload(form, owner));
+    if (askTerms && !acceptedTerms) return;
+    save.mutate(askTerms ? { ...toPayload(form, owner), accepted_terms: true } : toPayload(form, owner));
   };
 
   const categoryOptions = categories.map((c) => ({ value: c.id, label: localized(c, "name", t.langCode) }));
@@ -284,8 +292,31 @@ export default function ProviderFormDialog({ open, onOpenChange, provider, categ
               </div>
               )}
             </div>
+            {askTerms && (
+              <label className="flex items-start gap-3 px-6 py-3 border-t text-sm leading-6 cursor-pointer flex-shrink-0 bg-background">
+                <Checkbox
+                  checked={acceptedTerms}
+                  onCheckedChange={(v) => setAcceptedTerms(v === true)}
+                  className="mt-1"
+                  aria-label={t.providerTermsAria}
+                />
+                <span>
+                  {/* Spacing lives in the strings: Hebrew ל/ול and Arabic و attach to the next word. */}
+                  {t.providerTermsPrefix}
+                  {/* Full URLs in a new tab: the form stays filled in, and it
+                      also works inside the phone app. */}
+                  <a href={`${publicAppOrigin()}/privacy`} target="_blank" rel="noreferrer" className="text-primary underline" onClick={(e) => e.stopPropagation()}>
+                    {t.providerTermsPrivacy}
+                  </a>
+                  {t.providerTermsAnd}
+                  <a href={`${publicAppOrigin()}/terms`} target="_blank" rel="noreferrer" className="text-primary underline" onClick={(e) => e.stopPropagation()}>
+                    {t.termsOfUse}
+                  </a>
+                </span>
+              </label>
+            )}
             <div className="flex gap-3 px-6 py-4 border-t flex-shrink-0 bg-background">
-              <Button type="submit" disabled={save.isPending || !!uploading || !form.category_id} className="flex-1 h-11 rounded-xl gap-2">
+              <Button type="submit" disabled={save.isPending || !!uploading || !form.category_id || (askTerms && !acceptedTerms)} className="flex-1 h-11 rounded-xl gap-2">
                 {save.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
                 {owner ? t.submitForReview : t.saveBtn}
               </Button>
