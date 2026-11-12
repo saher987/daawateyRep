@@ -14,8 +14,12 @@ from app import models, schemas
 from app.audit import audit, changes_since, snapshot
 from app.auth import get_app_user, require_role
 from app.db import get_db
+from app.integrations.push import send_push_to_user
 
 router = APIRouter(prefix="/api", tags=["event-requests"])
+
+# Where the "new event request" notification and push lead (EventRequests.jsx).
+EVENT_REQUESTS_PATH = "/event-requests"
 
 
 @router.post(
@@ -30,26 +34,43 @@ def create_event_request(
     db.add(request)
     db.flush()
 
-    # notifyEventRequest: notify every admin/manager, same wording as the
-    # original.
-    display_name = request.requester_name or user.email
+    # notifyEventRequest (DAW-49): every active admin/manager gets an
+    # in-app notification that opens the Event requests page, plus a push
+    # to their phone. Committed first, so a push problem can't lose the
+    # request.
+    display_name = (
+        request.requester_name
+        or " ".join(p for p in (user.first_name, user.last_name) if p)
+        or request.requester_phone
+        or user.phone
+        or user.email
+    )
+    title = "طلب مناسبة جديد"
+    message = f'{display_name} يطلب فتح مناسبة: "{request.title}"'
     privileged = (
         db.query(models.User)
-        .filter(models.User.role.in_([models.Role.admin, models.Role.manager]))
+        .filter(
+            models.User.role.in_([models.Role.admin, models.Role.manager]),
+            models.User.is_active.is_(True),
+        )
         .all()
     )
     for admin in privileged:
         db.add(
             models.Notification(
                 type=models.NotificationType.event_update,
-                title="طلب مناسبة جديد",
-                message=f'{display_name} يطلب فتح مناسبة: "{request.title}"',
+                title=title,
+                message=message,
                 is_read=False,
                 target_user_email=admin.email,
+                link=EVENT_REQUESTS_PATH,
             )
         )
     db.commit()
     db.refresh(request)
+    for admin in privileged:
+        if admin.id != user.id:
+            send_push_to_user(db, admin, title, message, data={"path": EVENT_REQUESTS_PATH})
     return request
 
 

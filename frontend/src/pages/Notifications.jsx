@@ -81,7 +81,10 @@ export default function Notifications() {
               }`}
               onClick={() => {
                 if (!n.is_read) markReadMutation.mutate(n.id);
-                if (n.event_id) navigate(`/events/${n.event_id}`);
+                // link: a notification that isn't about one event, e.g. a
+                // new event request opens /event-requests (in-app paths only).
+                if (n.link?.startsWith("/")) navigate(n.link);
+                else if (n.event_id) navigate(`/events/${n.event_id}`);
               }}
             >
               <div className="flex items-start gap-3">

@@ -526,6 +526,7 @@ class NotificationOut(BaseModel):
     is_read: bool
     event_id: str | None
     recipient_id: str | None
+    link: str | None = None
     created_at: datetime
 
 
