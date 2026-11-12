@@ -22,6 +22,7 @@ import EmptyState from "@/components/shared/EmptyState";
 import InviteeRow from "@/components/events/InviteeRow";
 import AddInviteeDialog from "@/components/events/AddInviteeDialog";
 import ReminderDialog from "@/components/events/ReminderDialog";
+import InvitationsDialog from "@/components/events/InvitationsDialog";
 import BulkThankYouDialog from "@/components/events/BulkThankYouDialog";
 import EditEventDialog from "@/components/events/EditEventDialog";
 import InvitationCardEditor from "@/components/events/InvitationCardEditor";
@@ -46,6 +47,7 @@ export default function EventDetails() {
   const t = useT();
   const [showAddInvitee, setShowAddInvitee] = useState(false);
   const [showReminder, setShowReminder] = useState(false);
+  const [showInvitations, setShowInvitations] = useState(false);
   const [showBulkThanks, setShowBulkThanks] = useState(false);
   const [showEditEvent, setShowEditEvent] = useState(false);
   const [showCardEditor, setShowCardEditor] = useState(false);
@@ -234,6 +236,12 @@ export default function EventDetails() {
             <h3 className="font-semibold text-lg">{t.guestListTitle}</h3>
             <div className="flex flex-wrap gap-2">
               {isPrivileged && recipients.length > 0 && (
+                <Button variant="outline" className="gap-2 rounded-xl" onClick={() => setShowInvitations(true)}>
+                  <Send className="w-4 h-4" />
+                  {t.bulkInviteBtn}
+                </Button>
+              )}
+              {isPrivileged && recipients.length > 0 && (
                 <Button variant="outline" className="gap-2 rounded-xl" onClick={() => setShowReminder(true)}>
                   <BellRing className="w-4 h-4" />
                   {t.sendReminder}
@@ -399,6 +407,14 @@ export default function EventDetails() {
         onOpenChange={setShowAddInvitee}
         eventId={eventId}
       />
+      {isPrivileged && event && (
+        <InvitationsDialog
+          open={showInvitations}
+          onOpenChange={setShowInvitations}
+          recipients={recipients}
+          eventId={eventId}
+        />
+      )}
       {isPrivileged && event && (
         <ReminderDialog
           open={showReminder}

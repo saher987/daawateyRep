@@ -452,12 +452,27 @@ def add_recipient(
     original."""
     event = _get_event_or_404(db, event_id)
     _require_event_access(event, user)
+    return _add_and_invite(db, event, user, body)
+
+
+def _add_and_invite(
+    db: Session,
+    event: models.Event,
+    user: models.User,
+    body: schemas.RecipientCreate,
+    *,
+    batch: bool = False,
+) -> models.InvitationRecipient:
+    """Adds one guest to the event and sends their invitation: the single
+    add (add_recipient) and the import page's batch send
+    (import_invitations_batch). Raises 400 without a phone/email and 409
+    when that phone/email is already invited to this event."""
 
     if not body.phone and not body.email:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="phone or email is required")
 
     duplicate_query = db.query(models.InvitationRecipient).filter(
-        models.InvitationRecipient.event_id == event_id
+        models.InvitationRecipient.event_id == event.id
     )
     if body.phone:
         duplicate_query = duplicate_query.filter(models.InvitationRecipient.phone == body.phone)
@@ -482,7 +497,7 @@ def add_recipient(
             linked_user_id = matched.id
 
     recipient = models.InvitationRecipient(
-        event_id=event_id,
+        event_id=event.id,
         event_creator_id=event.created_by_uid,
         user_id=linked_user_id,
         external_full_name=body.external_full_name,
@@ -525,10 +540,13 @@ def add_recipient(
             "event_id": event.id,
             "event_title": event.title,
             "sent": bool(recipient.sent_count),
+            **({"batch": True} if batch else {}),
         },
     )
     db.commit()
     return recipient
+
+
 
 
 def _notify_recipient_in_app(
@@ -1307,6 +1325,85 @@ def send_reminders_batch(
     )
     db.commit()
     return schemas.ReminderBatchResult(results=results)
+
+
+@router.post("/events/{event_id}/send-invitations-batch", response_model=schemas.InvitationBatchResult)
+def send_invitations_batch(
+    event_id: str,
+    body: schemas.InvitationBatchSend,
+    user: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
+    db: Session = Depends(get_db),
+) -> schemas.InvitationBatchResult:
+    """InvitationsDialog.jsx: send the invitation to one batch of guests
+    already on the list (those never sent one, or everyone), the same way
+    the per-guest resend does. Called once per batch so the dialog can show
+    progress and pause or stop between batches, like reminders and
+    thank-yous."""
+    event = _get_event_or_404(db, event_id)
+    found = {
+        r.id: r
+        for r in db.query(models.InvitationRecipient)
+        .filter(
+            models.InvitationRecipient.id.in_(body.recipient_ids),
+            models.InvitationRecipient.event_id == event.id,
+        )
+        .all()
+    }
+    results: list[schemas.InvitationBatchItemResult] = []
+    counts = dict(sent=0, failed=0)
+    for recipient_id in body.recipient_ids:
+        recipient = found.get(recipient_id)
+        if recipient is None:
+            error = "Recipient not found"
+        elif not recipient.phone and not recipient.email:
+            error = "Recipient has no phone or email"
+        elif not _send_invitation(event, recipient, invited_by=user):
+            error = "Not delivered"
+        else:
+            error = None
+            recipient.sent_count = (recipient.sent_count or 0) + 1
+        counts["failed" if error else "sent"] += 1
+        results.append(schemas.InvitationBatchItemResult(recipient_id=recipient_id, success=error is None, error=error))
+    audit(db, user, "event.send_invitations", "event", event.id, label=event.title, meta={**counts, "batch": True})
+    db.commit()
+    return schemas.InvitationBatchResult(results=results)
+
+
+@router.post("/events/{event_id}/import-invitations-batch", response_model=schemas.ImportInvitationBatchResult)
+def import_invitations_batch(
+    event_id: str,
+    body: schemas.ImportInvitationBatch,
+    user: models.User = Depends(require_role(models.Role.admin, models.Role.manager)),
+    db: Session = Depends(get_db),
+) -> schemas.ImportInvitationBatchResult:
+    """ImportInvitees.jsx «إرسال الدعوات للجميع»: add and invite one batch
+    of rows from the file, each exactly like the row's own «إرسال دعوة»
+    (add_recipient). A row whose phone is already a guest of the event is
+    reported as already invited, not as a failure."""
+    event = _get_event_or_404(db, event_id)
+    results: list[schemas.ImportInvitationItemResult] = []
+    for guest in body.guests:
+        data = guest.model_dump(exclude={"client_id"})
+        try:
+            recipient = _add_and_invite(db, event, user, schemas.RecipientCreate(**data), batch=True)
+        except HTTPException as exc:
+            db.rollback()
+            if exc.status_code == status.HTTP_409_CONFLICT:
+                results.append(schemas.ImportInvitationItemResult(client_id=guest.client_id, success=True, already_invited=True))
+            else:
+                results.append(schemas.ImportInvitationItemResult(client_id=guest.client_id, success=False, error=str(exc.detail)))
+            continue
+        sent = bool(recipient.sent_count)
+        results.append(
+            schemas.ImportInvitationItemResult(
+                client_id=guest.client_id,
+                success=sent,
+                recipient_id=recipient.id,
+                # Added to the event either way; only the message failed.
+                error=None if sent else "Added, but the invitation wasn't delivered",
+            )
+        )
+    return schemas.ImportInvitationBatchResult(results=results)
 
 
 def _attach_towns(

@@ -20,6 +20,7 @@ import { FileSpreadsheet, Send, CheckCircle2, Phone, MapPin, Users as UsersIcon,
 import CitySelect from "@/components/shared/CitySelect";
 import { SIDES, SIDE_COLOR, parseSide, sideLabel } from "@/lib/seating";
 import { downloadFile } from "@/lib/downloadFile";
+import ImportSendAllDialog from "@/components/events/ImportSendAllDialog";
 
 // Header names accepted per column (lower-cased, trimmed), so the import
 // works with the English headers of the template file as well as Arabic/
@@ -179,6 +180,7 @@ export default function ImportInvitees() {
   // recipient list (sentPhones below), this just covers the moment between
   // the POST returning and that list refetching.
   const [sentIds, setSentIds] = useState(() => new Set());
+  const [showSendAll, setShowSendAll] = useState(false);
 
   const { data: events = [], isLoading: eventsLoading } = useQuery({
     queryKey: ["events"],
@@ -242,6 +244,30 @@ export default function ImportInvitees() {
     } catch (err) {
       toast({ title: t.importReadError, description: err.message, variant: "destructive" });
     }
+  };
+
+  // A row in POST /events/{id}/import-invitations-batch's guest shape.
+  const toGuest = (row) => ({
+    nickname: row.nickname || null,
+    first_name: row.first_name || null,
+    last_name: row.last_name || null,
+    name_suffix: row.name_suffix || null,
+    phone: row.phone,
+    town: row.city || null,
+    guests_count: row.guests_count,
+    side: rowSide(row),
+    group_label: row.group_label || null,
+  });
+  // «إرسال الدعوات للجميع»: every row with a phone not yet on the event.
+  const pendingRows = rows.filter((row) => row.phone && !isSent(row));
+  const markRowsDone = (ids) => {
+    const done = new Set(ids);
+    setSentIds((s) => {
+      const next = new Set(s);
+      for (const row of rows) if (done.has(String(row.id))) next.add(row.id);
+      return next;
+    });
+    queryClient.invalidateQueries({ queryKey: ["recipients", eventId] });
   };
 
   const sendInvitation = async (row) => {
@@ -484,6 +510,17 @@ export default function ImportInvitees() {
           </div>
 
           {!eventId && <p className="text-sm text-destructive mb-4">{t.importPickEventFirst}</p>}
+          {eventId && pendingRows.length > 0 && (
+            <Button
+              type="button"
+              className="w-full sm:w-auto h-11 rounded-xl gap-2 mb-4"
+              disabled={recipientsLoading}
+              onClick={() => setShowSendAll(true)}
+            >
+              <Send className="w-4 h-4" />
+              {t.importSendAll.replace("{count}", pendingRows.length)}
+            </Button>
+          )}
 
           <div className="space-y-2">
             {visibleRows.map((row) => {
@@ -548,6 +585,15 @@ export default function ImportInvitees() {
           </div>
         </>
       )}
+
+      <ImportSendAllDialog
+        open={showSendAll}
+        onOpenChange={setShowSendAll}
+        rows={pendingRows}
+        eventId={eventId}
+        toGuest={toGuest}
+        onRowsDone={markRowsDone}
+      />
     </div>
   );
 }
