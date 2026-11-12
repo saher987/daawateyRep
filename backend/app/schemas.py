@@ -1024,3 +1024,16 @@ class ManualArrival(BaseModel):
 
 
 PublicInvitationOut.model_rebuild()
+
+
+class InviteeSuggestion(BaseModel):
+    """Someone from an earlier guest list, offered by AddInviteeDialog's
+    search (GET /api/invitee-suggestions) next to registered users."""
+
+    nickname: str | None
+    first_name: str | None
+    last_name: str | None
+    name_suffix: str | None
+    phone: str
+    town: str | None
+    display_name: str

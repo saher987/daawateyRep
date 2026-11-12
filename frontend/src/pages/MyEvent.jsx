@@ -5,7 +5,7 @@ import { useT } from "@/lib/i18n";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  CalendarHeart, MapPin, Calendar, Download, Pencil, Users
+  CalendarHeart, MapPin, Calendar, Download, Pencil
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,16 +20,10 @@ import { useToast } from "@/components/ui/use-toast";
 import { downloadFile } from "@/lib/downloadFile";
 import GuestStatsDashboard from "@/components/events/GuestStatsDashboard";
 import EventToolsSection from "@/components/events/EventToolsSection";
+import InviteeRow from "@/components/events/InviteeRow";
 import PlanningServicesCard from "@/components/providers/PlanningServicesCard";
 import { recipientDisplayName, recipientMatchesSearch } from "@/lib/recipientName";
 
-// rsvpLabel is built dynamically using t inside components
-const rsvpColor = {
-  accepted: "bg-success/10 text-success",
-  declined: "bg-destructive/10 text-destructive",
-  pending: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
-  maybe: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
-};
 
 function EditEventDialog({ event, open, onOpenChange }) {
   const queryClient = useQueryClient();
@@ -162,6 +156,18 @@ function EventControlPanel({ event }) {
   const activeFilter = filters.find(f => f.key === filter) || filters[0];
 
   const filtered = recipients.filter(r => activeFilter.match(r) && recipientMatchesSearch(r, search));
+  // Same order as the admin's list: most recent reply first, then the
+  // newest-added of those who haven't replied.
+  const repliedAt = r => (r.rsvp_date ? new Date(r.rsvp_date).getTime() : 0);
+  const sorted = [...filtered].sort((a, b) => repliedAt(b) - repliedAt(a) || new Date(b.created_at) - new Date(a.created_at));
+
+  const { data: arrivals } = useQuery({
+    queryKey: ["arrivals", event.id],
+    queryFn: () => base44.checkin.arrivals(event.id),
+    enabled: !!event.checkin_enabled,
+    refetchInterval: 30000,
+  });
+  const arrivedById = Object.fromEntries((arrivals?.arrivals || []).map((a) => [a.recipient_id, a.people_arrived]));
 
   const exportCSV = () => {
     const headers = [t.name, t.phone, t.status, t.guests, t.replyDate, "ملاحظات"];
@@ -273,41 +279,11 @@ function EventControlPanel({ event }) {
           ) : filtered.length === 0 ? (
             <div className="py-10 text-center text-muted-foreground text-sm">{t.noResults}</div>
           ) : (
+            // Same rows as the admin's list on EventDetails (opened, sent,
+            // reminders, arrived), read-only for the owner.
             <div className="divide-y divide-border">
-              {/* Table header */}
-              <div className="hidden md:grid grid-cols-12 gap-3 px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/30">
-                <div className="col-span-4">{t.name}</div>
-                <div className="col-span-3">{t.phone}</div>
-                <div className="col-span-2">{t.status}</div>
-                <div className="col-span-1">{t.guests}</div>
-                <div className="col-span-2">{t.replyDate}</div>
-              </div>
-              {filtered.map(r => (
-                <div key={r.id} className="grid grid-cols-1 md:grid-cols-12 gap-1 md:gap-3 px-4 py-3 hover:bg-muted/20 transition-colors">
-                  <div className="md:col-span-4">
-                    <p className="font-medium text-sm">{recipientDisplayName(r) || "—"}</p>
-                    {r.rsvp_message && <p className="text-xs text-muted-foreground mt-0.5 truncate">{r.rsvp_message}</p>}
-                  </div>
-                  <div className="md:col-span-3 text-sm text-muted-foreground" dir="ltr">{r.phone || "—"}</div>
-                  <div className="md:col-span-2">
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${rsvpColor[r.rsvp_status] || ""}`}>
-                      {rsvpLabel[r.rsvp_status] || r.rsvp_status}
-                      {/* Guest count inside the badge on mobile, where the
-                          separate column below has no header to explain it */}
-                      {r.rsvp_status === "accepted" && (
-                        <span className="md:hidden inline-flex items-center gap-0.5 font-semibold">
-                          · <Users className="w-3 h-3" /> {r.rsvp_guests_count || r.guests_count || 1}
-                        </span>
-                      )}
-                    </span>
-                  </div>
-                  <div className="hidden md:block md:col-span-1 text-sm text-center">
-                    {r.rsvp_status === "accepted" ? (r.rsvp_guests_count || r.guests_count || 1) : "—"}
-                  </div>
-                  <div className="md:col-span-2 text-xs text-muted-foreground">
-                    {r.rsvp_date ? format(new Date(r.rsvp_date), "dd/MM/yyyy") : "—"}
-                  </div>
-                </div>
+              {sorted.map(r => (
+                <InviteeRow key={r.id} recipient={r} eventId={event.id} arrived={arrivedById[r.id] ?? null} readOnly />
               ))}
             </div>
           )}
