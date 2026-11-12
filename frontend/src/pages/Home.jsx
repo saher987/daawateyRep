@@ -20,7 +20,8 @@ function myEventsPath(role) {
 }
 
 const STEPS = [1, 2, 3, 4, 5];
-const STEP_NUMERALS = ["١", "٢", "٣", "٤", "٥"];
+// Step numbers in the digits used in Israel (1, 2, 3…), in both languages.
+const STEP_NUMERALS = ["1", "2", "3", "4", "5"];
 // Real customers' words, shown as they wrote them (Arabic) in both UI
 // languages. Add new ones here; the section lays them out in a grid.
 const REVIEWS = [
