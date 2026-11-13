@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  CalendarHeart, MapPin, Users, Phone, Copy, Check, Plus,
+  CalendarHeart, MapPin, Users, Phone, Copy, Check,
   ArrowRight, Settings, Trash2, Send, ExternalLink, Pencil, Sparkles, Search, BellRing, Heart, LayoutGrid, FileSpreadsheet
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -20,7 +20,6 @@ import StatusBadge from "@/components/shared/StatusBadge";
 import LoadingSpinner from "@/components/shared/LoadingSpinner";
 import EmptyState from "@/components/shared/EmptyState";
 import InviteeRow from "@/components/events/InviteeRow";
-import AddInviteeDialog from "@/components/events/AddInviteeDialog";
 import ReminderDialog from "@/components/events/ReminderDialog";
 import InvitationsDialog from "@/components/events/InvitationsDialog";
 import BulkThankYouDialog from "@/components/events/BulkThankYouDialog";
@@ -45,7 +44,6 @@ export default function EventDetails() {
   const { toast } = useToast();
   const { user } = useAuth();
   const t = useT();
-  const [showAddInvitee, setShowAddInvitee] = useState(false);
   const [showReminder, setShowReminder] = useState(false);
   const [showInvitations, setShowInvitations] = useState(false);
   const [showBulkThanks, setShowBulkThanks] = useState(false);
@@ -277,23 +275,21 @@ export default function EventDetails() {
                   {t.bulkThanksBtn}
                 </Button>
               )}
+              {/* The only way to add guests: the import page (file or manual),
+                  where rows are saved until their invitation is sent. */}
               {isPrivileged && (
-                <Button variant="outline" className="gap-2 rounded-xl" asChild>
+                <Button className="gap-2 rounded-xl" asChild>
                   <Link to={`/events/${eventId}/import`}>
                     <FileSpreadsheet className="w-4 h-4" />
                     {t.importInvitees}
                     {importedRows.length > 0 && (
-                      <span className="min-w-5 h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-xs font-bold inline-flex items-center justify-center">
+                      <span className="min-w-5 h-5 px-1.5 rounded-full bg-primary-foreground text-primary text-xs font-bold inline-flex items-center justify-center">
                         {importedRows.length}
                       </span>
                     )}
                   </Link>
                 </Button>
               )}
-              <Button className="gap-2 rounded-xl" onClick={() => setShowAddInvitee(true)}>
-                <Plus className="w-4 h-4" />
-                {t.addInvitee}
-              </Button>
             </div>
           </div>
 
@@ -303,10 +299,14 @@ export default function EventDetails() {
               title={t.noInviteesTitle}
               description={t.noInviteesDesc}
             >
-              <Button className="gap-2" onClick={() => setShowAddInvitee(true)}>
-                <Plus className="w-4 h-4" />
-                {t.addFirstInvitee}
-              </Button>
+              {isPrivileged && (
+                <Button className="gap-2" asChild>
+                  <Link to={`/events/${eventId}/import`}>
+                    <FileSpreadsheet className="w-4 h-4" />
+                    {t.importInvitees}
+                  </Link>
+                </Button>
+              )}
             </EmptyState>
           ) : (() => {
             const filterCategories = [
@@ -437,13 +437,6 @@ export default function EventDetails() {
         </div>
       )}
 
-      <AddInviteeDialog
-        eventType={event.event_type}
-        groupNames={[...new Set(recipients.map((r) => r.group_label).filter(Boolean))].sort()}
-        open={showAddInvitee}
-        onOpenChange={setShowAddInvitee}
-        eventId={eventId}
-      />
       {isPrivileged && event && (
         <InvitationsDialog
           open={showInvitations}
