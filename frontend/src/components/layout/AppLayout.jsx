@@ -181,15 +181,16 @@ export default function AppLayout() {
         {/* Logo */}
         <div className="p-6 border-b border-border">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            {/* The logo leads to the home page ("/", pages/Home.jsx). */}
+            <Link to="/" onClick={() => setSidebarOpen(false)} className="flex items-center gap-3 rounded-xl">
               <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center bg-[hsl(var(--primary))]">
-                <img src="https://media.base44.com/images/public/69c3f1e5c5d379e64b05a015/168b83f89_daawateylogo.png" alt="Daawatey Logo" className="w-full h-full object-cover" />
+                <img src="https://media.base44.com/images/public/69c3f1e5c5d379e64b05a015/168b83f89_daawateylogo.png" alt="" className="w-full h-full object-cover" />
               </div>
               <div>
                 <h1 className="font-display text-lg font-bold text-foreground">دعوتي</h1>
                 <p className="text-xs text-muted-foreground">{t.smartInvitations}</p>
               </div>
-            </div>
+            </Link>
             <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(false)} aria-label={t.closeMenu}>
               <X className="w-5 h-5" />
             </Button>
@@ -320,10 +321,10 @@ export default function AppLayout() {
             <ChevronRight className="w-5 h-5" />
           </Button>
           }
-          <div className="flex items-center gap-2 lg:hidden">
-            <img src="https://media.base44.com/images/public/69c3f1e5c5d379e64b05a015/168b83f89_daawateylogo.png" alt="Daawatey Logo" className="w-7 h-7 rounded-lg object-cover" />
+          <Link to="/" className="flex items-center gap-2 min-h-11 lg:hidden">
+            <img src="https://media.base44.com/images/public/69c3f1e5c5d379e64b05a015/168b83f89_daawateylogo.png" alt="" className="w-7 h-7 rounded-lg object-cover" />
             <span className="font-display font-bold text-foreground">دعوتي</span>
-          </div>
+          </Link>
           <div className="flex-1" />
           <Button variant="ghost" size="icon" className="relative" asChild>
             <Link to="/notifications" aria-label={unreadCount > 0 ? `الإشعارات - ${unreadCount} غير مقروء` : "الإشعارات"}>
