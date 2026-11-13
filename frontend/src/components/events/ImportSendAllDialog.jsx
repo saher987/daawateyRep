@@ -10,28 +10,24 @@ import BatchSendProgress, { ConfirmBatchSend } from "@/components/events/BatchSe
 
 // ImportInvitees' «إرسال الدعوات للجميع»: adds and invites every row of the
 // file not yet invited, after a confirmation step, in batches (useBatchSend
-// → events.py import_invitations_batch) with live progress, pause, stop and
+// → imported_invitees.py send_imported) with live progress, pause, stop and
 // retry — the same flow as the reminder and the bulk thank-you. Each row is
-// added and invited exactly like its own «إرسال دعوة» button.
+// invited exactly like its own «إرسال دعوة» button, and leaves the saved
+// list once its invitation went out.
 //
-// rows: the rows to send (not yet invited, with a phone), as the page holds
-// them; toGuest(row): the row in the backend's RecipientCreate shape;
-// onRowsDone(ids): rows now on the event (sent, or already a guest).
-export default function ImportSendAllDialog({ open, onOpenChange, rows, eventId, toGuest, onRowsDone }) {
+// rows: the saved rows to send (those with a phone); onBatchDone(): called
+// after every batch so the page can refresh its list.
+export default function ImportSendAllDialog({ open, onOpenChange, rows, eventId, onBatchDone }) {
   const t = useT();
   const [confirming, setConfirming] = useState(false);
   const [already, setAlready] = useState(0);
 
   const sender = useBatchSend(async (batch) => {
-    const { data } = await base44.functions.invoke("importInvitationBatch", {
-      eventId,
-      guests: batch.map((row) => ({ ...toGuest(row), client_id: String(row.id) })),
-    });
-    const done = data.results.filter((r) => r.success || r.recipient_id).map((r) => r.client_id);
-    onRowsDone(done);
+    const data = await base44.imports.send(eventId, batch.map((row) => row.id));
+    onBatchDone();
     setAlready((n) => n + data.results.filter((r) => r.already_invited).length);
     // useBatchSend matches results to rows by recipient_id = the row id.
-    return data.results.map((r) => ({ ...r, recipient_id: r.client_id }));
+    return data.results.map((r) => ({ ...r, recipient_id: r.id }));
   });
   const { phase, running } = sender;
 

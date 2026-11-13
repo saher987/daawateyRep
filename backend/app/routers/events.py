@@ -462,6 +462,7 @@ def _add_and_invite(
     body: schemas.RecipientCreate,
     *,
     batch: bool = False,
+    require_delivery: bool = False,
 ) -> models.InvitationRecipient:
     """Adds one guest to the event and sends their invitation: the single
     add (add_recipient) and the import page's batch send
@@ -517,6 +518,13 @@ def _add_and_invite(
     db.refresh(recipient)
     if _send_invitation(event, recipient, invited_by=user):
         recipient.sent_count = (recipient.sent_count or 0) + 1
+    elif require_delivery:
+        # The saved import list (imported_invitees.py): a guest only joins
+        # the list once their invitation went out. Undo, before any in-app
+        # notification or push tells them they were invited.
+        db.delete(recipient)
+        db.commit()
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, detail="not_delivered")
     _notify_recipient_in_app(
         db,
         recipient,

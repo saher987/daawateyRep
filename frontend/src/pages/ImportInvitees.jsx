@@ -15,7 +15,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useT, translations } from "@/lib/i18n";
 import { CITY_KEYS } from "@/lib/cities";
 import SuffixPicker from "@/components/events/SuffixPicker";
-import { CalendarHeart, FileSpreadsheet, Send, CheckCircle2, Phone, MapPin, Users as UsersIcon, Search, UserPlus, X, Download } from "lucide-react";
+import { CalendarHeart, Check, FileSpreadsheet, Send, CheckCircle2, Pencil, Phone, MapPin, Trash2, Users as UsersIcon, Search, UserPlus, X, Download } from "lucide-react";
 import CitySelect from "@/components/shared/CitySelect";
 import { SIDES, SIDE_COLOR, parseSide, sideLabel } from "@/lib/seating";
 import { downloadFile } from "@/lib/downloadFile";
@@ -105,10 +105,6 @@ function normalizePhone(value) {
   return digits.startsWith("0") ? digits : `0${digits}`;
 }
 
-// Last 9 digits — matches "05..." against "9725..." when comparing with
-// phones already stored on the event's recipients.
-const phoneKey = (phone) => (phone || "").replace(/\D/g, "").slice(-9);
-
 function parseRows(sheet) {
   if (!sheet.length) return [];
   const header = sheet[0].map((h) => clean(h).toLowerCase());
@@ -162,8 +158,7 @@ export default function ImportInvitees() {
   const queryClient = useQueryClient();
   const t = useT();
   const fileInputRef = useRef(null);
-  // Row ids stay unique across file loads and manual additions.
-  const nextIdRef = useRef(0);
+  const formRef = useRef(null);
   const isPrivileged = user?.role === "admin" || user?.role === "manager";
 
   // Opened from the event's own page (/events/:id/import, EventDetails'
@@ -171,16 +166,16 @@ export default function ImportInvitees() {
   const { id: eventId } = useParams();
   // "Side for this file": applied to every row without its own Side cell.
   const [fileSide, setFileSide] = useState("");
-  const [rows, setRows] = useState([]);
   const [fileName, setFileName] = useState("");
   const [search, setSearch] = useState("");
   const [showManual, setShowManual] = useState(false);
   const [manual, setManual] = useState(EMPTY_MANUAL);
-  const [sendingIds, setSendingIds] = useState(() => new Set());
-  // Rows sent in this session — the durable indication is the event's own
-  // recipient list (sentPhones below), this just covers the moment between
-  // the POST returning and that list refetching.
-  const [sentIds, setSentIds] = useState(() => new Set());
+  // The saved row being edited in the manual form (null = adding a new one).
+  const [editingId, setEditingId] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [busyIds, setBusyIds] = useState(() => new Set());
+  // What the last file load did: { added, skipped }.
+  const [lastSave, setLastSave] = useState(null);
   const [showSendAll, setShowSendAll] = useState(false);
 
   const { data: events = [], isLoading: eventsLoading } = useQuery({
@@ -189,33 +184,34 @@ export default function ImportInvitees() {
     enabled: isPrivileged,
   });
 
-  const { data: recipients = [], isLoading: recipientsLoading } = useQuery({
+  // The saved import list (imported_invitees.py): rows stay here, on the
+  // server, until their invitation is sent — leaving the page or switching
+  // device loses nothing.
+  const rowsKey = ["imported-invitees", eventId];
+  const { data: rows = [], isLoading: rowsLoading } = useQuery({
+    queryKey: rowsKey,
+    queryFn: () => base44.imports.list(eventId),
+    enabled: isPrivileged && !!eventId,
+  });
+
+  // Only for the group-name suggestions in the manual form.
+  const { data: recipients = [] } = useQuery({
     queryKey: ["recipients", eventId],
     queryFn: async () => (await base44.functions.invoke("getEventRecipients", { eventId })).recipients,
     enabled: !!eventId,
   });
 
-  const sentPhones = useMemo(() => new Set(recipients.map((r) => phoneKey(r.phone)).filter(Boolean)), [recipients]);
-  // Already a recipient of the selected event (matched by phone) — either
-  // invited before this import or just sent from it.
-  const isInEvent = (row) => !!row.phone && sentPhones.has(phoneKey(row.phone));
-  const isSent = (row) => sentIds.has(row.id) || isInEvent(row);
-
-  // Not-yet-invited rows first; Array.prototype.sort is stable, so each
-  // group keeps the file's order.
   const visibleRows = useMemo(() => {
     const q = search.trim();
-    const filtered = q ? rows.filter((r) => [r.nickname, r.first_name, r.last_name, r.phone].join(" ").includes(q)) : [...rows];
-    const sent = (r) => sentIds.has(r.id) || (!!r.phone && sentPhones.has(phoneKey(r.phone)));
-    return filtered.sort((a, b) => Number(sent(a)) - Number(sent(b)));
-  }, [rows, search, sentIds, sentPhones]);
+    return q ? rows.filter((r) => [r.nickname, r.first_name, r.last_name, r.phone].join(" ").includes(q)) : rows;
+  }, [rows, search]);
 
-  const sentCount = rows.filter(isSent).length;
   const selectedEvent = events.find((ev) => ev.id === eventId);
   // Sides are a wedding thing; other event types use the group only.
   const usesSides = !selectedEvent || ["wedding", "engagement"].includes(selectedEvent.event_type);
-  const rowSide = (row) => (usesSides ? row.side || (row.manual ? null : fileSide || null) : null);
-  const groupSuggestions = [...new Set(recipients.map((r) => r.group_label).filter(Boolean))].sort();
+  const groupSuggestions = [...new Set([...recipients, ...rows].map((r) => r.group_label).filter(Boolean))].sort();
+  // «إرسال الدعوات للجميع»: every saved row that has a phone.
+  const pendingRows = rows.filter((row) => row.phone);
 
   const downloadTemplate = async () => {
     try {
@@ -231,84 +227,78 @@ export default function ImportInvitees() {
     return null;
   }
 
+  const refreshLists = () => {
+    queryClient.invalidateQueries({ queryKey: rowsKey });
+    queryClient.invalidateQueries({ queryKey: ["recipients", eventId] });
+    queryClient.invalidateQueries({ queryKey: ["event-recipients", eventId] });
+  };
+
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
+    setSaving(true);
     try {
       const sheet = await readSheet(file);
-      const parsed = parseRows(sheet).map((row) => ({ ...row, id: nextIdRef.current++ }));
-      // A new file replaces the previous file's rows; manually added ones stay.
-      setRows((prev) => [...prev.filter((r) => r.manual), ...parsed]);
+      const guests = parseRows(sheet).map((row) => ({
+        nickname: row.nickname || null,
+        first_name: row.first_name || null,
+        last_name: row.last_name || null,
+        name_suffix: row.name_suffix || null,
+        phone: row.phone || null,
+        town: row.city || null,
+        // Kept as written when it isn't a town/side we know, shown as a warning.
+        town_text: !row.city && row.cityText ? row.cityText : null,
+        side_text: row.sideText || null,
+        guests_count: row.guests_count,
+        // A side typed in the file wins over the "side for this file" picker.
+        side: usesSides ? row.side || fileSide || null : null,
+        group_label: row.group_label || null,
+      }));
+      if (!guests.length) {
+        toast({ title: t.importLoaded.replace("{count}", 0) });
+        return;
+      }
+      const result = await base44.imports.save(eventId, guests);
+      queryClient.setQueryData(rowsKey, result.rows);
       setFileName(file.name);
-      toast({ title: t.importLoaded.replace("{count}", parsed.length) });
+      setLastSave({ added: result.added, skipped: result.skipped });
     } catch (err) {
       toast({ title: t.importReadError, description: err.message, variant: "destructive" });
-    }
-  };
-
-  // A row in POST /events/{id}/import-invitations-batch's guest shape.
-  const toGuest = (row) => ({
-    nickname: row.nickname || null,
-    first_name: row.first_name || null,
-    last_name: row.last_name || null,
-    name_suffix: row.name_suffix || null,
-    phone: row.phone,
-    town: row.city || null,
-    guests_count: row.guests_count,
-    side: rowSide(row),
-    group_label: row.group_label || null,
-  });
-  // «إرسال الدعوات للجميع»: every row with a phone not yet on the event.
-  const pendingRows = rows.filter((row) => row.phone && !isSent(row));
-  const markRowsDone = (ids) => {
-    const done = new Set(ids);
-    setSentIds((s) => {
-      const next = new Set(s);
-      for (const row of rows) if (done.has(String(row.id))) next.add(row.id);
-      return next;
-    });
-    queryClient.invalidateQueries({ queryKey: ["recipients", eventId] });
-      queryClient.invalidateQueries({ queryKey: ["event-recipients", eventId] });
-  };
-
-  const sendInvitation = async (row) => {
-    setSendingIds((s) => new Set(s).add(row.id));
-    try {
-      await base44.functions.invoke("createInvitationRecipient", {
-        eventId,
-        nickname: row.nickname || undefined,
-        first_name: row.first_name || undefined,
-        last_name: row.last_name || undefined,
-        name_suffix: row.name_suffix || undefined,
-        phone: row.phone,
-        town: row.city || undefined,
-        guestsCount: row.guests_count,
-        side: rowSide(row),
-        groupLabel: row.group_label || undefined,
-      });
-      setSentIds((s) => new Set(s).add(row.id));
-      toast({ title: t.importSent, description: [row.nickname, row.first_name, row.last_name, row.name_suffix].filter(Boolean).join(" ") });
-    } catch (err) {
-      if (err.status === 409) {
-        // Already a recipient of this event — it was sent before.
-        setSentIds((s) => new Set(s).add(row.id));
-        toast({ title: t.importAlreadyInvited });
-      } else {
-        toast({ title: t.inviteError, description: err.message, variant: "destructive" });
-      }
     } finally {
-      setSendingIds((s) => {
-        const next = new Set(s);
-        next.delete(row.id);
-        return next;
-      });
-      queryClient.invalidateQueries({ queryKey: ["recipients", eventId] });
-      queryClient.invalidateQueries({ queryKey: ["event-recipients", eventId] });
+      setSaving(false);
     }
   };
 
-  const addManualRow = (e) => {
+  const openManual = () => {
+    setEditingId(null);
+    setManual({ ...EMPTY_MANUAL, side: fileSide });
+    setShowManual(true);
+  };
+  const closeManual = () => {
+    setShowManual(false);
+    setEditingId(null);
+    setManual({ ...EMPTY_MANUAL, side: fileSide });
+  };
+  const editRow = (row) => {
+    setEditingId(row.id);
+    setManual({
+      nickname: row.nickname || "",
+      first_name: row.first_name || "",
+      last_name: row.last_name || "",
+      name_suffix: row.name_suffix || "",
+      phone: row.phone || "",
+      city: row.town || "",
+      guests_count: String(row.guests_count || 1),
+      side: row.side || "",
+      group_label: row.group_label || "",
+    });
+    setShowManual(true);
+    setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
+  };
+
+  // The manual form: adds a new saved row, or saves the one being edited.
+  const submitManual = async (e) => {
     e.preventDefault();
     const phone = normalizePhone(manual.phone);
     const hasName = [manual.nickname, manual.first_name, manual.last_name].some((v) => clean(v));
@@ -317,28 +307,81 @@ export default function ImportInvitees() {
       return;
     }
     const guests = parseInt(manual.guests_count, 10);
-    const row = {
-      id: nextIdRef.current++,
-      manual: true,
-      nickname: clean(manual.nickname),
-      first_name: clean(manual.first_name),
-      last_name: clean(manual.last_name),
-      name_suffix: clean(manual.name_suffix),
+    const body = {
+      nickname: clean(manual.nickname) || null,
+      first_name: clean(manual.first_name) || null,
+      last_name: clean(manual.last_name) || null,
+      name_suffix: clean(manual.name_suffix) || null,
       phone,
-      city: manual.city || null,
-      cityText: "",
+      town: manual.city || null,
       guests_count: Number.isFinite(guests) && guests >= 1 ? guests : 1,
-      side: manual.side || null,
-      sideText: "",
-      group_label: clean(manual.group_label),
+      side: usesSides ? manual.side || null : null,
+      group_label: clean(manual.group_label) || null,
     };
-    setRows((prev) => [row, ...prev]);
-    setManual({ ...EMPTY_MANUAL, side: fileSide });
-    toast({ title: t.importRowAdded });
+    setSaving(true);
+    try {
+      if (editingId) {
+        await base44.imports.update(editingId, body);
+        toast({ title: t.importRowSaved });
+        closeManual();
+      } else {
+        const result = await base44.imports.save(eventId, [body]);
+        if (!result.added) {
+          toast({ title: t.importDuplicatePhone, variant: "destructive" });
+          return;
+        }
+        setManual({ ...EMPTY_MANUAL, side: fileSide });
+        toast({ title: t.importRowAdded });
+      }
+      queryClient.invalidateQueries({ queryKey: rowsKey });
+    } catch (err) {
+      toast({ title: err.status === 409 ? t.importDuplicatePhone : t.addError, description: err.status === 409 ? undefined : err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
   };
+
+  const withBusy = async (row, fn) => {
+    setBusyIds((s) => new Set(s).add(row.id));
+    try {
+      await fn();
+    } catch (err) {
+      toast({ title: t.inviteError, description: err.message, variant: "destructive" });
+    } finally {
+      setBusyIds((s) => {
+        const next = new Set(s);
+        next.delete(row.id);
+        return next;
+      });
+      refreshLists();
+    }
+  };
+
+  const rowName = (row) => [row.nickname, row.first_name, row.last_name, row.name_suffix].filter(Boolean).join(" ");
+
+  // One row's «إرسال دعوة»: on delivery it becomes a guest and leaves this list.
+  const sendInvitation = (row) =>
+    withBusy(row, async () => {
+      const { results } = await base44.imports.send(eventId, [row.id]);
+      const result = results[0];
+      if (result?.already_invited) toast({ title: t.importAlreadyInvited });
+      else if (result?.success) toast({ title: t.importMovedToGuests, description: rowName(row) });
+      else toast({ title: t.importNotDelivered, description: rowName(row), variant: "destructive" });
+    });
+
+  const deleteRow = (row) =>
+    withBusy(row, async () => {
+      await base44.imports.remove(row.id);
+      if (editingId === row.id) closeManual();
+    });
 
   const setManualField = (field) => (e) => setManual((m) => ({ ...m, [field]: e.target.value }));
 
+  const problemOf = (row) => {
+    if (!row.phone) return t.importMissingPhone;
+    if (row.last_error) return t.importNotDelivered;
+    return null;
+  };
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -363,7 +406,7 @@ export default function ImportInvitees() {
           <div className="space-y-2">
             <Label>{t.importFile}</Label>
             <input ref={fileInputRef} type="file" accept=".xlsx" className="hidden" onChange={handleFile} />
-            <Button type="button" variant="outline" className="h-12 w-full rounded-xl gap-2" onClick={() => fileInputRef.current?.click()}>
+            <Button type="button" variant="outline" className="h-12 w-full rounded-xl gap-2" disabled={saving} onClick={() => fileInputRef.current?.click()}>
               <FileSpreadsheet className="w-4 h-4" />
               <span className="truncate">{fileName || t.importChooseFile}</span>
             </Button>
@@ -401,7 +444,7 @@ export default function ImportInvitees() {
           </Button>
         </div>
         {!showManual && (
-          <Button type="button" variant="outline" className="w-full rounded-xl gap-2" onClick={() => setShowManual(true)}>
+          <Button type="button" variant="outline" className="w-full rounded-xl gap-2" onClick={openManual}>
             <UserPlus className="w-4 h-4" />
             {t.importAddManually}
           </Button>
@@ -410,13 +453,13 @@ export default function ImportInvitees() {
 
       {showManual && (
         <Card className="p-5 mb-6">
-          <form onSubmit={addManualRow} className="space-y-4">
+          <form ref={formRef} onSubmit={submitManual} className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold flex items-center gap-2">
-                <UserPlus className="w-4 h-4" />
-                {t.importAddManually}
+                {editingId ? <Pencil className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+                {editingId ? t.importEditRow : t.importAddManually}
               </h3>
-              <Button type="button" variant="ghost" size="icon" onClick={() => setShowManual(false)}>
+              <Button type="button" variant="ghost" size="icon" aria-label={t.cancel} onClick={closeManual}>
                 <X className="w-4 h-4" />
               </Button>
             </div>
@@ -497,33 +540,51 @@ export default function ImportInvitees() {
                 </datalist>
               </div>
             </div>
-            <Button type="submit" className="w-full sm:w-auto gap-2">
-              <UserPlus className="w-4 h-4" />
-              {t.importAddRow}
+            <Button type="submit" disabled={saving} className="w-full sm:w-auto gap-2">
+              {editingId ? <Check className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+              {editingId ? t.saveBtn : t.importAddRow}
             </Button>
           </form>
         </Card>
       )}
 
-      {rows.length > 0 && (
-        <>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-            <p className="text-sm font-medium">
-              {t.importProgress.replace("{sent}", sentCount).replace("{total}", rows.length)}
-            </p>
-            <div className="relative sm:w-64">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t.importSearch} className="pr-9 h-10 rounded-xl" />
-            </div>
-          </div>
+      {lastSave && (
+        <div role="status" className="mb-4 flex items-start gap-2.5 rounded-xl border border-success/30 bg-success/10 px-3.5 py-2.5 text-sm">
+          <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0 text-success" />
+          <span className="flex-1">
+            <strong>{t.importSavedNote.replace("{count}", lastSave.added)}</strong>
+            {lastSave.skipped > 0 && ` ${t.importSkippedNote.replace("{count}", lastSave.skipped)}`}
+          </span>
+          <button type="button" aria-label={t.batchClose} className="shrink-0 p-1 -m-1 text-muted-foreground" onClick={() => setLastSave(null)}>
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
-          {eventId && pendingRows.length > 0 && (
-            <Button
-              type="button"
-              className="w-full sm:w-auto h-11 rounded-xl gap-2 mb-4"
-              disabled={recipientsLoading}
-              onClick={() => setShowSendAll(true)}
-            >
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <div>
+          <h2 className="font-bold">{t.importWaiting.replace("{count}", rows.length)}</h2>
+          <p className="text-xs text-muted-foreground">{t.importWaitingHint}</p>
+        </div>
+        {rows.length > 0 && (
+          <div className="relative sm:w-64">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t.importSearch} className="pr-9 h-10 rounded-xl" />
+          </div>
+        )}
+      </div>
+
+      {rowsLoading ? (
+        <LoadingSpinner />
+      ) : rows.length === 0 ? (
+        <Card className="p-6 text-center text-sm text-muted-foreground space-y-2">
+          <p>{t.importEmpty}</p>
+          <Link to={`/events/${eventId}`} className="text-primary font-semibold underline">{t.guestListTitle}</Link>
+        </Card>
+      ) : (
+        <>
+          {pendingRows.length > 0 && (
+            <Button type="button" className="w-full sm:w-auto h-11 rounded-xl gap-2 mb-4" onClick={() => setShowSendAll(true)}>
               <Send className="w-4 h-4" />
               {t.importSendAll.replace("{count}", pendingRows.length)}
             </Button>
@@ -531,61 +592,72 @@ export default function ImportInvitees() {
 
           <div className="space-y-2">
             {visibleRows.map((row) => {
-              const sent = isSent(row);
-              const alreadyInvited = isInEvent(row) && !sentIds.has(row.id);
-              const sending = sendingIds.has(row.id);
-              const name = [row.nickname, row.first_name, row.last_name, row.name_suffix].filter(Boolean).join(" ");
+              const busy = busyIds.has(row.id);
+              const problem = problemOf(row);
               return (
                 <Card
                   key={row.id}
-                  className={`p-4 flex flex-col sm:flex-row sm:items-center gap-3 justify-between transition-colors ${sent ? "bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-900" : ""}`}
+                  className={`p-4 flex flex-col sm:flex-row sm:items-center gap-3 justify-between ${problem ? "border-destructive/40" : ""}`}
                 >
                   <div className="min-w-0">
-                    <p className="font-medium truncate">{name}</p>
+                    <p className="font-medium truncate">{rowName(row) || "—"}</p>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground mt-1">
                       <span className="flex items-center gap-1">
                         <Phone className="w-3 h-3" />
                         <span dir="ltr">{row.phone || t.importNoPhone}</span>
                       </span>
-                      <span className={`flex items-center gap-1 ${!row.city && row.cityText ? "text-destructive" : ""}`}>
+                      <span className={`flex items-center gap-1 ${!row.town && row.town_text ? "text-destructive" : ""}`}>
                         <MapPin className="w-3 h-3" />
-                        {row.city
-                          ? t[row.city] || row.city
-                          : row.cityText
-                          ? `${row.cityText} (${t.importUnknownCity})`
+                        {row.town
+                          ? t[row.town] || row.town
+                          : row.town_text
+                          ? `${row.town_text} (${t.importUnknownCity})`
                           : t.importNoCity}
                       </span>
                       <span className="flex items-center gap-1">
                         <UsersIcon className="w-3 h-3" />
                         {row.guests_count}
                       </span>
-                      {(rowSide(row) || row.group_label || row.sideText) && (
-                        <span className={`flex items-center gap-1 ${row.sideText ? "text-destructive" : ""}`}>
-                          <span className="w-2 h-2 rounded-full" style={{ background: SIDE_COLOR[rowSide(row) || "none"] }} />
-                          {row.sideText
-                            ? `${row.sideText} (${t.sideUnknownWarning})`
-                            : [rowSide(row) ? sideLabel(rowSide(row), t) : null, row.group_label].filter(Boolean).join(" › ")}
+                      {(row.side || row.group_label || row.side_text) && (
+                        <span className={`flex items-center gap-1 ${row.side_text ? "text-destructive" : ""}`}>
+                          <span className="w-2 h-2 rounded-full" style={{ background: SIDE_COLOR[row.side || "none"] }} />
+                          {row.side_text
+                            ? `${row.side_text} (${t.sideUnknownWarning})`
+                            : [row.side ? sideLabel(row.side, t) : null, row.group_label].filter(Boolean).join(" › ")}
                         </span>
                       )}
                     </div>
+                    {problem && (
+                      <span className="inline-block mt-2 rounded-full bg-destructive/10 text-destructive text-xs font-semibold px-2.5 py-0.5">
+                        {problem}
+                      </span>
+                    )}
                   </div>
-                  {sent ? (
-                    <span className="flex items-center gap-1.5 text-sm font-medium text-green-700 dark:text-green-400 shrink-0">
-                      <CheckCircle2 className="w-4 h-4" />
-                      {alreadyInvited ? t.importAlreadyInEvent : t.importSent}
-                    </span>
-                  ) : (
+                  <div className="flex items-center gap-1 shrink-0 self-end sm:self-auto">
+                    <Button variant="ghost" size="icon" className="h-11 w-11" aria-label={t.importEditAria} disabled={busy} onClick={() => editRow(row)}>
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-11 w-11 text-muted-foreground hover:text-destructive"
+                      aria-label={t.importDeleteAria}
+                      disabled={busy}
+                      onClick={() => deleteRow(row)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                     <Button
                       size="sm"
-                      className="gap-1.5 shrink-0"
-                      disabled={!eventId || recipientsLoading || !row.phone || sending}
-                      title={!row.phone ? t.importNoPhone : undefined}
+                      className="gap-1.5 h-10"
+                      disabled={!row.phone || busy}
+                      title={!row.phone ? t.importMissingPhone : undefined}
                       onClick={() => sendInvitation(row)}
                     >
                       <Send className="w-4 h-4" />
-                      {sending ? t.importSending : t.importSendInvitation}
+                      {busy ? t.importSending : t.importSendInvitation}
                     </Button>
-                  )}
+                  </div>
                 </Card>
               );
             })}
@@ -598,8 +670,7 @@ export default function ImportInvitees() {
         onOpenChange={setShowSendAll}
         rows={pendingRows}
         eventId={eventId}
-        toGuest={toGuest}
-        onRowsDone={markRowsDone}
+        onBatchDone={refreshLists}
       />
     </div>
   );

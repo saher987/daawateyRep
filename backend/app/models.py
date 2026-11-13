@@ -478,6 +478,40 @@ class SeatingAssignment(Base):
 HALL_ELEMENT_KINDS = ("stage", "dance_floor", "buffet", "entrance", "photo", "other")
 
 
+class ImportedInvitee(Base):
+    """A row saved on an event's import page (ImportInvitees.jsx) that hasn't
+    been invited yet. Its own table, not invitation_recipients, on purpose:
+    everything guest-facing (My invitations, reminders, stats, seating,
+    check-in) reads that table and must never see someone who wasn't invited.
+    Sending the invitation creates the real recipient and deletes this row
+    (imported_invitees.py); a row that couldn't be sent stays, with why."""
+
+    __tablename__ = "imported_invitees"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    event_id: Mapped[str] = mapped_column(
+        ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    nickname: Mapped[str | None] = mapped_column(String, nullable=True)
+    first_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    last_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    name_suffix: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Nullable: a file row without a number is kept so it can be completed.
+    phone: Mapped[str | None] = mapped_column(String, nullable=True)
+    town: Mapped[str | None] = mapped_column(String, nullable=True)
+    # What the file said when it isn't a town/side we know, shown as a warning.
+    town_text: Mapped[str | None] = mapped_column(String, nullable=True)
+    side_text: Mapped[str | None] = mapped_column(String, nullable=True)
+    guests_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    side: Mapped[RecipientSide | None] = mapped_column(
+        SqlEnum(RecipientSide, name="recipient_side"), nullable=True
+    )
+    group_label: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Why the last send didn't go out; cleared when the row is edited.
+    last_error: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+
+
 class HallElement(Base):
     """Something drawn on the hall plan that isn't a table (stage, dance
     floor, ...). x/y is the centre, in the same plan units as EventTable."""
