@@ -191,14 +191,17 @@ function App() {
                       </Suspense>
                     }
                   />
+                  {/* Import lives under its event (EventDetails' «استيراد
+                      مدعوين»); the old menu path leads to the events list. */}
                   <Route
-                    path="/import-invitees"
+                    path="/events/:id/import"
                     element={
                       <Suspense fallback={<PageSpinner />}>
                         <ImportInvitees />
                       </Suspense>
                     }
                   />
+                  <Route path="/import-invitees" element={<Navigate to="/events" replace />} />
                   <Route
                     path="/users"
                     element={

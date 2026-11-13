@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { Link, useNavigate } from "react-router-dom";
 import {
   CalendarHeart, MapPin, Users, Phone, Copy, Check, Plus,
-  ArrowRight, Settings, Trash2, Send, ExternalLink, Pencil, Sparkles, Search, BellRing, Heart, LayoutGrid
+  ArrowRight, Settings, Trash2, Send, ExternalLink, Pencil, Sparkles, Search, BellRing, Heart, LayoutGrid, FileSpreadsheet
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -251,6 +251,14 @@ export default function EventDetails() {
                 <Button variant="outline" className="gap-2 rounded-xl" onClick={() => setShowBulkThanks(true)}>
                   <Heart className="w-4 h-4" />
                   {t.bulkThanksBtn}
+                </Button>
+              )}
+              {isPrivileged && (
+                <Button variant="outline" className="gap-2 rounded-xl" asChild>
+                  <Link to={`/events/${eventId}/import`}>
+                    <FileSpreadsheet className="w-4 h-4" />
+                    {t.importInvitees}
+                  </Link>
                 </Button>
               )}
               <Button className="gap-2 rounded-xl" onClick={() => setShowAddInvitee(true)}>

@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { readSheet } from "read-excel-file/browser";
 import writeExcelFile from "write-excel-file/browser";
 import { Card } from "@/components/ui/card";
@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import PageHeader from "@/components/shared/PageHeader";
-import MobileSelect from "@/components/shared/MobileSelect";
 import LoadingSpinner from "@/components/shared/LoadingSpinner";
 import { useToast } from "@/components/ui/use-toast";
 import { base44 } from "@/api/base44Client";
@@ -16,7 +15,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useT, translations } from "@/lib/i18n";
 import { CITY_KEYS } from "@/lib/cities";
 import SuffixPicker from "@/components/events/SuffixPicker";
-import { FileSpreadsheet, Send, CheckCircle2, Phone, MapPin, Users as UsersIcon, Search, UserPlus, X, Download } from "lucide-react";
+import { CalendarHeart, FileSpreadsheet, Send, CheckCircle2, Phone, MapPin, Users as UsersIcon, Search, UserPlus, X, Download } from "lucide-react";
 import CitySelect from "@/components/shared/CitySelect";
 import { SIDES, SIDE_COLOR, parseSide, sideLabel } from "@/lib/seating";
 import { downloadFile } from "@/lib/downloadFile";
@@ -167,7 +166,9 @@ export default function ImportInvitees() {
   const nextIdRef = useRef(0);
   const isPrivileged = user?.role === "admin" || user?.role === "manager";
 
-  const [eventId, setEventId] = useState("");
+  // Opened from the event's own page (/events/:id/import, EventDetails'
+  // «استيراد مدعوين»), so the event is fixed — no event picker.
+  const { id: eventId } = useParams();
   // "Side for this file": applied to every row without its own Side cell.
   const [fileSide, setFileSide] = useState("");
   const [rows, setRows] = useState([]);
@@ -268,6 +269,7 @@ export default function ImportInvitees() {
       return next;
     });
     queryClient.invalidateQueries({ queryKey: ["recipients", eventId] });
+      queryClient.invalidateQueries({ queryKey: ["event-recipients", eventId] });
   };
 
   const sendInvitation = async (row) => {
@@ -302,6 +304,7 @@ export default function ImportInvitees() {
         return next;
       });
       queryClient.invalidateQueries({ queryKey: ["recipients", eventId] });
+      queryClient.invalidateQueries({ queryKey: ["event-recipients", eventId] });
     }
   };
 
@@ -336,7 +339,6 @@ export default function ImportInvitees() {
 
   const setManualField = (field) => (e) => setManual((m) => ({ ...m, [field]: e.target.value }));
 
-  const eventOptions = events.map((ev) => ({ value: ev.id, label: ev.title }));
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -345,11 +347,17 @@ export default function ImportInvitees() {
       <Card className="p-5 mb-6 space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label>{t.importSelectEvent}</Label>
+            <Label>{t.importForEvent}</Label>
             {eventsLoading ? (
               <LoadingSpinner />
             ) : (
-              <MobileSelect value={eventId} onValueChange={setEventId} options={eventOptions} placeholder={t.importSelectEvent} />
+              <Link
+                to={`/events/${eventId}`}
+                className="flex items-center gap-2 h-12 rounded-xl border bg-muted/40 px-4 font-semibold hover:bg-muted"
+              >
+                <CalendarHeart className="w-4 h-4 shrink-0 text-primary" />
+                <span className="truncate">{selectedEvent?.title || "—"}</span>
+              </Link>
             )}
           </div>
           <div className="space-y-2">
@@ -509,7 +517,6 @@ export default function ImportInvitees() {
             </div>
           </div>
 
-          {!eventId && <p className="text-sm text-destructive mb-4">{t.importPickEventFirst}</p>}
           {eventId && pendingRows.length > 0 && (
             <Button
               type="button"
