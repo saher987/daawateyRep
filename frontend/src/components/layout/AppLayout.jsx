@@ -2,7 +2,7 @@ import React, { useState, useEffect, startTransition, Suspense } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import {
-  LayoutDashboard, CalendarHeart, Bell, Menu, X, LogOut, Sparkles, UserCircle, ChevronRight, ShieldCheck, Mail, AlertCircle, MapPin, CalendarRange, Building2, Heart, FileSpreadsheet, Store, Briefcase, History } from
+  LayoutDashboard, CalendarHeart, Bell, Menu, X, LogOut, Sparkles, UserCircle, ChevronRight, ShieldCheck, Mail, AlertCircle, MapPin, CalendarRange, Building2, Heart, Store, Briefcase, History } from
 "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -47,7 +47,6 @@ function useNavItems() {
   { path: "/my-business", icon: Briefcase, label: t.myBusiness, providerOwner: true },
   { path: "/notifications", icon: Bell, label: t.notifications },
   { path: "/users", icon: ShieldCheck, label: t.users, privileged: true },
-  { path: "/import-invitees", icon: FileSpreadsheet, label: t.importInvitees, privileged: true },
   { path: "/venues", icon: MapPin, label: t.venues, privileged: true },
   { path: "/manage-providers", icon: Store, label: t.manageProviders, privileged: true },
   { path: "/venue-schedule", icon: CalendarRange, label: t.venueScheduleTitle || "לוח אולמות", venueOwner: true },
