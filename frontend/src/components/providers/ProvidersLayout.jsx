@@ -40,8 +40,10 @@ function GuestShell() {
     <div dir="rtl" className="min-h-screen bg-background">
       <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-lg border-b border-border" style={{ paddingTop: "env(safe-area-inset-top)" }}>
         <div className="max-w-3xl mx-auto px-4 min-h-14 flex items-center gap-3">
-          <Link to="/providers" className="flex items-center gap-2">
-            <img src="https://media.base44.com/images/public/69c3f1e5c5d379e64b05a015/168b83f89_daawateylogo.png" alt="Daawatey Logo" className="w-7 h-7 rounded-lg object-cover" />
+          {/* To the home page, so a visitor who came from a shared provider
+              link can discover the app. */}
+          <Link to="/" className="flex items-center gap-2 min-h-11">
+            <img src="https://media.base44.com/images/public/69c3f1e5c5d379e64b05a015/168b83f89_daawateylogo.png" alt="" className="w-7 h-7 rounded-lg object-cover" />
             <span className="font-display font-bold text-foreground">دعوتي</span>
           </Link>
           <div className="flex-1" />
