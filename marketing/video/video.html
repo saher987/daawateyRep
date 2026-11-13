@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>Daawatey Promo</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<!--
+  Daawatey marketing film, 1080x1920, 70s.
+  Every motion is a CSS animation with an absolute delay (seconds from the
+  start of the film). render.js pauses all animations and seeks them to each
+  frame time, so the output is frame-exact. Open this file in a browser to
+  preview it playing live.
+-->
+<style>
+@property --n { syntax: '<integer>'; inherits: false; initial-value: 0; }
+:root{
+  --bg:#0d1016; --bg2:#151a24; --card:#171c26; --line:#2a3140;
+  --gold:#e3c48a; --gold2:#c9a35a; --ink:#f5efe3; --mute:#a9a397;
+  --green:#4fbf7a; --red:#d9534f; --orange:#e98b3a; --blue:#4c8dff; --wa:#25d366;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1080px;height:1920px;overflow:hidden;background:var(--bg)}
+body{font-family:"Noto Sans Arabic",sans-serif;color:var(--ink);position:relative}
+.amiri{font-family:"Amiri",serif}
+g, .g{color:var(--gold)}
+
+/* ---------- background ---------- */
+#bg{position:absolute;inset:0;background:
+  radial-gradient(1200px 900px at 50% 18%, #26304a 0%, transparent 60%),
+  radial-gradient(900px 900px at 80% 95%, #2b2416 0%, transparent 60%),
+  linear-gradient(#10141c,#0b0d12)}
+.spark{position:absolute;width:6px;height:6px;border-radius:50%;background:var(--gold);
+  opacity:.0;box-shadow:0 0 12px var(--gold);animation:twinkle var(--t) ease-in-out var(--d) infinite}
+@keyframes twinkle{0%,100%{opacity:0;transform:translateY(0)}50%{opacity:.55;transform:translateY(-40px)}}
+
+/* ---------- generic animation helpers ---------- */
+.scene{position:absolute;inset:0;opacity:0;
+  animation:fadeIn .5s var(--s) both, fadeOut .5s var(--e) forwards}
+.a{animation:var(--k,rise) var(--dur,.7s) cubic-bezier(.2,.8,.2,1) var(--d,0s) both}
+.a.out{animation:var(--k,rise) var(--dur,.7s) cubic-bezier(.2,.8,.2,1) var(--d,0s) both,
+  fadeOut .4s var(--o) forwards}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes fadeOut{from{opacity:1}to{opacity:0}}
+@keyframes rise{from{opacity:0;transform:translateY(70px)}to{opacity:1;transform:none}}
+@keyframes pop{0%{opacity:0;transform:scale(.3)}65%{opacity:1;transform:scale(1.08)}100%{opacity:1;transform:scale(1)}}
+@keyframes slideL{from{opacity:0;transform:translateX(-160px)}to{opacity:1;transform:none}}
+@keyframes slideR{from{opacity:0;transform:translateX(160px)}to{opacity:1;transform:none}}
+@keyframes zoomIn{from{opacity:0;transform:scale(1.25)}to{opacity:1;transform:scale(1)}}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+@keyframes shake{0%,100%{transform:rotate(0)}20%{transform:rotate(-4deg)}40%{transform:rotate(4deg)}60%{transform:rotate(-3deg)}80%{transform:rotate(2deg)}}
+.bob{animation:bob 2.6s ease-in-out var(--bd,0s) infinite}
+
+/* ---------- shared pieces ---------- */
+.kicker{position:absolute;top:96px;left:0;right:0;text-align:center}
+.kicker span{display:inline-block;padding:14px 34px;border-radius:999px;border:2px solid var(--gold2);
+  color:var(--gold);font-size:38px;font-weight:600;background:rgba(227,196,138,.08)}
+.cap{position:absolute;left:60px;right:60px;text-align:center;font-weight:800;line-height:1.35;
+  text-shadow:0 4px 30px rgba(0,0,0,.6)}
+.cap.big{font-size:70px}
+.cap.mid{font-size:56px}
+.cap.sub{font-size:42px;font-weight:600;color:var(--mute)}
+.phone{position:absolute;background:#05070a;border-radius:70px;padding:16px;
+  box-shadow:0 50px 140px rgba(0,0,0,.7),0 0 0 3px #343a47,inset 0 0 0 2px #1d222c}
+.phone .screen{position:relative;border-radius:56px;overflow:hidden;background:var(--bg);height:100%}
+.phone .notch{position:absolute;top:22px;left:50%;width:150px;height:36px;margin-left:-75px;
+  background:#05070a;border-radius:20px;z-index:5}
+.phone img.shot{display:block;width:100%}
+.chip{display:inline-flex;align-items:center;gap:12px;padding:14px 28px;border-radius:999px;
+  font-size:38px;font-weight:700;background:var(--card);border:2px solid var(--line);white-space:nowrap}
+.bust{position:absolute;width:300px;height:375px}
+.bust svg{width:100%;height:100%;filter:drop-shadow(0 20px 40px rgba(0,0,0,.5))}
+.bubble{position:absolute;background:var(--ink);color:#1a1a1a;font-weight:800;font-size:42px;
+  padding:22px 34px;border-radius:40px;white-space:nowrap;box-shadow:0 20px 50px rgba(0,0,0,.45)}
+.logo{border-radius:28%;background:#2a2d33;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 0 3px rgba(227,196,138,.35),0 30px 80px rgba(0,0,0,.6)}
+.logo img{width:72%}
+.notif{position:absolute;display:flex;align-items:center;gap:18px;padding:22px 30px;border-radius:30px;
+  background:rgba(23,28,38,.96);border:2px solid var(--line);font-size:34px;font-weight:600;
+  box-shadow:0 24px 60px rgba(0,0,0,.55);white-space:nowrap}
+.notif .ic{font-size:40px}
+.notif small{color:var(--mute);font-size:28px;font-weight:400}
+
+/* ---------- scene 1: worry ---------- */
+.counter{position:absolute;top:250px;left:0;right:0;text-align:center}
+.counter .num{font-size:230px;font-weight:800;color:var(--gold);line-height:1;
+  counter-reset:n var(--n);animation:count 1.8s cubic-bezier(.3,.6,.2,1) .7s both}
+.counter .num::after{content:counter(n)}
+@keyframes count{from{--n:0}to{--n:500}}
+.counter .lbl{font-size:60px;font-weight:700;margin-top:6px}
+.worry{position:absolute;font-size:40px;padding:16px 30px;border-radius:999px;background:rgba(217,83,79,.14);
+  border:2px solid rgba(217,83,79,.55);color:#ffd7d3;font-weight:700;white-space:nowrap}
+.worry > span{display:inline-block;animation:shake .7s ease-in-out var(--sd) 3}
+
+/* ---------- scene 2: rescue ---------- */
+.msg{position:absolute;left:110px;right:110px;top:260px;background:rgba(245,239,227,.97);color:#141414;
+  border-radius:40px;padding:30px 36px;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+.msg .from{display:flex;align-items:center;gap:16px;font-size:30px;color:#666;font-weight:600}
+.msg .from i{display:inline-block;width:46px;height:46px;border-radius:12px;background:#2a2d33;
+  background-image:url(assets/envelope.png);background-size:70%;background-repeat:no-repeat;background-position:center}
+.msg p{font-size:48px;font-weight:800;margin-top:12px}
+.glow{position:absolute;left:50%;top:1000px;width:900px;height:900px;margin:-450px 0 0 -450px;border-radius:50%;
+  background:radial-gradient(circle,rgba(227,196,138,.35),transparent 65%)}
+@keyframes glowPulse{0%{opacity:0;transform:scale(.4)}60%{opacity:1;transform:scale(1.1)}100%{opacity:.7;transform:scale(1)}}
+
+/* ---------- scene 3b: any format ---------- */
+.src{position:absolute;width:230px;height:230px;margin:-115px 0 0 -115px;border-radius:44px;background:var(--card);
+  border:2px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+  box-shadow:0 24px 60px rgba(0,0,0,.5);
+  animation:pop .6s cubic-bezier(.2,.8,.2,1) var(--d) both, suck .7s cubic-bezier(.6,0,.8,.4) var(--o) forwards}
+.src svg{width:96px;height:96px}
+.src b{font-size:32px;font-weight:700}
+@keyframes suck{from{opacity:1;transform:none}to{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.15)}}
+@keyframes ring{0%{opacity:.9;transform:scale(1)}100%{opacity:0;transform:scale(2.4)}}
+
+/* ---------- scene 4: invitation ---------- */
+.chat-h{display:flex;align-items:center;gap:18px;padding:80px 34px 22px;background:#151b22;border-bottom:2px solid #232a35}
+.chat-h i{width:64px;height:64px;border-radius:50%;background:#2a2d33 url(assets/envelope.png) center/62% no-repeat}
+.chat-h b{font-size:34px}.chat-h small{display:block;font-size:24px;color:var(--mute);font-weight:400}
+.chat{padding:30px 28px;background:#0e1319;height:100%}
+.inv{background:#1d2a22;border-radius:30px 30px 30px 8px;padding:26px 28px;font-size:31px;line-height:1.6;width:88%;margin-right:auto}
+.inv b{color:var(--gold)}
+.linkc{margin-top:18px;background:#16201a;border-radius:22px;overflow:hidden;border:2px solid #2c3d31}
+.linkc .top{height:150px;background:linear-gradient(135deg,#2a2416,#11151c);display:flex;align-items:center;justify-content:center;
+  font-family:Amiri,serif;color:var(--gold);font-size:48px}
+.linkc .bot{padding:16px 20px;font-size:28px;color:#9fd5b1}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#171c26;border-radius:44px 44px 0 0;padding:34px 34px 60px;
+  box-shadow:0 -20px 60px rgba(0,0,0,.6);animation:sheetUp .6s cubic-bezier(.2,.8,.2,1) var(--d) both}
+@keyframes sheetUp{from{transform:translateY(110%)}to{transform:none}}
+.sheet h4{font-size:42px;text-align:center;margin-bottom:8px}
+.sheet p{font-size:28px;text-align:center;color:var(--mute);margin-bottom:26px}
+.rsvp{display:flex;gap:16px}
+.rsvp div{flex:1;text-align:center;padding:24px 0;border-radius:24px;font-size:32px;font-weight:800;border:2px solid var(--line);background:#0f131a}
+.rsvp .yes{animation:yes .3s ease var(--d) both}
+@keyframes yes{from{}to{background:var(--green);border-color:var(--green);color:#06130b}}
+.ppl{display:flex;justify-content:center;align-items:center;gap:30px;margin-top:24px;font-size:32px;color:var(--mute)}
+.ppl b{font-size:44px;color:var(--ink)}
+.tap{position:absolute;width:110px;height:110px;border-radius:50%;background:rgba(255,255,255,.35);border:4px solid #fff;
+  animation:tap .9s ease var(--d) both}
+@keyframes tap{0%{opacity:0;transform:scale(1.6)}40%{opacity:1;transform:scale(1)}60%{transform:scale(.8)}100%{opacity:0;transform:scale(1.2)}}
+.toast{position:absolute;left:40px;right:40px;top:140px;background:var(--green);color:#06130b;border-radius:28px;
+  padding:24px;text-align:center;font-size:36px;font-weight:800;box-shadow:0 20px 50px rgba(0,0,0,.5)}
+.chan{position:absolute;display:flex;align-items:center;gap:14px;padding:16px 30px;border-radius:999px;font-size:38px;font-weight:800;color:#fff;
+  box-shadow:0 20px 50px rgba(0,0,0,.5)}
+
+/* ---------- scene 5: tracking ---------- */
+.scroll{animation:scrollUp 2.6s cubic-bezier(.5,0,.3,1) var(--d) both}
+@keyframes scrollUp{from{transform:none}to{transform:translateY(var(--y))}}
+.live{position:absolute;top:34px;right:34px;z-index:6;background:var(--red);color:#fff;font-size:26px;font-weight:800;
+  padding:6px 18px;border-radius:12px;animation:blink 1s steps(2) 0s infinite}
+@keyframes blink{50%{opacity:.35}}
+
+/* ---------- scene 6: tables ---------- */
+.hall{position:absolute;left:90px;top:220px;width:900px;height:860px;border-radius:44px;background:rgba(23,28,38,.85);
+  border:2px solid var(--line);overflow:hidden}
+.hall .stage{position:absolute;top:30px;left:250px;width:400px;height:70px;border-radius:20px;background:rgba(227,196,138,.15);
+  border:2px dashed var(--gold2);color:var(--gold);font-size:30px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.tbl{position:absolute;width:150px;height:150px;margin:-75px 0 0 -75px;border-radius:50%;background:#232a37;border:4px solid var(--gold2);
+  display:flex;align-items:center;justify-content:center;font-size:52px;font-weight:800;color:var(--gold)}
+.tbl.hl{animation:pop .6s ease var(--d) both, hl .6s ease var(--h) forwards}
+@keyframes hl{to{background:var(--gold);color:#1a1405;box-shadow:0 0 0 14px rgba(227,196,138,.25),0 0 60px rgba(227,196,138,.6)}}
+.seat{position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;
+  animation:seatIn .9s cubic-bezier(.3,.7,.2,1) var(--d) both}
+@keyframes seatIn{from{opacity:0;transform:translate(var(--fx),var(--fy)) scale(.6)}25%{opacity:1}to{opacity:1;transform:none}}
+
+/* ---------- scene 7: venue ---------- */
+.venue{position:absolute;left:70px;right:70px;top:640px;height:620px;border-radius:44px;overflow:hidden;
+  box-shadow:0 40px 100px rgba(0,0,0,.6)}
+.venue img{width:100%;height:100%;object-fit:cover;animation:kb 6s linear var(--d) both}
+@keyframes kb{from{transform:scale(1.18)}to{transform:scale(1)}}
+.venue::after{content:"";position:absolute;inset:0;background:linear-gradient(transparent 40%,rgba(10,12,16,.85))}
+.welcome{position:absolute;z-index:3;left:50%;bottom:50px;transform:translateX(-50%)}
+.welcome div{background:var(--gold);color:#1a1405;font-size:44px;font-weight:800;padding:22px 44px;border-radius:999px;white-space:nowrap;
+  box-shadow:0 20px 50px rgba(0,0,0,.5)}
+
+/* ---------- scene 9: finale ---------- */
+.fall{position:absolute;top:-40px;width:14px;height:22px;border-radius:4px;background:var(--gold);
+  animation:fall var(--t) linear var(--d) infinite}
+@keyframes fall{from{transform:translateY(0) rotate(0)}to{transform:translateY(2000px) rotate(720deg)}}
+.cta{display:inline-flex;align-items:center;gap:18px;padding:30px 70px;border-radius:999px;background:var(--gold);color:#1a1405;font-size:50px;font-weight:800;
+  box-shadow:0 24px 70px rgba(227,196,138,.35)}
+</style>
+</head>
+<body>
+<div id="bg"></div>
+<div id="sparks"></div>
+
+<!-- ============ 1 · 0–6.5s · the worry ============ -->
+<section class="scene" style="--s:0s;--e:6s">
+  <div class="counter">
+    <div class="num a" style="--k:pop;--d:.5s"></div>
+    <div class="lbl a" style="--d:.9s">مدعو!</div>
+  </div>
+  <div class="worry a" style="--k:pop;--d:2.3s;top:640px;right:80px"><span style="--sd:2.9s">مين بيعزم؟ 📞</span></div>
+  <div class="worry a" style="--k:pop;--d:2.6s;top:690px;left:70px"><span style="--sd:3.2s">مين ردّ؟ 🤷‍♂️</span></div>
+  <div class="worry a" style="--k:pop;--d:2.9s;top:790px;right:200px"><span style="--sd:3.5s">وين بيقعدوا؟ 🪑</span></div>
+  <div class="worry a" style="--k:pop;--d:3.2s;top:845px;left:130px"><span style="--sd:3.8s">ومين بيصوّر؟ 📸</span></div>
+  <div class="bust a" data-char="dad-worried" style="--k:slideL;--d:.2s;left:180px;top:930px"></div>
+  <div class="bust a" data-char="mom-worried" style="--k:slideR;--d:.35s;right:180px;top:930px"></div>
+  <div class="cap big a" style="--d:1s;top:1390px">عرس ابننا قرّب…<br>و<g>500 مدعو</g>!</div>
+  <div class="cap mid a" style="--d:3.8s;top:1640px">شو بدنا نعمل؟ 😰</div>
+</section>
+
+<!-- ============ 2 · 6.5–11s · rescue ============ -->
+<section class="scene" style="--s:6.5s;--e:10.6s">
+  <div class="msg a" style="--k:pop;--d:6.8s">
+    <div class="from"><i></i>رسالة جديدة · الآن</div>
+    <p>ليش هالهمّ؟ عندكم <g style="color:#9a7330">دعوتي</g> ✨</p>
+  </div>
+  <div class="glow" style="animation:glowPulse 1s ease 8s both"></div>
+  <div style="position:absolute;left:0;right:0;top:820px;display:flex;justify-content:center">
+    <div class="logo a" style="--k:pop;--d:8s;width:330px;height:330px"><img src="assets/envelope.png" alt=""></div>
+  </div>
+  <div class="cap amiri a" style="--d:8.5s;top:1200px;font-size:150px;font-weight:700;color:var(--gold)">دعوتي</div>
+  <div class="cap sub a" style="--d:9s;top:1440px">دعوات · ردود · طاولات · خدمات</div>
+</section>
+
+<!-- ============ 3a · 11–15.5s · request ============ -->
+<section class="scene" style="--s:11s;--e:15.1s">
+  <div class="kicker a" style="--k:pop;--d:11.2s"><span>الخطوة 1</span></div>
+  <div class="phone a" style="--d:11.3s;left:215px;top:220px;width:650px;height:1120px">
+    <div class="screen"><div class="notch"></div>
+      <img class="shot" src="assets/request_form.jpg" alt="" style="margin-top:90px">
+    </div>
+  </div>
+  <div class="tap" style="--d:13.4s;left:470px;top:1180px"></div>
+  <div class="cap mid a" style="--d:11.8s;top:1420px">اطلبوا فتح مناسبة من التطبيق<br><span class="g">أو تواصلوا معنا مباشرة</span></div>
+</section>
+
+<!-- ============ 3b · 15.5–22s · any format ============ -->
+<section class="scene" style="--s:15.5s;--e:21.6s">
+  <div class="cap mid a" style="--d:15.6s;top:150px">أرسلوا التفاصيل وقائمة المدعوين<br><g>بأي طريقة</g></div>
+  <div id="sources"></div>
+  <div style="position:absolute;left:540px;top:900px">
+    <div style="position:absolute;left:-150px;top:-150px;width:300px;height:300px;border-radius:30%;border:4px solid var(--gold);animation:ring 1s ease-out 18.6s both"></div>
+    <div style="position:absolute;left:-150px;top:-150px;width:300px;height:300px;border-radius:30%;border:4px solid var(--gold);animation:ring 1s ease-out 18.9s both"></div>
+    <div class="logo a" style="--k:pop;--d:15.8s;position:absolute;left:-130px;top:-130px;width:260px;height:260px"><img src="assets/envelope.png" alt=""></div>
+  </div>
+  <div class="cap big a" style="--k:pop;--d:19.2s;top:1450px">✓ ونحن نهتم <g>بالباقي</g></div>
+</section>
+
+<!-- ============ 4 · 22–31s · invitation + RSVP ============ -->
+<section class="scene" style="--s:22s;--e:30.6s">
+  <div class="kicker a" style="--k:pop;--d:22.1s"><span>الخطوة 2</span></div>
+  <div class="phone a" style="--d:22.2s;left:225px;top:210px;width:630px;height:1150px">
+    <div class="screen"><div class="notch"></div>
+      <div class="chat-h"><i></i><div><b>دعوتي</b><small>دعوة شخصية</small></div></div>
+      <div class="chat">
+        <div class="inv a" style="--k:pop;--d:23s">
+          مرحباً <b>أبو سامي</b> 🌿<br>
+          يسعدنا دعوتكم لحفل زفاف ابننا <b>أحمد</b><br>
+          📅 الجمعة 20.11 · 20:00<br>
+          📍 قاعة الأفراح
+          <div class="linkc a" style="--d:23.7s">
+            <div class="top">تشرّفونا</div>
+            <div class="bot">دعوتك الشخصية · اضغط للرد</div>
+          </div>
+        </div>
+      </div>
+      <div class="sheet" style="--d:25.3s">
+        <h4>هل ستحضر؟</h4>
+        <p>حفل زفاف أحمد · الجمعة 20.11</p>
+        <div class="rsvp">
+          <div class="yes" style="--d:26.9s">سأحضر</div>
+          <div>غير متأكد</div>
+          <div>أعتذر</div>
+        </div>
+        <div class="ppl">عدد الأشخاص <b>− 2 +</b></div>
+      </div>
+      <div class="tap" style="--d:26.5s;right:90px;bottom:250px"></div>
+      <div class="toast a" style="--k:pop;--d:27.6s">✓ شكراً! وصل ردّك</div>
+    </div>
+  </div>
+  <div class="chan a" style="--k:pop;--d:23.4s;background:var(--wa);top:430px;left:40px">💬 WhatsApp</div>
+  <div class="chan a" style="--k:pop;--d:23.8s;background:var(--blue);top:560px;right:40px">✉️ SMS</div>
+  <div class="cap mid a out" style="--d:22.6s;--o:25.4s;top:1440px">كل ضيف تصله دعوة <g>شخصية باسمه</g><br>عبر واتساب و SMS</div>
+  <div class="cap big a" style="--d:25.8s;top:1460px">ويردّ <g>بضغطة واحدة</g> 👆</div>
+</section>
+
+<!-- ============ 5 · 31–40s · live tracking ============ -->
+<section class="scene" style="--s:31s;--e:39.6s">
+  <div class="kicker a" style="--k:pop;--d:31.1s"><span>الخطوة 3</span></div>
+  <div class="phone a" style="--d:31.2s;left:240px;top:210px;width:600px;height:1110px">
+    <div class="screen"><div class="notch"></div><div class="live">LIVE ●</div>
+      <div class="scroll" style="--d:33.6s;--y:-560px;padding-top:70px">
+        <img class="shot" src="assets/stats.jpg" alt="">
+        <img class="shot" src="assets/chart.jpg" alt="">
+      </div>
+    </div>
+  </div>
+  <div class="notif a" style="--k:slideR;--d:32.2s;top:330px;right:30px"><span class="ic">👁️</span><div>أبو سامي فتح الدعوة<br><small>اليوم · 20:41</small></div></div>
+  <div class="notif a" style="--k:slideL;--d:33.4s;top:600px;left:30px"><span class="ic">✅</span><div>عائلة خوري: سنحضر (4)<br><small>قبل دقيقة</small></div></div>
+  <div class="notif a" style="--k:slideR;--d:34.6s;top:870px;right:30px"><span class="ic">🤔</span><div>ليلى: غير متأكدة<br><small>قبل 5 دقائق</small></div></div>
+  <div class="notif a" style="--k:slideL;--d:35.8s;top:1120px;left:30px"><span class="ic">💌</span><div>أبو فادي: اعتذر مع الشكر<br><small>أمس · 18:02</small></div></div>
+  <div class="cap mid a" style="--d:31.6s;top:1420px">وأنتم تتابعون كل شيء <g>مباشرة</g></div>
+  <div class="cap sub a" style="--d:32.6s;top:1530px;color:var(--ink)">من فتح الدعوة، ومتى، وبماذا ردّ</div>
+</section>
+
+<!-- ============ 6 · 40–47s · tables ============ -->
+<section class="scene" style="--s:40s;--e:46.6s">
+  <div class="kicker a" style="--k:pop;--d:40.1s"><span>ترتيب الطاولات</span></div>
+  <div class="hall a" style="--k:pop;--d:40.2s" id="hall"><div class="stage">🎤 المنصّة</div></div>
+  <div class="bust a" data-char="mom-happy" style="--k:pop;--d:44s;right:90px;top:1080px;width:260px;height:325px"></div>
+  <div class="bubble a" style="--k:pop;--d:44.4s;left:110px;top:1170px">أخيراً ارتحت! 😊</div>
+  <div class="cap mid a" style="--d:40.8s;top:1480px">نرتّب الطاولات معكم…<br><g>كل ضيف في مكانه</g></div>
+</section>
+
+<!-- ============ 7 · 47–53.5s · arrival ============ -->
+<section class="scene" style="--s:47s;--e:53.1s">
+  <div class="msg a" style="--k:pop;--d:47.3s;top:170px">
+    <div class="from"><i></i>دعوتي · اليوم 16:00</div>
+    <p style="font-size:44px">أهلاً أبو سامي! طاولتك رقم <g style="color:#9a7330">12</g> 🌿<br><span style="font-weight:600;font-size:36px">نتشرّف بكم الليلة</span></p>
+  </div>
+  <div class="venue a" style="--k:zoomIn;--d:48.2s">
+    <img src="assets/venue_photo.jpg" alt="" style="--d:48.2s">
+    <div class="welcome"><div class="a" style="--k:pop;--d:49.4s">فريق دعوتي باستقبالكم ✨</div></div>
+  </div>
+  <div class="cap mid a" style="--d:47.8s;top:1350px">يصل كل ضيف <g>رقم طاولته</g></div>
+  <div class="cap mid a" style="--d:49.8s;top:1480px">وفريق دعوتي يستقبله في القاعة 🤝</div>
+</section>
+
+<!-- ============ 8 · 53.5–61s · services ============ -->
+<section class="scene" style="--s:53.5s;--e:60.6s">
+  <div class="kicker a" style="--k:pop;--d:53.6s"><span>خدمات الأفراح</span></div>
+  <div class="phone a" style="--d:53.7s;left:250px;top:210px;width:580px;height:860px">
+    <div class="screen"><div class="notch"></div>
+      <img class="shot" src="assets/services.jpg" alt="" style="margin-top:70px">
+    </div>
+  </div>
+  <div class="chip a" style="--k:slideR;--d:54.6s;position:absolute;top:300px;right:24px">📸 تصوير</div>
+  <div class="chip a" style="--k:slideL;--d:55s;position:absolute;top:480px;left:24px">🌸 زينة وهدايا</div>
+  <div class="chip a" style="--k:slideR;--d:55.4s;position:absolute;top:680px;right:24px">✂️ حلاقة للعريس</div>
+  <div class="chip a" style="--k:slideL;--d:55.8s;position:absolute;top:870px;left:24px">💄 مكياج وشعر</div>
+  <div class="bust a" data-char="dad-happy" style="--k:pop;--d:57.4s;left:90px;top:1080px;width:260px;height:325px"></div>
+  <div class="bubble a" style="--k:pop;--d:57.8s;right:80px;top:1170px">والمصوّر كمان لقيناه! 😄</div>
+  <div class="cap mid a" style="--d:54.2s;top:1480px">وكل خدمات الفرح <g>في مكان واحد</g></div>
+  <div class="cap sub a" style="--d:55s;top:1660px">مصوّرون · زينة · حلاقة · مكياج والمزيد</div>
+</section>
+
+<!-- ============ 9 · 61–70s · finale ============ -->
+<section class="scene" style="--s:61s;--e:99s">
+  <div id="confetti"></div>
+  <div class="bust a" data-char="dad-happy" style="--k:slideL;--d:61.2s;left:210px;top:150px"></div>
+  <div class="bust a" data-char="mom-happy" style="--k:slideR;--d:61.3s;right:210px;top:150px"></div>
+  <div style="position:absolute;left:0;right:0;top:600px;display:flex;justify-content:center">
+    <div class="logo a" style="--k:pop;--d:62s;width:220px;height:220px"><img src="assets/envelope.png" alt=""></div>
+  </div>
+  <div class="cap amiri a" style="--d:62.4s;top:830px;font-size:130px;font-weight:700">دعوتي</div>
+  <div class="cap amiri a" style="--d:63.2s;top:1030px;font-size:84px;font-weight:700;line-height:1.5">من أول «تشرّفونا»<br><g>حتى آخر «شكراً»</g></div>
+  <div class="cap a" style="--k:pop;--d:64.6s;top:1370px"><span class="cta">ابدأ مناسبتك معنا 💬</span></div>
+  <div class="cap a" style="--d:65.2s;top:1560px;font-size:56px;font-weight:600;color:var(--gold);direction:ltr">daawatey.com</div>
+</section>
+
+<script>
+// ---------- characters (simple flat busts; mood = worried | happy) ----------
+function bust(who, mood){
+  const skin = who==='mom' ? '#f1c39b' : '#e2b088';
+  const hair = who==='mom' ? '#3b2418' : '#2a1d16';
+  let s = '<svg viewBox="0 0 240 300" xmlns="http://www.w3.org/2000/svg">';
+  if (who==='mom') s += `<path d="M48 120 Q44 38 120 30 Q196 38 192 120 L198 232 Q120 252 42 232Z" fill="${hair}"/>`;
+  // body
+  s += who==='mom'
+    ? `<path d="M18 300 Q28 214 120 204 Q212 214 222 300Z" fill="#8c2f4a"/><path d="M84 214 Q120 246 156 214" stroke="#e3c48a" stroke-width="5" fill="none"/>`
+    : `<path d="M18 300 Q28 214 120 204 Q212 214 222 300Z" fill="#1f2b45"/><path d="M98 208 L120 262 L142 208Z" fill="#f5efe3"/><path d="M114 214 L126 214 L130 262 L120 274 L110 262Z" fill="#c9a35a"/>`;
+  s += `<rect x="102" y="168" width="36" height="44" rx="10" fill="${skin}" opacity=".92"/>`;
+  if (who==='dad') s += `<circle cx="63" cy="130" r="13" fill="${skin}"/><circle cx="177" cy="130" r="13" fill="${skin}"/>`;
+  s += `<ellipse cx="120" cy="125" rx="57" ry="67" fill="${skin}"/>`;
+  s += who==='mom'
+    ? `<path d="M62 116 Q68 52 120 50 Q176 52 180 114 Q152 78 120 76 Q84 78 62 116Z" fill="${hair}"/><circle cx="63" cy="150" r="6" fill="#e3c48a"/><circle cx="177" cy="150" r="6" fill="#e3c48a"/>`
+    : `<path d="M63 112 Q58 50 120 48 Q184 50 177 112 Q170 76 120 74 Q72 76 63 112Z" fill="${hair}"/><path d="M63 112 Q62 96 68 88" stroke="#9a9a9a" stroke-width="6" fill="none"/><path d="M177 112 Q178 96 172 88" stroke="#9a9a9a" stroke-width="6" fill="none"/>`;
+  const st = `stroke="#2b1d14" stroke-width="5" stroke-linecap="round" fill="none"`;
+  if (mood==='worried'){
+    s += `<path d="M80 100 L102 90" ${st}/><path d="M138 90 L160 100" ${st}/>`;
+    s += `<circle cx="92" cy="116" r="6.5" fill="#2b1d14"/><circle cx="148" cy="116" r="6.5" fill="#2b1d14"/>`;
+    s += `<path d="M100 ${who==='dad'?168:160} Q110 ${who==='dad'?160:152} 120 ${who==='dad'?166:158} Q130 ${who==='dad'?172:164} 140 ${who==='dad'?164:156}" ${st}/>`;
+    s += `<path d="M178 64 Q188 82 178 90 Q168 82 178 64Z" fill="#8ecdf0"/>`;
+  } else {
+    s += `<path d="M80 96 Q91 89 102 95" ${st}/><path d="M138 95 Q149 89 160 96" ${st}/>`;
+    s += `<path d="M84 118 Q92 108 100 118" ${st}/><path d="M140 118 Q148 108 156 118" ${st}/>`;
+    s += `<circle cx="82" cy="142" r="12" fill="#f08a8a" opacity=".4"/><circle cx="158" cy="142" r="12" fill="#f08a8a" opacity=".4"/>`;
+    const y = who==='dad' ? 158 : 150;
+    s += `<path d="M96 ${y} Q120 ${y+30} 144 ${y}Z" fill="#6b1f1f"/><path d="M100 ${y+1} Q120 ${y+9} 140 ${y+1}Z" fill="#fff"/>`;
+  }
+  if (who==='dad') s += `<path d="M94 150 Q107 140 120 147 Q133 140 146 150 Q133 157 120 152 Q107 157 94 150Z" fill="${hair}"/>`;
+  if (who==='mom') s += `<path d="M104 ${mood==='happy'?150:158} Q120 ${mood==='happy'?150:158} 136 ${mood==='happy'?150:158}" stroke="none"/>`;
+  return s + '</svg>';
+}
+document.querySelectorAll('[data-char]').forEach(el=>{
+  const [who,mood] = el.dataset.char.split('-'); el.innerHTML = bust(who,mood);
+});
+
+// deterministic random so every render is identical
+let seed = 7; const rnd = () => (seed = (seed*16807) % 2147483647) / 2147483647;
+
+// ---------- background sparkles ----------
+let sp=''; for(let i=0;i<34;i++) sp+=`<i class="spark" style="left:${rnd()*1060}px;top:${rnd()*1900}px;--t:${4+rnd()*4}s;--d:${-rnd()*8}s"></i>`;
+document.getElementById('sparks').innerHTML = sp;
+
+// ---------- 3b sources flying into the logo ----------
+const icons = {
+  photo:`<svg viewBox="0 0 24 24" fill="none" stroke="#e3c48a" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 8"/></svg>`,
+  excel:`<svg viewBox="0 0 24 24"><path d="M6 2h9l5 5v15H6z" fill="#1f7a45"/><path d="M15 2v5h5" fill="#4fbf7a"/><text x="13" y="18" font-size="7" font-weight="700" fill="#fff" text-anchor="middle" font-family="Inter">XLS</text></svg>`,
+  wa:`<svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0-7.8 13.5L3 21l4.6-1.2A9 9 0 1 0 12 3z" fill="#25d366"/><path d="M9 8.5c.3 2.6 2.6 5.3 5.5 6.2l1.3-1.3-1.8-1-1 .8c-1.1-.5-2-1.4-2.4-2.4l.8-1-1-1.8z" fill="#fff"/></svg>`,
+  paper:`<svg viewBox="0 0 24 24" fill="none"><rect x="5" y="2.5" width="14" height="19" rx="1.5" fill="#f5efe3"/><path d="M8 7c1-.6 2 .6 3 0s2 .6 3 0 2 .6 2 0M8 11c1-.6 2 .6 3 0s2 .6 3 0M8 15c1-.6 2 .6 3 0s2 .6 4 0" stroke="#4c5ea8" stroke-width="1.1" stroke-linecap="round"/></svg>`,
+  call:`<svg viewBox="0 0 24 24" fill="#e3c48a"><path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1z"/></svg>`
+};
+const srcs = [ // [icon, label, x, y]
+  ['photo','صورة',230,560],['excel','ملف Excel',850,560],
+  ['wa','واتساب',180,1060],['paper','ورقة بخط اليد',900,1060],['call','مكالمة',540,1260]];
+let h=''; srcs.forEach(([ic,lb,x,y],i)=>{
+  h+=`<div class="src" style="left:${x}px;top:${y}px;--d:${16.2+i*.35}s;--o:${18.0+i*.08}s;--dx:${540-x}px;--dy:${900-y}px">${icons[ic]}<b>${lb}</b></div>`;
+}); document.getElementById('sources').innerHTML = h;
+
+// ---------- 6 tables: guests fly into their seats ----------
+const tables = [[200,280,3],[450,280,5],[700,280,7],[325,520,9],[575,520,12],[200,740,14],[450,740,16],[700,740,18]];
+const colors = ['#4fbf7a','#e3c48a','#4c8dff','#e98b3a','#c77dff','#f08a8a'];
+let th=''; tables.forEach(([x,y,n],ti)=>{
+  const hl = n===12;
+  th+=`<div class="tbl ${hl?'hl':'a'}" style="--k:pop;--d:${40.4+ti*.08}s;--h:46s;left:${x}px;top:${y}px">${n}</div>`;
+  for(let k=0;k<8;k++){
+    const ang = k/8*Math.PI*2, sx = x+Math.cos(ang)*100, sy = y+Math.sin(ang)*100;
+    th+=`<div class="seat" style="left:${sx}px;top:${sy}px;background:${colors[(ti+k)%colors.length]};--fx:${(rnd()-.5)*900}px;--fy:${600+rnd()*500}px;--d:${41.2+rnd()*2.4}s"></div>`;
+  }
+}); document.getElementById('hall').insertAdjacentHTML('beforeend', th);
+
+// ---------- 9 confetti ----------
+let cf=''; for(let i=0;i<46;i++) cf+=`<i class="fall" style="left:${rnd()*1080}px;--t:${4+rnd()*4}s;--d:${61+rnd()*4}s;opacity:${.4+rnd()*.6};background:${rnd()>.3?'#e3c48a':'#f5efe3'}"></i>`;
+document.getElementById('confetti').innerHTML = cf;
+
+// ---------- seeking API used by render.js ----------
+window.DURATION = 70;
+window.seek = (t) => { for (const a of document.getAnimations()) { a.pause(); a.currentTime = t*1000; } };
+</script>
+</body>
+</html>
