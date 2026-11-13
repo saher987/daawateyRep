@@ -1,8 +1,10 @@
 # Generates music.wav: a soft background bed for the 70s promo.
-# 0-6.5s: tense, sparse minor pads (the worry); 6.5s on: warm D-major
+# Until RELIEF (voice/cues.json): tense minor pads (the worry); then a warm D-major
 # progression with plucked arpeggios (the relief). Pure numpy, no samples.
 import numpy as np, wave
-SR = 44100; DUR = 70.0; N = int(SR * DUR)
+import json, os
+CFG = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "voice", "cues.json")))
+SR = 44100; DUR = float(CFG["duration"]); N = int(SR * DUR); RELIEF = CFG["relief_at"]
 out = np.zeros((N, 2))
 def hz(m): return 440 * 2 ** ((m - 69) / 12)
 
@@ -32,9 +34,9 @@ def bass(m, t0, t1, vol=.09):
 
 # --- the worry: Bm -> G -> Em -> F#, slow, hollow
 for i, ch in enumerate([[59, 62, 66], [55, 59, 62], [52, 55, 59], [54, 58, 61]]):
-    pad(ch, i * 1.625, i * 1.625 + 2.2, vol=.035)
+    pad(ch, i * RELIEF / 4, i * RELIEF / 4 + RELIEF / 4 + .6, vol=.035)
 # --- the relief: D A Bm G at 96 bpm, one chord per bar
-beat = 60 / 96; bar = 4 * beat; t = 6.5
+beat = 60 / 96; bar = 4 * beat; t = RELIEF
 prog = [(50, [62, 66, 69]), (45, [61, 64, 69]), (47, [62, 66, 71]), (43, [62, 67, 71])]
 arp = [0, 1, 2, 1, 2, 1, 0, 2]
 k = 0
@@ -42,7 +44,7 @@ while t < DUR - 1.5:
     root, ch = prog[k % 4]
     pad([n - 12 for n in ch] + [ch[0]], t, t + bar + .8, vol=.03)
     bass(root - 12 + 12, t, t + bar)
-    if t > 9:  # arps come in once the logo has landed
+    if t > RELIEF + 2.5:  # arps come in once the logo has landed
         for j in range(8):
             n = ch[arp[j]] + (12 if (k % 8 >= 4 and j in (2, 5)) else 0)
             pluck(n, t + j * beat / 2, vol=.12 if j % 2 == 0 else .08, pan=.35 + .3 * (j % 2))
