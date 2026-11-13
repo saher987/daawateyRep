@@ -89,6 +89,14 @@ export default function EventDetails() {
     enabled: !!event?.checkin_enabled,
     refetchInterval: 30000,
   });
+  // Rows saved on the import page whose invitation wasn't sent yet
+  // (imported_invitees.py) — a count here, the list on /events/:id/import.
+  const { data: importedRows = [] } = useQuery({
+    queryKey: ["imported-invitees", eventId],
+    queryFn: () => base44.imports.list(eventId),
+    // (isPrivileged is declared further down.)
+    enabled: ["admin", "manager"].includes(user?.role) && !!eventId,
+  });
   const arrivedById = Object.fromEntries((arrivals?.arrivals || []).map((a) => [a.recipient_id, a.people_arrived]));
 
   const deleteMutation = useMutation({
@@ -229,6 +237,22 @@ export default function EventDetails() {
       )}
       {canSeeRsvpDetails && event.checkin_enabled && <ArrivalsCard event={event} recipients={recipients} />}
 
+      {isPrivileged && importedRows.length > 0 && (
+        <Link
+          to={`/events/${eventId}/import`}
+          className="mb-6 flex items-center gap-3 rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3 hover:bg-primary/10"
+        >
+          <span className="shrink-0 min-w-10 h-10 px-2 rounded-xl bg-primary text-primary-foreground font-bold flex items-center justify-center">
+            {importedRows.length}
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="block font-semibold">{t.importWaitingStrip.replace("{count}", importedRows.length)}</span>
+            <span className="block text-sm text-muted-foreground">{t.importWaitingStripHint}</span>
+          </span>
+          <ArrowRight className="w-4 h-4 shrink-0 text-primary rotate-180" />
+        </Link>
+      )}
+
       {/* Invitees Section — only for owner / admin / manager */}
       {canSeeRsvpDetails && (
         <div className="mb-6">
@@ -258,6 +282,11 @@ export default function EventDetails() {
                   <Link to={`/events/${eventId}/import`}>
                     <FileSpreadsheet className="w-4 h-4" />
                     {t.importInvitees}
+                    {importedRows.length > 0 && (
+                      <span className="min-w-5 h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-xs font-bold inline-flex items-center justify-center">
+                        {importedRows.length}
+                      </span>
+                    )}
                   </Link>
                 </Button>
               )}

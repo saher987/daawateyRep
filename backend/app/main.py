@@ -18,6 +18,7 @@ from app.routers import (
     checkin,
     event_requests,
     events,
+    imported_invitees,
     notifications,
     otp,
     planned_weddings,
@@ -62,6 +63,7 @@ app.include_router(audit_log.router)
 app.include_router(whatsapp_webhook.router)
 app.include_router(seating.router)
 app.include_router(checkin.router)
+app.include_router(imported_invitees.router)
 
 _allowed_origins = os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
 

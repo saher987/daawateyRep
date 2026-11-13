@@ -662,9 +662,30 @@ const checkinApi = {
   },
 }
 
+// The saved import list of an event (backend app/routers/imported_invitees.py,
+// pages/ImportInvitees.jsx): rows kept until their invitation is sent.
+const importsApi = {
+  async list(eventId) {
+    return request(`/api/events/${eventId}/imported-invitees`)
+  },
+  async save(eventId, guests) {
+    return request(`/api/events/${eventId}/imported-invitees`, { method: 'POST', body: { guests } })
+  },
+  async update(rowId, body) {
+    return request(`/api/imported-invitees/${rowId}`, { method: 'PUT', body })
+  },
+  async remove(rowId) {
+    return request(`/api/imported-invitees/${rowId}`, { method: 'DELETE' })
+  },
+  async send(eventId, ids) {
+    return request(`/api/events/${eventId}/imported-invitees/send`, { method: 'POST', body: { ids } })
+  },
+}
+
 export const base44 = {
   auth: authApi,
   users: usersNamespaceApi,
+  imports: importsApi,
   entities: {
     Event: eventsApi,
     InvitationRecipient: invitationRecipientsApi,

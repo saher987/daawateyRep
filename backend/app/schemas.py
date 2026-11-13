@@ -1085,3 +1085,55 @@ class InviteeSuggestion(BaseModel):
     phone: str
     town: str | None
     display_name: str
+
+
+class ImportedInviteeIn(BaseModel):
+    """A row of the import page (file or manual), before it is invited."""
+
+    nickname: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+    name_suffix: str | None = None
+    phone: str | None = None
+    town: str | None = None
+    town_text: str | None = None
+    side_text: str | None = None
+    guests_count: int = Field(default=1, ge=1)
+    side: RecipientSide | None = None
+    group_label: str | None = None
+
+
+class ImportedInviteeOut(ImportedInviteeIn):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    last_error: str | None = None
+    created_at: datetime
+
+
+class ImportedInviteeSave(BaseModel):
+    guests: list[ImportedInviteeIn] = Field(min_length=1, max_length=2000)
+
+
+class ImportedInviteeSaveResult(BaseModel):
+    added: int
+    # Same phone already saved for this event, earlier in the file, or
+    # already a guest of the event.
+    skipped: int
+    rows: list[ImportedInviteeOut]
+
+
+class ImportedInviteeSend(BaseModel):
+    ids: list[str] = Field(min_length=1, max_length=25)
+
+
+class ImportedInviteeSendItem(BaseModel):
+    id: str
+    success: bool
+    recipient_id: str | None = None
+    already_invited: bool = False
+    error: str | None = None
+
+
+class ImportedInviteeSendResult(BaseModel):
+    results: list[ImportedInviteeSendItem]
