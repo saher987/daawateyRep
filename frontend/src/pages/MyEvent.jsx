@@ -20,6 +20,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { downloadFile } from "@/lib/downloadFile";
 import GuestStatsDashboard from "@/components/events/GuestStatsDashboard";
 import EventToolsSection from "@/components/events/EventToolsSection";
+import OwnerContactsCard from "@/components/events/OwnerContactsCard";
 import InviteeRow from "@/components/events/InviteeRow";
 import PlanningServicesCard from "@/components/providers/PlanningServicesCard";
 import { recipientDisplayName, recipientMatchesSearch } from "@/lib/recipientName";
@@ -227,6 +228,9 @@ function EventControlPanel({ event }) {
 
       {/* Table arrangement and entrance check-in, when the team turned them on */}
       <EventToolsSection event={event} recipients={recipients} />
+
+      {/* Guests from the owner's phone contacts, saved for the team to send */}
+      <OwnerContactsCard event={event} />
 
       {/* Same stats dashboard (cards, charts, exports) the admin sees on EventDetails */}
       <GuestStatsDashboard recipients={recipients} event={event} />

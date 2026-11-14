@@ -89,4 +89,8 @@
          requestPermissions() in push.js) — without it the request silently
          does nothing. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Picking guests from the phone's contacts (lib/contacts.js,
+         @capacitor-community/contacts). Asked only when the user taps
+         "from contacts"; only the contacts they tick are uploaded. -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
 </manifest>

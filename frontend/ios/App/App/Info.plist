@@ -69,6 +69,8 @@
 	     of the "2.1.0 App Completeness" rejection: the reviewer tapped
 	     the avatar and the app crashed the moment the permission prompt
 	     would have shown. -->
+	<key>NSContactsUsageDescription</key>
+	<string>يحتاج التطبيق إلى جهات الاتصال لتختار منها المدعوين لمناسبتك. تُرفع فقط الأسماء والأرقام التي تختارها.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>يحتاج التطبيق إلى الوصول إلى الكاميرا لتمكينك من تصوير صورة شخصية جديدة.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

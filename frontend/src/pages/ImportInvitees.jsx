@@ -20,6 +20,7 @@ import CitySelect from "@/components/shared/CitySelect";
 import { SIDES, SIDE_COLOR, parseSide, sideLabel } from "@/lib/seating";
 import { downloadFile } from "@/lib/downloadFile";
 import ImportSendAllDialog from "@/components/events/ImportSendAllDialog";
+import ContactsImportButton from "@/components/events/ContactsImportButton";
 
 // Header names accepted per column (lower-cased, trimmed), so the import
 // works with the English headers of the template file as well as Arabic/
@@ -443,6 +444,15 @@ export default function ImportInvitees() {
             {t.importTemplateDownload}
           </Button>
         </div>
+        {/* Third way in, on phones: pick from the contact list (DAW-57). */}
+        <ContactsImportButton
+          eventId={eventId}
+          className="w-full rounded-xl"
+          onSaved={(result) => {
+            setLastSave({ added: result.added, skipped: result.skipped });
+            queryClient.setQueryData(rowsKey, result.rows);
+          }}
+        />
         {!showManual && (
           <Button type="button" variant="outline" className="w-full rounded-xl gap-2" onClick={openManual}>
             <UserPlus className="w-4 h-4" />

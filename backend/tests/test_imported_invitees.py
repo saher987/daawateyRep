@@ -113,15 +113,36 @@ def test_send_moves_delivered_rows_and_keeps_failed(db, delivery):
         app.dependency_overrides.clear()
 
 
-def test_team_only_and_event_delete_cleans_up(db, delivery):
-    ev = _setup(db, role=models.Role.user)
+def test_owner_adds_but_only_team_sends(db, delivery):
+    """DAW-57: the event's owner saves guests (from their contacts); the
+    team is told and sends. A stranger can do neither."""
+    ev = _setup(db, role=models.Role.user)  # signed in as a plain user, phone 972500000001
+    team = models.User(firebase_uid="uid-t", email="t@x.com", role=models.Role.manager, first_name="فريق")
+    db.add(team)
+    db.commit()
     try:
         with TestClient(app) as c:
+            # Not this event's owner yet.
             assert c.get(f"/api/events/{ev.id}/imported-invitees").status_code == 403
             assert c.post(f"/api/events/{ev.id}/imported-invitees", json={"guests": [{"phone": "0501"}]}).status_code == 403
-            assert c.post(f"/api/events/{ev.id}/imported-invitees/send", json={"ids": ["x"]}).status_code == 403
+            ev.owner_phones = ["972500000001"]
+            db.commit()
+            r = c.post(f"/api/events/{ev.id}/imported-invitees", json={"guests": [{"first_name": "أ", "phone": "0531111111"}, {"first_name": "ب", "phone": "0531111112"}]})
+            assert r.status_code == 200 and r.json()["added"] == 2
+            rows = c.get(f"/api/events/{ev.id}/imported-invitees").json()
+            assert c.delete(f"/api/imported-invitees/{rows[1]['id']}").status_code == 204
+            # Sending costs money: team only.
+            assert c.post(f"/api/events/{ev.id}/imported-invitees/send", json={"ids": [rows[0]["id"]]}).status_code == 403
+        note = db.query(models.Notification).one()
+        assert note.target_user_email == "t@x.com" and note.link == f"/events/{ev.id}/import" and "2" in note.message
+        assert db.query(models.InvitationRecipient).count() == 0
     finally:
         app.dependency_overrides.clear()
+
+
+def test_event_delete_cleans_up(db, delivery):
+    ev = _setup(db)
+    app.dependency_overrides.clear()
     db.add(models.ImportedInvitee(event_id=ev.id, first_name="أ", phone="0501111111"))
     db.commit()
     db.delete(db.get(models.Event, ev.id))

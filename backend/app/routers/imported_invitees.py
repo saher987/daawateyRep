@@ -1,8 +1,10 @@
 """The saved import list: rows loaded on an event's import page
 (ImportInvitees.jsx) are kept per event until their invitation is sent.
 
-Admin/manager only, like everything that sends paid messages. Sending a row
-adds the guest and sends the invitation exactly like add_recipient does
+The event's owner and managers can add to the list and tidy it (DAW-57: they
+pick guests from their phone's contacts on «مناسبتي»), but only admin/manager
+can send — sending is what costs money. Sending a row adds the guest and
+sends the invitation exactly like add_recipient does
 (events._add_and_invite), then removes the row; a row that can't be sent
 stays with the reason. See models.ImportedInvitee for why this is its own
 table.
@@ -15,9 +17,9 @@ from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.audit import audit
-from app.auth import require_role
+from app.auth import get_app_user, require_role
 from app.db import get_db
-from app.routers.events import _add_and_invite, _get_event_or_404
+from app.routers.events import _add_and_invite, _get_event_or_404, _require_event_access
 
 router = APIRouter(prefix="/api", tags=["imported-invitees"])
 
@@ -52,10 +54,10 @@ def _get_row_or_404(db: Session, row_id: str) -> models.ImportedInvitee:
 @router.get("/events/{event_id}/imported-invitees", response_model=list[schemas.ImportedInviteeOut])
 def list_imported(
     event_id: str,
-    _: models.User = Depends(_team),
+    user: models.User = Depends(get_app_user),
     db: Session = Depends(get_db),
 ) -> list[models.ImportedInvitee]:
-    _get_event_or_404(db, event_id)
+    _require_event_access(_get_event_or_404(db, event_id), user)
     return _rows(db, event_id)
 
 
@@ -63,7 +65,7 @@ def list_imported(
 def save_imported(
     event_id: str,
     body: schemas.ImportedInviteeSave,
-    user: models.User = Depends(_team),
+    user: models.User = Depends(get_app_user),
     db: Session = Depends(get_db),
 ) -> schemas.ImportedInviteeSaveResult:
     """Saves rows from a file or the manual form. A phone number that is
@@ -72,6 +74,7 @@ def save_imported(
     Rows without a phone are kept (to be completed) and never count as
     duplicates."""
     event = _get_event_or_404(db, event_id)
+    _require_event_access(event, user)
     taken = {_phone_core(r.phone) for r in _rows(db, event_id) if r.phone}
     taken |= {
         _phone_core(p)
@@ -96,6 +99,24 @@ def save_imported(
         added += 1
     if added:
         audit(db, user, "event.import_save", "event", event.id, label=event.title, meta={"added": added, "skipped": skipped})
+        if user.role not in (models.Role.admin, models.Role.manager):
+            # The owner added guests: tell the team, who send the invitations.
+            # Tapping the notification opens the event's import page.
+            name = " ".join(p for p in (user.first_name, user.last_name) if p) or user.phone or user.email
+            for member in db.query(models.User).filter(
+                models.User.role.in_([models.Role.admin, models.Role.manager]), models.User.is_active.is_(True)
+            ):
+                db.add(
+                    models.Notification(
+                        type=models.NotificationType.event_update,
+                        title="مدعوون جدد بانتظار الإرسال",
+                        message=f'{name} أضاف {added} مدعوين إلى "{event.title}"',
+                        is_read=False,
+                        target_user_email=member.email,
+                        event_id=event.id,
+                        link=f"/events/{event.id}/import",
+                    )
+                )
     db.commit()
     return schemas.ImportedInviteeSaveResult(added=added, skipped=skipped, rows=_rows(db, event_id))
 
@@ -104,12 +125,13 @@ def save_imported(
 def update_imported(
     row_id: str,
     body: schemas.ImportedInviteeIn,
-    _: models.User = Depends(_team),
+    user: models.User = Depends(get_app_user),
     db: Session = Depends(get_db),
 ) -> models.ImportedInvitee:
     """The import page's edit form. Refuses a phone another saved row of
     the event already has."""
     row = _get_row_or_404(db, row_id)
+    _require_event_access(_get_event_or_404(db, row.event_id), user)
     data = body.model_dump()
     for field in ("nickname", "first_name", "last_name", "name_suffix", "phone", "town", "town_text", "side_text", "group_label"):
         data[field] = _clean(data[field])
@@ -127,10 +149,12 @@ def update_imported(
 @router.delete("/imported-invitees/{row_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_imported(
     row_id: str,
-    _: models.User = Depends(_team),
+    user: models.User = Depends(get_app_user),
     db: Session = Depends(get_db),
 ) -> None:
-    db.delete(_get_row_or_404(db, row_id))
+    row = _get_row_or_404(db, row_id)
+    _require_event_access(_get_event_or_404(db, row.event_id), user)
+    db.delete(row)
     db.commit()
 
 
