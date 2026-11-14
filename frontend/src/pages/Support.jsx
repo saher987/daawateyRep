@@ -90,8 +90,8 @@ export default function Support() {
           <Card className="p-6 text-center">
             <Phone className="w-8 h-8 mx-auto mb-3 text-primary" />
             <h3 className="font-semibold mb-2">الهاتف</h3>
-            <a href="tel:+972123456789" className="text-primary hover:underline text-sm">
-              +972 (0) 50 800 5672
+            <a href="tel:+972545351842" dir="ltr" className="text-primary hover:underline text-sm">
+              +972 (0) 54 535 1842
             </a>
           </Card>
           <Card className="p-6 text-center">

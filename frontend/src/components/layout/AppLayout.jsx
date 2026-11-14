@@ -1,3 +1,4 @@
+import logoUrl from "@/assets/logo.png";
 import React, { useState, useEffect, startTransition, Suspense } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
@@ -183,9 +184,7 @@ export default function AppLayout() {
           <div className="flex items-center justify-between">
             {/* The logo leads to the home page ("/", pages/Home.jsx). */}
             <Link to="/" onClick={() => setSidebarOpen(false)} className="flex items-center gap-3 rounded-xl">
-              <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center bg-[hsl(var(--primary))]">
-                <img src="https://media.base44.com/images/public/69c3f1e5c5d379e64b05a015/168b83f89_daawateylogo.png" alt="" className="w-full h-full object-cover" />
-              </div>
+              <img src={logoUrl} alt="" className="w-10 h-10 shrink-0" />
               <div>
                 <h1 className="font-display text-lg font-bold text-foreground">دعوتي</h1>
                 <p className="text-xs text-muted-foreground">{t.smartInvitations}</p>
@@ -322,7 +321,7 @@ export default function AppLayout() {
           </Button>
           }
           <Link to="/" className="flex items-center gap-2 min-h-11 lg:hidden">
-            <img src="https://media.base44.com/images/public/69c3f1e5c5d379e64b05a015/168b83f89_daawateylogo.png" alt="" className="w-7 h-7 rounded-lg object-cover" />
+            <img src={logoUrl} alt="" className="w-8 h-8" />
             <span className="font-display font-bold text-foreground">دعوتي</span>
           </Link>
           <div className="flex-1" />

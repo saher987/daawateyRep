@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { usePublicLanguage, useT } from "@/lib/i18n";
 import { fmt } from "@/lib/seating";
 import samirDinaNames from "@/assets/home/samir-dina.jpg";
+import logoUrl from "@/assets/logo.png";
 
 // "ابدأ مناسبتك معنا" opens a WhatsApp chat with us: new events are set up
 // by the team with the host, not self-serve.
@@ -294,7 +295,10 @@ export default function Home() {
 
         <footer className="bg-[#171C26] text-[#AEB3BD] px-5 py-6 text-sm">
           <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3">
-            <span className={`${display} text-[22px] text-white`}>دعوتي</span>
+            <span className="flex items-center gap-2">
+              <img src={logoUrl} alt="" className="w-8 h-8" />
+              <span className={`${display} text-[22px] text-white`}>دعوتي</span>
+            </span>
             <span className="flex flex-wrap gap-x-5 gap-y-1.5">
               <Link to="/terms" className="hover:text-white">{t.termsOfUse}</Link>
               <Link to="/privacy" className="hover:text-white">{t.homePrivacy}</Link>
@@ -335,7 +339,7 @@ function GuestHeader({ t }) {
   return (
     <header className="relative max-w-6xl mx-auto px-5 py-4 flex flex-wrap items-center gap-x-6 gap-y-2" style={{ paddingTop: "max(16px, env(safe-area-inset-top))" }}>
       <Link to="/" className="flex items-center gap-2.5 flex-1 sm:flex-none">
-        <span className="home-display w-[38px] h-[38px] rounded-full border-[1.5px] border-[#E2C68F] flex items-center justify-center text-[22px] font-bold text-[#E2C68F]">د</span>
+        <img src={logoUrl} alt="" className="w-10 h-10 shrink-0" />
         <span className="home-display text-[26px] font-bold text-white">دعوتي</span>
       </Link>
       <nav className="hidden sm:flex flex-1 gap-6 text-[15px]">
