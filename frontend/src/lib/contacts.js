@@ -20,9 +20,16 @@ const hasWebPicker = () =>
 // Whether to show "from contacts" at all on this device.
 export const contactsSupported = () => isNativeContacts() || hasWebPicker();
 
+// Phones set to Arabic often save numbers in Arabic-Indic digits
+// ("٠٥٤…") or Persian ones ("۰۵۴…"). \D treats those as non-digits, so
+// without this the whole number vanished and the contact was dropped as
+// "no phone".
+const toLatinDigits = (s) =>
+  s.replace(/[٠-٩۰-۹]/g, (d) => String(d.charCodeAt(0) & 0xf));
+
 // Israeli numbers as the rest of the app stores them: "05XXXXXXXX".
 export function normalizeContactPhone(value) {
-  let digits = String(value ?? "").replace(/\D/g, "");
+  let digits = toLatinDigits(String(value ?? "")).replace(/\D/g, "");
   if (!digits) return "";
   if (digits.startsWith("00972")) digits = digits.slice(5);
   else if (digits.startsWith("972")) digits = digits.slice(3);
