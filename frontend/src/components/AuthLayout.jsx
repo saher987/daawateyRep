@@ -1,6 +1,7 @@
 // Ported unchanged from the original Base44 app (zaffaf/src/components/AuthLayout.jsx) —
 // the card-with-icon-header shell shared by Login/Register/ForgotPassword/etc there.
 import React from "react";
+import logoUrl from "@/assets/logo.png";
 import { Link } from "react-router-dom";
 import AuthLanguageToggle from "./AuthLanguageToggle";
 
@@ -23,7 +24,7 @@ export default function AuthLayout({
         {/* Back to the home page from login / register / password pages. */}
         <div className="text-center mb-6">
           <Link to="/" className="inline-flex items-center gap-2 min-h-11 px-2 rounded-xl">
-            <img src="https://media.base44.com/images/public/69c3f1e5c5d379e64b05a015/168b83f89_daawateylogo.png" alt="" className="w-8 h-8 rounded-lg object-cover" />
+            <img src={logoUrl} alt="" className="w-9 h-9" />
             <span className="font-display text-xl font-bold text-foreground">دعوتي</span>
           </Link>
         </div>

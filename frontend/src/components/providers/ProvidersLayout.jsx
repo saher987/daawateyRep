@@ -1,3 +1,4 @@
+import logoUrl from "@/assets/logo.png";
 import React, { Suspense } from "react";
 import { Link, Outlet } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
@@ -43,7 +44,7 @@ function GuestShell() {
           {/* To the home page, so a visitor who came from a shared provider
               link can discover the app. */}
           <Link to="/" className="flex items-center gap-2 min-h-11">
-            <img src="https://media.base44.com/images/public/69c3f1e5c5d379e64b05a015/168b83f89_daawateylogo.png" alt="" className="w-7 h-7 rounded-lg object-cover" />
+            <img src={logoUrl} alt="" className="w-8 h-8" />
             <span className="font-display font-bold text-foreground">دعوتي</span>
           </Link>
           <div className="flex-1" />
