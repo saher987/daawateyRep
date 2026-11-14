@@ -680,6 +680,7 @@ const translations = {
     providerTermsPrivacy: "سياسة الخصوصية",
     providerTermsAnd: " و",
     providerTermsAria: "أوافق على سياسة الخصوصية وشروط الاستخدام",
+    providerFreeUntil: "إدراج خدمتك مجاني حتى نهاية 2027.",
     footerRights: "منصة دعوتي — جميع الحقوق محفوظة",
     footerByBusiness: "دعوتي من بيت سكايلر",
 
@@ -1912,6 +1913,7 @@ const translations = {
     providerTermsPrivacy: "מדיניות הפרטיות",
     providerTermsAnd: " ול",
     providerTermsAria: "אני מסכים/ה למדיניות הפרטיות ולתנאי השימוש",
+    providerFreeUntil: "הוספת השירות חינם עד סוף 2027.",
     footerRights: "פלטפורמת דעוותי — כל הזכויות שמורות",
     footerByBusiness: "דעוותי מבית סקאילר",
 

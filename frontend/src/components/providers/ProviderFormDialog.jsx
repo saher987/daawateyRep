@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ImagePlus, Loader2, Plus, Trash2, X } from "lucide-react";
+import { BadgeCheck, ImagePlus, Loader2, Plus, Trash2, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { useT } from "@/lib/i18n";
@@ -292,6 +292,13 @@ export default function ProviderFormDialog({ open, onOpenChange, provider, categ
               </div>
               )}
             </div>
+            {askTerms && (
+              // The same promise is spelled out in the Terms (section 4).
+              <p className="flex items-center gap-2 px-6 py-2.5 border-t text-sm font-semibold text-success bg-success/10 flex-shrink-0">
+                <BadgeCheck className="w-4 h-4 shrink-0" aria-hidden="true" />
+                {t.providerFreeUntil}
+              </p>
+            )}
             {askTerms && (
               <label className="flex items-start gap-3 px-6 py-3 border-t text-sm leading-6 cursor-pointer flex-shrink-0 bg-background">
                 <Checkbox
