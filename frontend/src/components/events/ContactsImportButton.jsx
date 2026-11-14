@@ -31,10 +31,16 @@ export default function ContactsImportButton({ eventId, onSaved, className = "",
     setBusy(true);
     try {
       const result = await base44.imports.save(eventId, contacts.map(contactToGuest));
-      toast({
-        title: t.contactsSaved.replace("{count}", result.added),
-        description: result.skipped > 0 ? t.importSkippedNote.replace("{count}", result.skipped) : undefined,
-      });
+      if (result.added === 0) {
+        // Everyone picked is already in the waiting list or already a
+        // guest of the event: say it plainly, nothing new will appear.
+        toast({ title: t.contactsNoneAdded, description: t.contactsNoneAddedHint, variant: "destructive", duration: 8000 });
+      } else {
+        toast({
+          title: t.contactsSaved.replace("{count}", result.added),
+          description: result.skipped > 0 ? t.importSkippedNote.replace("{count}", result.skipped) : undefined,
+        });
+      }
       onSaved?.(result);
     } catch (err) {
       toast({ title: t.addError, description: err.message, variant: "destructive" });
@@ -52,8 +58,16 @@ export default function ContactsImportButton({ eventId, onSaved, className = "",
         else setDeviceContacts(list);
       } else {
         // The browser shows its own picker and returns only what was chosen.
-        const chosen = await pickWebContacts();
+        const { contacts: chosen, withoutPhone } = await pickWebContacts();
         setBusy(false);
+        if (withoutPhone > 0) {
+          toast({
+            title: t.contactsNoPhone.replace("{count}", withoutPhone),
+            description: t.contactsNoPhoneHint,
+            variant: "destructive",
+            duration: 8000,
+          });
+        }
         await save(chosen);
       }
     } catch (err) {

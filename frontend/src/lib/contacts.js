@@ -76,13 +76,17 @@ export async function loadDeviceContacts() {
     .sort(byName);
 }
 
-// Website: the browser's picker. Resolves to the chosen contacts ([] when
-// the user closes it without choosing).
+// Website: the browser's picker. Resolves to { contacts, withoutPhone }:
+// the chosen contacts that have a usable number, and how many were chosen
+// without one (no number saved, or the "phone numbers" chip at the top of
+// Chrome's picker was switched off) — the caller says so instead of
+// silently adding nothing.
 export async function pickWebContacts() {
   const chosen = await navigator.contacts.select(["name", "tel"], { multiple: true });
-  return chosen
+  const contacts = chosen
     .map((c, i) => toContact(i, { display: (c.name || [])[0] }, c.tel || []))
     .filter((c) => c.phone);
+  return { contacts, withoutPhone: chosen.length - contacts.length };
 }
 
 // A picked contact in POST /events/{id}/imported-invitees' guest shape.
