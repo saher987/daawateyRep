@@ -83,7 +83,7 @@ export async function loadDeviceContacts() {
     .sort(byName);
 }
 
-// Website: the browser's picker. Resolves to { contacts, withoutPhone }:
+// Website: the browser's picker. Resolves to { contacts, picked, withoutPhone }:
 // the chosen contacts that have a usable number, and how many were chosen
 // without one (no number saved, or the "phone numbers" chip at the top of
 // Chrome's picker was switched off) — the caller says so instead of
@@ -93,7 +93,7 @@ export async function pickWebContacts() {
   const contacts = chosen
     .map((c, i) => toContact(i, { display: (c.name || [])[0] }, c.tel || []))
     .filter((c) => c.phone);
-  return { contacts, withoutPhone: chosen.length - contacts.length };
+  return { contacts, picked: chosen.length, withoutPhone: chosen.length - contacts.length };
 }
 
 // A picked contact in POST /events/{id}/imported-invitees' guest shape.
