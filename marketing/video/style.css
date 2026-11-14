@@ -1,0 +1,187 @@
+/* Shared styles for video.html (full promo) and short.html (15s cut). */
+@property --n { syntax: '<integer>'; inherits: false; initial-value: 0; }
+:root{
+  --bg:#0d1016; --bg2:#151a24; --card:#171c26; --line:#2a3140;
+  --gold:#e3c48a; --gold2:#c9a35a; --ink:#f5efe3; --mute:#a9a397;
+  --green:#4fbf7a; --red:#d9534f; --orange:#e98b3a; --blue:#4c8dff; --wa:#25d366;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1080px;height:1920px;overflow:hidden;background:var(--bg)}
+body{font-family:"Noto Sans Arabic",sans-serif;color:var(--ink);position:relative}
+.amiri{font-family:"Amiri",serif}
+g, .g{color:var(--gold)}
+
+/* ---------- background ---------- */
+#bg{position:absolute;inset:0;background:
+  radial-gradient(1200px 900px at 50% 18%, #26304a 0%, transparent 60%),
+  radial-gradient(900px 900px at 80% 95%, #2b2416 0%, transparent 60%),
+  linear-gradient(#10141c,#0b0d12)}
+.spark{position:absolute;width:6px;height:6px;border-radius:50%;background:var(--gold);
+  opacity:.0;box-shadow:0 0 12px var(--gold);animation:twinkle var(--t) ease-in-out var(--d) infinite}
+@keyframes twinkle{0%,100%{opacity:0;transform:translateY(0)}50%{opacity:.55;transform:translateY(-40px)}}
+
+/* ---------- generic animation helpers ---------- */
+.scene{position:absolute;inset:0;opacity:0;
+  animation:fadeIn .5s var(--s) both, fadeOut .5s var(--e) forwards}
+.a{animation:var(--k,rise) var(--dur,.7s) cubic-bezier(.2,.8,.2,1) var(--d,0s) both}
+.a.out{animation:var(--k,rise) var(--dur,.7s) cubic-bezier(.2,.8,.2,1) var(--d,0s) both,
+  fadeOut .4s var(--o) forwards}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes fadeOut{from{opacity:1}to{opacity:0}}
+@keyframes rise{from{opacity:0;transform:translateY(70px)}to{opacity:1;transform:none}}
+@keyframes pop{0%{opacity:0;transform:scale(.3)}65%{opacity:1;transform:scale(1.08)}100%{opacity:1;transform:scale(1)}}
+@keyframes slideL{from{opacity:0;transform:translateX(-160px)}to{opacity:1;transform:none}}
+@keyframes slideR{from{opacity:0;transform:translateX(160px)}to{opacity:1;transform:none}}
+@keyframes zoomIn{from{opacity:0;transform:scale(1.25)}to{opacity:1;transform:scale(1)}}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+@keyframes shake{0%,100%{transform:rotate(0)}20%{transform:rotate(-4deg)}40%{transform:rotate(4deg)}60%{transform:rotate(-3deg)}80%{transform:rotate(2deg)}}
+.bob{animation:bob 2.6s ease-in-out var(--bd,0s) infinite}
+
+/* ---------- shared pieces ---------- */
+.kicker{position:absolute;top:96px;left:0;right:0;text-align:center}
+.kicker span{display:inline-block;padding:14px 34px;border-radius:999px;border:2px solid var(--gold2);
+  color:var(--gold);font-size:38px;font-weight:600;background:rgba(227,196,138,.08)}
+.cap{position:absolute;left:60px;right:60px;text-align:center;font-weight:800;line-height:1.35;
+  text-shadow:0 4px 30px rgba(0,0,0,.6)}
+.cap.big{font-size:70px}
+.cap.mid{font-size:56px}
+.cap.sub{font-size:42px;font-weight:600;color:var(--mute)}
+.phone{position:absolute;background:#05070a;border-radius:70px;padding:16px;
+  box-shadow:0 50px 140px rgba(0,0,0,.7),0 0 0 3px #343a47,inset 0 0 0 2px #1d222c}
+.phone .screen{position:relative;border-radius:56px;overflow:hidden;background:var(--bg);height:100%}
+.phone .notch{position:absolute;top:22px;left:50%;width:150px;height:36px;margin-left:-75px;
+  background:#05070a;border-radius:20px;z-index:5}
+.phone img.shot{display:block;width:100%}
+.chip{display:inline-flex;align-items:center;gap:12px;padding:14px 28px;border-radius:999px;
+  font-size:38px;font-weight:700;background:var(--card);border:2px solid var(--line);white-space:nowrap}
+.bust{position:absolute;width:300px;height:375px}
+.bust svg{width:100%;height:100%;filter:drop-shadow(0 20px 40px rgba(0,0,0,.5))}
+.bubble{position:absolute;background:var(--ink);color:#1a1a1a;font-weight:800;font-size:42px;
+  padding:22px 34px;border-radius:40px;white-space:nowrap;box-shadow:0 20px 50px rgba(0,0,0,.45)}
+.logo{border-radius:28%;background:#2a2d33;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 0 3px rgba(227,196,138,.35),0 30px 80px rgba(0,0,0,.6)}
+.logo img{width:72%}
+.notif{position:absolute;display:flex;align-items:center;gap:18px;padding:22px 30px;border-radius:30px;
+  background:rgba(23,28,38,.96);border:2px solid var(--line);font-size:34px;font-weight:600;
+  box-shadow:0 24px 60px rgba(0,0,0,.55);white-space:nowrap}
+.notif .ic{font-size:40px}
+.notif small{color:var(--mute);font-size:28px;font-weight:400}
+
+/* ---------- scene 1: worry ---------- */
+.counter{position:absolute;top:250px;left:0;right:0;text-align:center}
+.counter .num{font-size:230px;font-weight:800;color:var(--gold);line-height:1;
+  counter-reset:n var(--n);animation:count 1.8s cubic-bezier(.3,.6,.2,1) .7s both}
+.counter .num::after{content:counter(n)}
+@keyframes count{from{--n:0}to{--n:500}}
+.counter .lbl{font-size:60px;font-weight:700;margin-top:6px}
+.worry{position:absolute;font-size:40px;padding:16px 30px;border-radius:999px;background:rgba(217,83,79,.14);
+  border:2px solid rgba(217,83,79,.55);color:#ffd7d3;font-weight:700;white-space:nowrap}
+.worry > span{display:inline-block;animation:shake .7s ease-in-out var(--sd) 3}
+
+/* ---------- scene 2: rescue ---------- */
+.msg{position:absolute;left:110px;right:110px;top:260px;background:rgba(245,239,227,.97);color:#141414;
+  border-radius:40px;padding:30px 36px;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+.msg .from{display:flex;align-items:center;gap:16px;font-size:30px;color:#666;font-weight:600}
+.msg .from i{display:inline-block;width:46px;height:46px;border-radius:12px;background:#2a2d33;
+  background-image:url(assets/envelope.png);background-size:70%;background-repeat:no-repeat;background-position:center}
+.msg p{font-size:48px;font-weight:800;margin-top:12px}
+.glow{position:absolute;left:50%;top:1000px;width:900px;height:900px;margin:-450px 0 0 -450px;border-radius:50%;
+  background:radial-gradient(circle,rgba(227,196,138,.35),transparent 65%)}
+@keyframes glowPulse{0%{opacity:0;transform:scale(.4)}60%{opacity:1;transform:scale(1.1)}100%{opacity:.7;transform:scale(1)}}
+
+/* ---------- scene 3b: any format ---------- */
+.src{position:absolute;width:230px;height:230px;margin:-115px 0 0 -115px;border-radius:44px;background:var(--card);
+  border:2px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+  box-shadow:0 24px 60px rgba(0,0,0,.5);
+  animation:pop .6s cubic-bezier(.2,.8,.2,1) var(--d) both, suck .7s cubic-bezier(.6,0,.8,.4) var(--o) forwards}
+.src svg{width:96px;height:96px}
+.src b{font-size:32px;font-weight:700}
+@keyframes suck{from{opacity:1;transform:none}to{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.15)}}
+@keyframes ring{0%{opacity:.9;transform:scale(1)}100%{opacity:0;transform:scale(2.4)}}
+
+/* ---------- scene 4: invitation ---------- */
+.chat-h{display:flex;align-items:center;gap:18px;padding:80px 34px 22px;background:#151b22;border-bottom:2px solid #232a35}
+.chat-h i{width:64px;height:64px;border-radius:50%;background:#2a2d33 url(assets/envelope.png) center/62% no-repeat}
+.chat-h b{font-size:34px}.chat-h small{display:block;font-size:24px;color:var(--mute);font-weight:400}
+.chat{padding:30px 28px;background:#0e1319;height:100%}
+.inv{background:#1d2a22;border-radius:30px 30px 30px 8px;padding:26px 28px;font-size:31px;line-height:1.6;width:88%;margin-right:auto}
+.inv b{color:var(--gold)}
+.linkc{margin-top:18px;background:#16201a;border-radius:22px;overflow:hidden;border:2px solid #2c3d31}
+.linkc .top{height:150px;background:linear-gradient(135deg,#2a2416,#11151c);display:flex;align-items:center;justify-content:center;
+  font-family:Amiri,serif;color:var(--gold);font-size:48px}
+.linkc .bot{padding:16px 20px;font-size:28px;color:#9fd5b1}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#171c26;border-radius:44px 44px 0 0;padding:34px 34px 60px;
+  box-shadow:0 -20px 60px rgba(0,0,0,.6);animation:sheetUp .6s cubic-bezier(.2,.8,.2,1) var(--d) both}
+@keyframes sheetUp{from{transform:translateY(110%)}to{transform:none}}
+.sheet h4{font-size:42px;text-align:center;margin-bottom:8px}
+.sheet p{font-size:28px;text-align:center;color:var(--mute);margin-bottom:26px}
+.rsvp{display:flex;gap:16px}
+.rsvp div{flex:1;text-align:center;padding:24px 0;border-radius:24px;font-size:32px;font-weight:800;border:2px solid var(--line);background:#0f131a}
+.rsvp .yes{animation:yes .3s ease var(--d) both}
+@keyframes yes{from{}to{background:var(--green);border-color:var(--green);color:#06130b}}
+.ppl{display:flex;justify-content:center;align-items:center;gap:30px;margin-top:24px;font-size:32px;color:var(--mute)}
+.ppl b{font-size:44px;color:var(--ink)}
+.tap{position:absolute;width:110px;height:110px;border-radius:50%;background:rgba(255,255,255,.35);border:4px solid #fff;
+  animation:tap .9s ease var(--d) both}
+@keyframes tap{0%{opacity:0;transform:scale(1.6)}40%{opacity:1;transform:scale(1)}60%{transform:scale(.8)}100%{opacity:0;transform:scale(1.2)}}
+.toast{position:absolute;left:40px;right:40px;top:140px;background:var(--green);color:#06130b;border-radius:28px;
+  padding:24px;text-align:center;font-size:36px;font-weight:800;box-shadow:0 20px 50px rgba(0,0,0,.5)}
+.chan{position:absolute;display:flex;align-items:center;gap:14px;padding:16px 30px;border-radius:999px;font-size:38px;font-weight:800;color:#fff;
+  box-shadow:0 20px 50px rgba(0,0,0,.5)}
+
+/* ---------- scene 5: tracking ---------- */
+.scroll{animation:scrollUp 2.6s cubic-bezier(.5,0,.3,1) var(--d) both}
+@keyframes scrollUp{from{transform:none}to{transform:translateY(var(--y))}}
+.live{position:absolute;top:34px;right:34px;z-index:6;background:var(--red);color:#fff;font-size:26px;font-weight:800;
+  padding:6px 18px;border-radius:12px;animation:blink 1s steps(2) 0s infinite}
+@keyframes blink{50%{opacity:.35}}
+
+/* ---------- scene 6: tables ---------- */
+.hall{position:absolute;left:90px;top:220px;width:900px;height:860px;border-radius:44px;background:rgba(23,28,38,.85);
+  border:2px solid var(--line);overflow:hidden}
+.hall .stage{position:absolute;top:30px;left:250px;width:400px;height:70px;border-radius:20px;background:rgba(227,196,138,.15);
+  border:2px dashed var(--gold2);color:var(--gold);font-size:30px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.tbl{position:absolute;width:150px;height:150px;margin:-75px 0 0 -75px;border-radius:50%;background:#232a37;border:4px solid var(--gold2);
+  display:flex;align-items:center;justify-content:center;font-size:52px;font-weight:800;color:var(--gold)}
+.tbl.hl{animation:pop .6s ease var(--d) both, hl .6s ease var(--h) forwards}
+@keyframes hl{to{background:var(--gold);color:#1a1405;box-shadow:0 0 0 14px rgba(227,196,138,.25),0 0 60px rgba(227,196,138,.6)}}
+.seat{position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;
+  animation:seatIn .9s cubic-bezier(.3,.7,.2,1) var(--d) both}
+@keyframes seatIn{from{opacity:0;transform:translate(var(--fx),var(--fy)) scale(.6)}25%{opacity:1}to{opacity:1;transform:none}}
+
+/* ---------- scene 7: venue ---------- */
+.venue{position:absolute;left:70px;right:70px;top:640px;height:620px;border-radius:44px;overflow:hidden;
+  box-shadow:0 40px 100px rgba(0,0,0,.6)}
+.venue img{width:100%;height:100%;object-fit:cover;animation:kb 6s linear var(--d) both}
+@keyframes kb{from{transform:scale(1.18)}to{transform:scale(1)}}
+.venue::after{content:"";position:absolute;inset:0;background:linear-gradient(transparent 40%,rgba(10,12,16,.85))}
+.welcome{position:absolute;z-index:3;left:50%;bottom:50px;transform:translateX(-50%)}
+.welcome div{background:var(--gold);color:#1a1405;font-size:44px;font-weight:800;padding:22px 44px;border-radius:999px;white-space:nowrap;
+  box-shadow:0 20px 50px rgba(0,0,0,.5)}
+
+/* ---------- scene 9: finale ---------- */
+.fall{position:absolute;top:-40px;width:14px;height:22px;border-radius:4px;background:var(--gold);
+  animation:fall var(--t) linear var(--d) infinite}
+@keyframes fall{from{transform:translateY(0) rotate(0)}to{transform:translateY(2000px) rotate(720deg)}}
+.cta{display:inline-flex;align-items:center;gap:18px;padding:30px 70px;border-radius:999px;background:var(--gold);color:#1a1405;font-size:50px;font-weight:800;
+  box-shadow:0 24px 70px rgba(227,196,138,.35)}
+
+/* ---------- reminder + thank-you scenes ---------- */
+.opt{display:flex;align-items:center;gap:18px;padding:18px 22px;margin-bottom:12px;border-radius:20px;background:#0f131a;border:2px solid var(--line);font-size:30px;font-weight:600}
+.opt i{width:40px;height:40px;border-radius:10px;background:var(--gold);color:#1a1405;font-style:normal;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:26px}
+.opt.off{color:var(--mute)} .opt.off i{background:none;border:2px solid var(--line)}
+.opt b{margin-right:auto;color:var(--gold);font-size:34px}
+.send{position:relative;margin-top:18px;height:84px;border-radius:24px;background:var(--gold);color:#1a1405;font-size:32px;font-weight:800;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.send span{position:absolute}
+.prog{position:absolute;left:34px;right:34px;bottom:60px;height:84px;border-radius:24px;overflow:hidden;pointer-events:none}
+.prog .bar{height:100%;width:0;background:var(--green);animation:fill 1.6s cubic-bezier(.4,0,.2,1) var(--d) both}
+@keyframes fill{from{width:0}to{width:100%}}
+.progl{position:absolute;left:34px;right:34px;bottom:60px;height:84px;display:flex;align-items:center;justify-content:center;gap:10px;font-size:32px;font-weight:800;color:#06130b}
+.cnt{counter-reset:n var(--n);animation:count150 1.6s cubic-bezier(.4,0,.2,1) var(--d) both}
+.cnt::after{content:counter(n)}
+@keyframes count150{from{--n:0}to{--n:150}}
+.ty{position:absolute;left:0;right:0}
+.ty .msg{position:relative;top:0;left:auto;right:auto;margin:0 80px}
+.ty .msg p{font-size:37px;line-height:1.45}
+.ty .msg small{display:block;font-size:30px;color:#666;font-weight:600;margin-top:6px}
+.done{display:inline-block;padding:22px 44px;border-radius:999px;background:var(--green);color:#06130b;font-size:42px;font-weight:800;box-shadow:0 20px 50px rgba(0,0,0,.5)}

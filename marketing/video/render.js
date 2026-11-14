@@ -1,6 +1,7 @@
-// Renders video.html into an MP4, frame by frame.
-//   node render.js                  -> daawatey-promo.mp4 (30 fps, with music.wav if present)
-//   node render.js --stills 3,25,44 -> PNG previews at those seconds into ./stills/
+// Renders a film page into an MP4, frame by frame.
+//   node render.js                  -> daawatey-promo.mp4 from video.html (music.wav if present)
+//   node render.js --short          -> daawatey-short.mp4 from short.html (music-short.wav)
+//   node render.js --stills 3,25,44 -> PNG previews at those seconds into ./stills/ (add --short for the short)
 // Needs Playwright (Chromium) and ffmpeg on PATH.
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
@@ -10,18 +11,23 @@ const path = require('path');
 const FPS = 30;
 const dir = __dirname;
 const args = process.argv.slice(2);
+const short = args.includes('--short');
+const PAGE = short ? 'short.html' : 'video.html';
+const MUSIC = short ? 'music-short.wav' : 'music.wav';
+const OUT = short ? 'daawatey-short.mp4' : 'daawatey-promo.mp4';
 
 (async () => {
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1080, height: 1920 }, deviceScaleFactor: 1 });
-  await page.goto('file://' + path.join(dir, 'video.html'));
+  await page.goto('file://' + path.join(dir, PAGE));
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(500);
   const duration = await page.evaluate(() => window.DURATION);
 
-  if (args[0] === '--stills') {
+  const si = args.indexOf('--stills');
+  if (si >= 0) {
     fs.mkdirSync(path.join(dir, 'stills'), { recursive: true });
-    for (const t of args[1].split(',').map(Number)) {
+    for (const t of args[si + 1].split(',').map(Number)) {
       await page.evaluate((t) => window.seek(t), t);
       await page.screenshot({ path: path.join(dir, 'stills', `t${t.toFixed(1).padStart(5, '0')}.png`) });
     }
@@ -29,8 +35,8 @@ const args = process.argv.slice(2);
     return;
   }
 
-  const music = path.join(dir, 'music.wav');
-  const out = path.join(dir, 'daawatey-promo.mp4');
+  const music = path.join(dir, MUSIC);
+  const out = path.join(dir, OUT);
   const ff = spawn('ffmpeg', [
     '-y', '-loglevel', 'error',
     '-f', 'image2pipe', '-framerate', String(FPS), '-c:v', 'mjpeg', '-i', '-',

@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>Daawatey Short</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="style.css">
+<!--
+  Daawatey 15-second cut, 1080x1920. Same look and pieces as video.html (style.css,
+  common.js); fast scenes with short captions for Reels, TikTok and Stories.
+  Times are absolute seconds; render with: node render.js --short
+-->
+<style>
+/* quicker cuts than the full film */
+.scene{animation:fadeIn .25s var(--s) both, fadeOut .25s var(--e) forwards}
+.a{--dur:.5s}
+.cap.huge{font-size:96px}
+.strip{position:absolute;left:0;right:0;text-align:center;font-size:40px;font-weight:600;color:var(--mute)}
+.short-bust{position:absolute;width:330px;height:412px}
+.short-bust svg{width:100%;height:100%;filter:drop-shadow(0 20px 40px rgba(0,0,0,.5))}
+.counter .num.fast{animation:count 1s cubic-bezier(.3,.6,.2,1) .25s both}
+.remcard{position:absolute;left:70px;right:70px;top:420px;background:rgba(245,239,227,.97);color:#141414;border-radius:44px;
+  padding:40px 44px;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+.remcard .from{display:flex;align-items:center;gap:16px;font-size:32px;color:#666;font-weight:600}
+.remcard .from i{display:inline-block;width:52px;height:52px;border-radius:14px;background:#2a2d33 url(assets/envelope.png) center/70% no-repeat}
+.remcard p{font-size:56px;font-weight:800;margin-top:16px;line-height:1.4}
+.pill{position:absolute;left:150px;right:150px;height:100px;border-radius:999px;overflow:hidden;background:#1d2430;border:2px solid var(--line)}
+.pill .bar{height:100%;width:0;background:var(--green);animation:fill 1s cubic-bezier(.4,0,.2,1) var(--d) both}
+.pill .lbl{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:12px;font-size:38px;font-weight:800;color:var(--ink)}
+</style>
+</head>
+<body>
+<div id="bg"></div>
+<div id="sparks"></div>
+
+<!-- 0–2.8s · hook -->
+<section class="scene" style="--s:0s;--e:2.6s">
+  <div class="counter" style="top:170px">
+    <div class="num fast a" style="--k:pop;--d:.1s"></div>
+    <div class="lbl a" style="--d:.4s">مدعو!</div>
+  </div>
+  <div class="short-bust a" data-char="dad-worried" style="--k:slideL;--d:0s;left:150px;top:640px"></div>
+  <div class="short-bust a" data-char="mom-worried" style="--k:slideR;--d:.1s;right:150px;top:640px"></div>
+  <div class="worry a" style="--k:pop;--d:1.1s;top:560px;right:60px"><span style="--sd:1.4s">مين ردّ؟</span></div>
+  <div class="worry a" style="--k:pop;--d:1.4s;top:600px;left:60px"><span style="--sd:1.7s">وين بيقعدوا؟</span></div>
+  <div class="cap huge a" style="--d:.7s;top:1250px">عرس… و<g>500 مدعو</g>؟</div>
+  <div class="cap big a" style="--d:1.5s;top:1430px">شو بدنا نعمل؟ 😰</div>
+</section>
+
+<!-- 2.8–4.6s · the answer -->
+<section class="scene" style="--s:2.8s;--e:4.4s">
+  <div class="glow" style="top:780px;animation:glowPulse .8s ease 2.9s both"></div>
+  <div style="position:absolute;left:0;right:0;top:600px;display:flex;justify-content:center">
+    <div class="logo a" style="--k:pop;--d:2.85s;width:340px;height:340px"><img src="assets/envelope.png" alt=""></div>
+  </div>
+  <div class="cap amiri a" style="--d:3.05s;top:990px;font-size:160px;font-weight:700;color:var(--gold)">دعوتي</div>
+  <div class="cap big a" style="--d:3.3s;top:1300px">ارتاحوا… <g>إحنا علينا</g> ✨</div>
+</section>
+
+<!-- 4.6–6.6s · personal invitation + RSVP -->
+<section class="scene" style="--s:4.6s;--e:6.4s">
+  <div class="phone a" style="--d:4.6s;left:225px;top:150px;width:630px;height:1120px">
+    <div class="screen"><div class="notch"></div>
+      <div class="chat-h"><i></i><div><b>دعوتي</b><small>دعوة شخصية</small></div></div>
+      <div class="chat">
+        <div class="inv a" style="--k:pop;--d:4.75s">
+          مرحباً <b>أبو سامي</b> 🌿<br>
+          يسعدنا دعوتكم لحفل زفاف ابننا <b>أحمد</b><br>
+          📅 الجمعة 20.11 · 20:00
+        </div>
+      </div>
+      <div class="sheet" style="--d:5.2s">
+        <h4>هل ستحضر؟</h4>
+        <p>حفل زفاف أحمد · الجمعة 20.11</p>
+        <div class="rsvp">
+          <div class="yes" style="--d:5.75s">سأحضر</div>
+          <div>غير متأكد</div>
+          <div>أعتذر</div>
+        </div>
+      </div>
+      <div class="tap" style="--d:5.5s;right:90px;bottom:130px"></div>
+    </div>
+  </div>
+  <div class="chan a" style="--k:pop;--d:4.9s;background:var(--wa);top:330px;left:40px">💬 WhatsApp</div>
+  <div class="chan a" style="--k:pop;--d:5.05s;background:var(--blue);top:460px;right:40px">✉️ SMS</div>
+  <div class="cap big a" style="--d:4.7s;top:1360px">دعوة <g>شخصية</g> لكل ضيف</div>
+  <div class="cap mid a" style="--d:5.4s;top:1500px">ويردّ بضغطة 👆</div>
+</section>
+
+<!-- 6.6–8.4s · live tracking -->
+<section class="scene" style="--s:6.6s;--e:8.2s">
+  <div class="phone a" style="--d:6.6s;left:240px;top:150px;width:600px;height:1110px">
+    <div class="screen"><div class="notch"></div><div class="live">LIVE ●</div>
+      <img class="shot" src="assets/stats.jpg" alt="" style="margin-top:70px">
+    </div>
+  </div>
+  <div class="notif a" style="--k:slideR;--d:6.8s;top:360px;right:30px"><span class="ic">👁️</span><div>أبو سامي فتح الدعوة<br><small>اليوم · 20:41</small></div></div>
+  <div class="notif a" style="--k:slideL;--d:7.15s;top:640px;left:30px"><span class="ic">✅</span><div>عائلة خوري: سنحضر (4)<br><small>قبل دقيقة</small></div></div>
+  <div class="cap big a" style="--d:6.7s;top:1360px">مين فتح؟ مين ردّ؟</div>
+  <div class="cap mid a" style="--d:7.1s;top:1500px"><g>كل شيء أمامكم مباشرة</g></div>
+</section>
+
+<!-- 8.4–10.2s · reminder -->
+<section class="scene" style="--s:8.4s;--e:10s">
+  <div class="kicker a" style="--k:pop;--d:8.45s;top:230px"><span>إرسال تذكير</span></div>
+  <div class="remcard a" style="--k:pop;--d:8.55s">
+    <div class="from"><i></i>تذكير من دعوتي · واتساب</div>
+    <p>⏰ أبو سامي، فرح أحمد يوم الجمعة 🌿 بانتظار ردّك!</p>
+  </div>
+  <div class="pill a" style="--d:8.7s;top:820px">
+    <div class="bar" style="--d:8.8s"></div>
+    <div class="lbl">وصل التذكير إلى <span class="cnt" style="--d:8.8s;animation-duration:1s"></span> من 150</div>
+  </div>
+  <div class="cap big a" style="--d:8.6s;top:1360px">لم يردّ بعد؟</div>
+  <div class="cap mid a" style="--d:8.9s;top:1500px"><g>تذكير بضغطة واحدة</g></div>
+</section>
+
+<!-- 10.2–11.9s · personal thank-you -->
+<section class="scene" style="--s:10.2s;--e:11.7s">
+  <div class="kicker a" style="--k:pop;--d:10.25s;top:200px"><span>بعد الفرح</span></div>
+  <div class="ty" style="top:380px;transform:rotate(-2deg)"><div class="msg a" style="--k:slideR;--d:10.35s">
+    <div class="from"><i></i>دعوتي · رسالة شكر</div>
+    <p><g style="color:#9a7330">أبو سامي</g> العزيز، شكراً على حضوركم ومشاركتكم فرحتنا 🤍<small>أبو أحمد وعائلته</small></p></div></div>
+  <div class="ty" style="top:660px;transform:rotate(1.5deg)"><div class="msg a" style="--k:slideL;--d:10.6s">
+    <div class="from"><i></i>دعوتي · رسالة شكر</div>
+    <p><g style="color:#9a7330">ليلى</g> العزيزة، شكراً على حضورك ومشاركتك فرحتنا 🤍<small>أبو أحمد وعائلته</small></p></div></div>
+  <div class="cap big a" style="--d:10.4s;top:1360px">وبعد الفرح…</div>
+  <div class="cap mid a" style="--d:10.7s;top:1500px"><g>شكر شخصي</g> لكل ضيف باسمه 🤍</div>
+</section>
+
+<!-- 11.9–15s · end card -->
+<section class="scene" style="--s:11.9s;--e:99s">
+  <div id="confetti"></div>
+  <div class="short-bust a" data-char="dad-happy" style="--k:slideL;--d:11.95s;left:200px;top:110px;width:300px;height:375px"></div>
+  <div class="short-bust a" data-char="mom-happy" style="--k:slideR;--d:12s;right:200px;top:110px;width:300px;height:375px"></div>
+  <div style="position:absolute;left:0;right:0;top:540px;display:flex;justify-content:center">
+    <div class="logo a" style="--k:pop;--d:12.15s;width:200px;height:200px"><img src="assets/envelope.png" alt=""></div>
+  </div>
+  <div class="cap amiri a" style="--d:12.3s;top:760px;font-size:140px;font-weight:700">دعوتي</div>
+  <div class="strip a" style="--d:12.5s;top:990px">دعوات · ردود · تذكير · طاولات · شكر · خدمات</div>
+  <div class="cap amiri a" style="--d:12.7s;top:1090px;font-size:76px;font-weight:700;line-height:1.5">من أول «تشرّفونا»<br><g>حتى آخر «شكراً»</g></div>
+  <div class="cap a" style="--k:pop;--d:13.1s;top:1420px"><span class="cta">ابدأ مناسبتك معنا 💬</span></div>
+  <div class="cap a" style="--d:13.3s;top:1610px;font-size:56px;font-weight:600;color:var(--gold);direction:ltr">daawatey.com</div>
+</section>
+
+<script src="common.js"></script>
+<script>
+let cf=''; for(let i=0;i<40;i++) cf+=`<i class="fall" style="left:${rnd()*1080}px;--t:${3+rnd()*3}s;--d:${11.9+rnd()*2}s;opacity:${.4+rnd()*.6};background:${rnd()>.3?'#e3c48a':'#f5efe3'}"></i>`;
+document.getElementById('confetti').innerHTML = cf;
+
+window.DURATION = 15;
+window.seek = (t) => { for (const a of document.getAnimations()) { a.pause(); a.currentTime = t*1000; } };
+</script>
+</body>
+</html>
