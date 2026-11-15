@@ -6,8 +6,9 @@
 //   the user tick the ones to add. Android needs READ_CONTACTS in the
 //   manifest, iOS NSContactsUsageDescription in Info.plist.
 // - Website: the browser's own Contact Picker (navigator.contacts.select),
-//   today Chrome on Android only. The browser shows the picker and hands
-//   over just the contacts the user chose — no permission, no full list.
+//   today Chrome on Android only, one contact per pick. The browser shows
+//   the picker and hands over just the contact the user chose — no
+//   permission, no full list.
 //
 // Either way only the chosen names and numbers ever leave the phone.
 import { Capacitor } from "@capacitor/core";
@@ -89,7 +90,11 @@ export async function loadDeviceContacts() {
 // Chrome's picker was switched off) — the caller says so instead of
 // silently adding nothing.
 export async function pickWebContacts() {
-  const chosen = await navigator.contacts.select(["name", "tel"], { multiple: true });
+  // One contact per pick: in Chrome's multi-select mode tapping a name only
+  // ticks it, and owners kept closing the picker without pressing its
+  // confirm button, so nothing came back. Single mode adds on the tap; to
+  // add more, press the button again.
+  const chosen = await navigator.contacts.select(["name", "tel"], { multiple: false });
   const contacts = chosen
     .map((c, i) => toContact(i, { display: (c.name || [])[0] }, c.tel || []))
     .filter((c) => c.phone);

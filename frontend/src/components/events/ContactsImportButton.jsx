@@ -62,7 +62,7 @@ export default function ContactsImportButton({ eventId, onSaved, className = "",
         setBusy(false);
         if (chosen.length === 0 && withoutPhone === 0) {
           // Chrome resolves with an empty list both when the picker is
-          // closed without ticking anyone and when its list was empty
+          // closed without choosing anyone and when its list was empty
           // (Chrome itself not allowed to read the phone's contacts).
           // Either way nothing was added — say so and how to fix it.
           toast({ title: t.contactsNonePicked, description: t.contactsNonePickedHint, variant: "destructive", duration: 10000 });
