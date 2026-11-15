@@ -58,12 +58,13 @@ export default function ContactsImportButton({ eventId, onSaved, className = "",
         else setDeviceContacts(list);
       } else {
         // The browser shows its own picker and returns only what was chosen.
-        const { contacts: chosen, picked, withoutPhone } = await pickWebContacts();
+        const { contacts: chosen, withoutPhone } = await pickWebContacts();
         setBusy(false);
-        if (picked === 0) {
-          // Chrome's picker returns nothing when it is closed with back or
-          // ✕ — easy to do after ticking a name without pressing its
-          // confirm button. Say so instead of silently doing nothing.
+        if (chosen.length === 0 && withoutPhone === 0) {
+          // Chrome resolves with an empty list both when the picker is
+          // closed without ticking anyone and when its list was empty
+          // (Chrome itself not allowed to read the phone's contacts).
+          // Either way nothing was added — say so and how to fix it.
           toast({ title: t.contactsNonePicked, description: t.contactsNonePickedHint, variant: "destructive", duration: 10000 });
           return;
         }
