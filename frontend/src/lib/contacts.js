@@ -89,12 +89,53 @@ export async function loadDeviceContacts() {
 // without one (no number saved, or the "phone numbers" chip at the top of
 // Chrome's picker was switched off) — the caller says so instead of
 // silently adding nothing.
+// While Chrome's picker is open the phone shows its own Contacts app, and
+// Android may reload the Chrome tab in the background meanwhile; the
+// chosen contact then reaches a fresh page that no longer waits for it,
+// and nothing happens. This mark (sessionStorage survives the reload)
+// lets ContactsImportButton notice that and say so.
+const PICK_MARK = "daawatey.contactsPickStartedAt";
+const store = () => {
+  try {
+    return window.sessionStorage;
+  } catch {
+    return null;
+  }
+};
+const setPickMark = (on) => {
+  try {
+    if (on) store()?.setItem(PICK_MARK, String(Date.now()));
+    else store()?.removeItem(PICK_MARK);
+  } catch {
+    // Storage blocked: the reload notice is just skipped.
+  }
+};
+
+// True once, right after a reload that interrupted a pick (within 10
+// minutes of opening the picker).
+export function takeInterruptedPick() {
+  try {
+    const started = Number(store()?.getItem(PICK_MARK) || 0);
+    if (!started) return false;
+    setPickMark(false);
+    return Date.now() - started < 10 * 60 * 1000;
+  } catch {
+    return false;
+  }
+}
+
 export async function pickWebContacts() {
   // One contact per pick: in Chrome's multi-select mode tapping a name only
   // ticks it, and owners kept closing the picker without pressing its
   // confirm button, so nothing came back. Single mode adds on the tap; to
   // add more, press the button again.
-  const chosen = await navigator.contacts.select(["name", "tel"], { multiple: false });
+  setPickMark(true);
+  let chosen;
+  try {
+    chosen = await navigator.contacts.select(["name", "tel"], { multiple: false });
+  } finally {
+    setPickMark(false);
+  }
   const contacts = chosen
     .map((c, i) => toContact(i, { display: (c.name || [])[0] }, c.tel || []))
     .filter((c) => c.phone);

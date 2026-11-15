@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { BookUser, Loader2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -8,7 +8,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { base44 } from "@/api/base44Client";
 import { useT } from "@/lib/i18n";
 import { useBackButton } from "@/hooks/useBackButton";
-import { contactsSupported, contactToGuest, isNativeContacts, loadDeviceContacts, pickWebContacts } from "@/lib/contacts";
+import { contactsSupported, contactToGuest, isNativeContacts, loadDeviceContacts, pickWebContacts, takeInterruptedPick } from "@/lib/contacts";
 
 // "From contacts" (DAW-57): pick guests from the phone's contact list and
 // save them to the event's waiting list (imported_invitees.py). Nothing is
@@ -23,6 +23,18 @@ export default function ContactsImportButton({ eventId, onSaved, className = "",
   const [busy, setBusy] = useState(false);
   // Installed app only: the contacts to choose from (null = picker closed).
   const [deviceContacts, setDeviceContacts] = useState(null);
+
+  // The page was reloaded while Chrome's picker was open (see
+  // takeInterruptedPick): the chosen contact was lost, so say so. Deferred
+  // a tick: on a fresh page this effect runs before the app's <Toaster />
+  // has subscribed, and a toast raised now would never show.
+  useEffect(() => {
+    if (isNativeContacts() || !takeInterruptedPick()) return undefined;
+    const timer = setTimeout(() => {
+      toast({ title: t.contactsPickInterrupted, description: t.contactsPickInterruptedHint, variant: "destructive", duration: 15000 });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!contactsSupported()) return null;
 
