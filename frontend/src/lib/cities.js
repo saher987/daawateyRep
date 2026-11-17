@@ -18,6 +18,8 @@ export const CITY_KEYS = [
   "karmiel",
   "atlit",
   "jaffa_tel_aviv",
+  // Requested by the owner (Nov 2026): Arab neighbourhoods of Jerusalem.
+  "jerusalem",
   "shfaram",
   "sakhnin",
   "arrabe",
