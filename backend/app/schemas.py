@@ -218,9 +218,8 @@ class EventOut(BaseModel):
     checkin_enabled: bool = False
     seating_published: bool = False
     seating_locked_at: datetime | None = None
-    # Affiliate program: set on the payment card (PUT /events/{id}/payment).
-    price: float | None = None
-    paid_at: datetime | None = None
+    # No price/paid_at here on purpose: event owners read this too. The
+    # team gets them from GET /events/{id}/payment (EventPaymentCard).
     created_at: datetime
 
 
