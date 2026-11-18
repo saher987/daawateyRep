@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/lib/AuthContext";
+import { takeReturnTo } from "@/lib/authReturnTo";
 import { useT } from "@/lib/i18n";
 import { base44 } from "@/api/base44Client";
 import { useNavigate } from "react-router-dom";
@@ -145,7 +146,9 @@ export default function Profile() {
     toast({ title: t.profileSaved, description: t.profileSavedDesc, duration: 3000 });
     await checkAppState?.();
     if (wasIncomplete && form.first_name && form.last_name && form.nickname && form.town) {
-      navigate("/");
+      // Finishing the first-time profile: continue to the page they signed
+      // in for (AppLayout kept it), e.g. /my-business from the providers ad.
+      navigate(takeReturnTo() || "/");
     }
   };
 

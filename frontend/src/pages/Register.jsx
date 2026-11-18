@@ -20,6 +20,7 @@ import { Capacitor } from "@capacitor/core";
 import { FirebaseAuthentication } from "@capacitor-firebase/authentication";
 import { auth } from "@/lib/firebase";
 import { useAuth } from "@/lib/AuthContext";
+import { takeReturnTo } from "@/lib/authReturnTo";
 import { translations, usePublicLanguage } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,10 +55,11 @@ export default function Register() {
 
   // Same pattern as Login.jsx: Firebase signs the account in immediately on
   // creation (no separate verification step to wait for), so redirect the
-  // moment AuthContext picks that up.
+  // moment AuthContext picks that up — back to the page that sent them to
+  // sign in, if any (lib/authReturnTo.js).
   useEffect(() => {
     if (!isLoadingAuth && isAuthenticated) {
-      navigate("/", { replace: true });
+      navigate(takeReturnTo() || "/", { replace: true });
     }
   }, [isAuthenticated, isLoadingAuth, navigate]);
 

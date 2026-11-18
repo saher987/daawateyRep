@@ -19,6 +19,7 @@ import { FirebaseAuthentication } from '@capacitor-firebase/authentication'
 import { LogIn, Mail, Lock, Loader2 } from 'lucide-react'
 import { auth } from '../lib/firebase'
 import { useAuth } from '../lib/AuthContext'
+import { takeReturnTo } from '../lib/authReturnTo'
 import { BUILD_LABEL, formatDiagnostics } from '../lib/diagnostics'
 import { translations, usePublicLanguage } from '../lib/i18n'
 import AuthLayout from '../components/AuthLayout'
@@ -113,9 +114,11 @@ export function Login() {
   // doesn't exist in this port at all). Matches the original's actual
   // behavior of always landing on "/" — including for admins, who reach
   // /dashboard by clicking the nav item, not via a special login redirect.
+  // Exception: a visitor sent here from a protected page (lib/authReturnTo.js)
+  // goes back to it, e.g. a provider from the ad to /my-business.
   useEffect(() => {
     if (!isLoadingAuth && isAuthenticated) {
-      navigate('/', { replace: true })
+      navigate(takeReturnTo() || '/', { replace: true })
     }
   }, [isAuthenticated, isLoadingAuth, navigate])
 

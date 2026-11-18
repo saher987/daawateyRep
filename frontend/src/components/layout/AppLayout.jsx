@@ -2,6 +2,7 @@ import logoUrl from "@/assets/logo.png";
 import React, { useState, useEffect, startTransition, Suspense } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
+import { rememberReturnTo } from "@/lib/authReturnTo";
 import {
   LayoutDashboard, CalendarHeart, Bell, Menu, X, LogOut, Sparkles, UserCircle, ChevronRight, ShieldCheck, Mail, AlertCircle, MapPin, CalendarRange, Building2, Heart, Store, Briefcase, History, Gift, HandCoins } from
 "lucide-react";
@@ -111,6 +112,9 @@ export default function AppLayout() {
     if (loginRedirectDoneFor !== who) {
       loginRedirectDoneFor = who;
       if (isProfileIncomplete) {
+        // New accounts fill in their profile first; keep the page they were
+        // headed to (e.g. /my-business after login) for Profile to return to.
+        rememberReturnTo(window.location.pathname + window.location.search);
         navigate("/profile", { replace: true });
       } else if (isOnProfilePage) {
         // Complete profile but landed on /profile (e.g. from login redirect) — go to invitations
@@ -228,7 +232,7 @@ export default function AppLayout() {
             key={item.path}
             to={item.path}
             onClick={(e) => {
-              if (!isAuthenticated) {e.preventDefault();base44.auth.redirectToLogin(window.location.href);return;}
+              if (!isAuthenticated) {e.preventDefault();base44.auth.redirectToLogin(item.path);return;}
               // Same rule the redirect effect above enforces on landing —
               // blocking the click itself avoids a flash of the other
               // page before it bounces back to /profile.

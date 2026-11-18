@@ -15,6 +15,7 @@
 import { Capacitor } from '@capacitor/core'
 import { auth as firebaseAuth } from '@/lib/firebase'
 import { signOut } from 'firebase/auth'
+import { rememberReturnTo } from '@/lib/authReturnTo'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 
@@ -97,12 +98,11 @@ const authApi = {
     }
   },
 
-  redirectToLogin(_returnUrl) {
-    // The original built a same-origin-validated returnTo redirect
-    // (authReturnTo.js) around Base44's own OAuth redirect flow — not
-    // ported, since Firebase's sign-in doesn't work that way (native:
-    // system picker, web: popup). Landing on /login is enough; there's no
-    // return-to-previous-page behavior yet.
+  redirectToLogin(returnUrl) {
+    // Firebase sign-in happens on /login itself (native picker, web popup,
+    // phone OTP), so the page to come back to is kept in sessionStorage
+    // (lib/authReturnTo.js) and Login/Register go there once signed in.
+    rememberReturnTo(returnUrl)
     window.location.href = '/login'
   },
 }

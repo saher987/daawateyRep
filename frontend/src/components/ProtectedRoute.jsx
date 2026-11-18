@@ -1,5 +1,6 @@
-import { Outlet } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '@/lib/AuthContext'
+import { rememberReturnTo } from '@/lib/authReturnTo'
 
 const DefaultFallback = () => (
   <div className="fixed inset-0 flex items-center justify-center">
@@ -13,6 +14,14 @@ const DefaultFallback = () => (
 // instead of ever rejecting one — nobody using this app can be "not
 // registered", so that branch (and UserNotRegisteredError) doesn't apply
 // here and isn't ported.
+// unauthenticatedElement for App.tsx's signed-in routes: remembers the page
+// (e.g. /my-business opened from an ad) so Login can return to it.
+export function RedirectToLogin() {
+  const location = useLocation()
+  rememberReturnTo(location.pathname + location.search + location.hash)
+  return <Navigate to="/login" replace />
+}
+
 export default function ProtectedRoute({ fallback = <DefaultFallback />, unauthenticatedElement }) {
   const { isAuthenticated, isLoadingAuth } = useAuth()
 

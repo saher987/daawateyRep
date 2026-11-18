@@ -4,7 +4,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from './lib/query-client'
 import { AuthProvider } from './lib/AuthContext'
 import { I18nProvider } from './lib/i18n'
-import ProtectedRoute from './components/ProtectedRoute'
+import ProtectedRoute, { RedirectToLogin } from './components/ProtectedRoute'
 import AppLayout from './components/layout/AppLayout'
 import ProvidersLayout from './components/providers/ProvidersLayout'
 import HomeLayout from './components/layout/HomeLayout'
@@ -168,7 +168,7 @@ function App() {
                 <Route path="/providers/:id" element={<ProviderDetail />} />
               </Route>
 
-              <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
+              <Route element={<ProtectedRoute unauthenticatedElement={<RedirectToLogin />} />}>
                 {/* Printables, outside AppLayout so the menu isn't printed. */}
                 <Route
                   path="/events/:id/seating/print"

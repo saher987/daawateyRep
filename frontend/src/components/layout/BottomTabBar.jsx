@@ -63,7 +63,8 @@ export default function BottomTabBar({ unreadCount = 0, userRole, ownsVenue = fa
   const handleTabClick = (e, tab) => {
     e.preventDefault();
     if (!isAuthenticated) {
-      base44.auth.redirectToLogin(window.location.href);
+      // Back to the tab they tapped once signed in, not the page they were on.
+      base44.auth.redirectToLogin(tab.path);
       return;
     }
     // Same rule AppLayout's sidebar enforces — blocked here too rather
