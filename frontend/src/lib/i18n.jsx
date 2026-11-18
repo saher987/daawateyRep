@@ -843,6 +843,14 @@ const translations = {
 
     // Cities
     jerusalem: "القدس",
+    beit_hanina: "بيت حنينا",
+    shuafat: "شعفاط",
+    at_tur: "الطور",
+    jabal_al_mukaber: "جبل المكبر",
+    issawiya: "العيسوية",
+    anata: "عناتا",
+    kafr_aqab: "كفر عقب",
+    semiramis: "سميراميس",
     nazareth: "الناصرة",
     nof_hagalil: "نوف هجليل (الناصرة العليا)",
     haifa: "حيفا",
@@ -2097,6 +2105,14 @@ const translations = {
 
     // Cities
     jerusalem: "ירושלים",
+    beit_hanina: "בית חנינא",
+    shuafat: "שועפאט",
+    at_tur: "א-טור",
+    jabal_al_mukaber: "ג'בל מוכבר",
+    issawiya: "עיסאוויה",
+    anata: "ענאתא",
+    kafr_aqab: "כפר עקב",
+    semiramis: "סמירמיס",
     nazareth: "נצרת",
     nof_hagalil: "נוף הגליל",
     haifa: "חיפה",
