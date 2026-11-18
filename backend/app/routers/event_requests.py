@@ -15,6 +15,7 @@ from app.audit import audit, changes_since, snapshot
 from app.auth import get_app_user, require_role
 from app.db import get_db
 from app.integrations.push import send_push_to_user
+from app.routers import affiliates
 
 router = APIRouter(prefix="/api", tags=["event-requests"])
 
@@ -30,9 +31,20 @@ def create_event_request(
     user: models.User = Depends(get_app_user),
     db: Session = Depends(get_db),
 ) -> models.EventRequest:
-    request = models.EventRequest(**body.model_dump(), requester_uid=user.firebase_uid)
+    data = body.model_dump()
+    data["referral_code"] = (data.get("referral_code") or "").strip().upper() or None
+    request = models.EventRequest(**data, requester_uid=user.firebase_uid)
     db.add(request)
     db.flush()
+
+    # Affiliate program: the code from a /r/<code> link or typed in ties
+    # the requester's phone to the affiliate (the first referral wins;
+    # an unknown code is just kept on the request for the team to see).
+    affiliate = affiliates.active_by_code(db, request.referral_code)
+    if affiliate is not None:
+        affiliates.create_referral(
+            db, affiliate, request.requester_phone, "request_form", name=request.requester_name
+        )
 
     # notifyEventRequest (DAW-49): every active admin/manager gets an
     # in-app notification that opens the Event requests page, plus a push

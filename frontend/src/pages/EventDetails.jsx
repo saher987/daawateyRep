@@ -27,6 +27,7 @@ import EditEventDialog from "@/components/events/EditEventDialog";
 import InvitationCardEditor from "@/components/events/InvitationCardEditor";
 import GuestStatsDashboard from "@/components/events/GuestStatsDashboard";
 import ArrivalsCard from "@/components/events/ArrivalsCard";
+import EventPaymentCard from "@/components/events/EventPaymentCard";
 import { format } from "date-fns";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/AuthContext";
@@ -234,6 +235,9 @@ export default function EventDetails() {
         </Card>
       )}
       {canSeeRsvpDetails && event.checkin_enabled && <ArrivalsCard event={event} recipients={recipients} />}
+
+      {/* Affiliate program: price, paid, and the referring affiliate's commission */}
+      {isPrivileged && <EventPaymentCard event={event} />}
 
       {isPrivileged && importedRows.length > 0 && (
         <Link

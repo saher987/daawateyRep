@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect, useRef } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
+import { clearReferralCode, getReferralCode } from '@/lib/referral'
 import { base44 } from '@/api/base44Client'
 
 // Sync with system dark mode — ported unchanged from the original.
@@ -32,6 +33,22 @@ const AuthContext = createContext()
 // shouldn't be any left that rely on them being anything else) don't break.
 // `authError` used to be the same kind of permanent stub, but is real now
 // (2026-09-25) — see its own declaration below for why.
+// A /r/<code> link opened before signing in (ReferralLanding saved the
+// code): once we know the account's phone, tie it to the affiliate. Kept
+// while the account has no phone yet, so adding one on Profile (which
+// calls refreshUser) claims it then. Fire-and-forget: a failed claim must
+// never get in the way of signing in.
+function claimStoredReferral(me) {
+  const code = getReferralCode()
+  if (!code || !me?.phone) return
+  base44.affiliates
+    .claim(code)
+    .then((r) => {
+      if (r?.result !== 'no_phone') clearReferralCode()
+    })
+    .catch(() => {})
+}
+
 export const AuthProvider = ({ children }) => {
   useDarkModeSync()
   const [firebaseUser, setFirebaseUser] = useState(null)
@@ -61,6 +78,7 @@ export const AuthProvider = ({ children }) => {
       setUser(me)
       setIsAuthenticated(true)
       setAuthError(null)
+      claimStoredReferral(me)
     } catch (error) {
       console.error('Fetching /api/me failed:', error)
       setUser(null)

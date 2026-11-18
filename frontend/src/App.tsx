@@ -47,6 +47,10 @@ const ProviderCategory = lazy(() => import('./pages/ProviderCategory'))
 const ProviderDetail = lazy(() => import('./pages/ProviderDetail'))
 const ManageProviders = lazy(() => import('./pages/ManageProviders'))
 const MyBusiness = lazy(() => import('./pages/MyBusiness'))
+const Affiliates = lazy(() => import('./pages/Affiliates'))
+const MyReferrals = lazy(() => import('./pages/MyReferrals'))
+const BecomePartner = lazy(() => import('./pages/BecomePartner'))
+const ReferralLanding = lazy(() => import('./pages/ReferralLanding'))
 const Seating = lazy(() => import('./pages/Seating'))
 const SeatingPrint = lazy(() => import('./pages/SeatingPrint'))
 const CheckIn = lazy(() => import('./pages/CheckIn'))
@@ -102,6 +106,14 @@ function App() {
                 }
               />
               {/* Public: the page behind the QR sign at the event entrance. */}
+              <Route
+                path="/r/:code"
+                element={
+                  <Suspense fallback={<PageSpinner />}>
+                    <ReferralLanding />
+                  </Suspense>
+                }
+              />
               <Route
                 path="/checkin/:eventId"
                 element={
@@ -255,6 +267,30 @@ function App() {
                     element={
                       <Suspense fallback={<PageSpinner />}>
                         <ManageProviders />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="/affiliates"
+                    element={
+                      <Suspense fallback={<PageSpinner />}>
+                        <Affiliates />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="/my-referrals"
+                    element={
+                      <Suspense fallback={<PageSpinner />}>
+                        <MyReferrals />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="/become-partner"
+                    element={
+                      <Suspense fallback={<PageSpinner />}>
+                        <BecomePartner />
                       </Suspense>
                     }
                   />

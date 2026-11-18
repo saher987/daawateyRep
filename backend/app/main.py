@@ -14,6 +14,7 @@ from app.audit import RequestLogMiddleware
 from app.auth import get_app_user
 from app.db import get_db
 from app.routers import (
+    affiliates,
     audit_log,
     checkin,
     event_requests,
@@ -64,6 +65,7 @@ app.include_router(whatsapp_webhook.router)
 app.include_router(seating.router)
 app.include_router(checkin.router)
 app.include_router(imported_invitees.router)
+app.include_router(affiliates.router)
 
 _allowed_origins = os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
 
@@ -112,6 +114,7 @@ def _me_response(user: models.User, db: Session) -> schemas.MeResponse:
         .filter(models.Provider.owner_user_id == user.id)
         .first()
         is not None,
+        affiliate_status=(a.status if (a := affiliates.affiliate_for_user(db, user)) else None),
     )
 
 

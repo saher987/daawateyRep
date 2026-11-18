@@ -3,7 +3,7 @@ import React, { useState, useEffect, startTransition, Suspense } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import {
-  LayoutDashboard, CalendarHeart, Bell, Menu, X, LogOut, Sparkles, UserCircle, ChevronRight, ShieldCheck, Mail, AlertCircle, MapPin, CalendarRange, Building2, Heart, Store, Briefcase, History } from
+  LayoutDashboard, CalendarHeart, Bell, Menu, X, LogOut, Sparkles, UserCircle, ChevronRight, ShieldCheck, Mail, AlertCircle, MapPin, CalendarRange, Building2, Heart, Store, Briefcase, History, Gift, HandCoins } from
 "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,10 +46,13 @@ function useNavItems() {
   // Anyone who listed a business; everyone else gets there from the
   // directory's "List your business" card.
   { path: "/my-business", icon: Briefcase, label: t.myBusiness, providerOwner: true },
+  { path: "/my-referrals", icon: Gift, label: t.navMyReferrals, affiliate: true },
+  { path: "/become-partner", icon: Gift, label: t.navBecomePartner, notAffiliate: true },
   { path: "/notifications", icon: Bell, label: t.notifications },
   { path: "/users", icon: ShieldCheck, label: t.users, privileged: true },
   { path: "/venues", icon: MapPin, label: t.venues, privileged: true },
   { path: "/manage-providers", icon: Store, label: t.manageProviders, privileged: true },
+  { path: "/affiliates", icon: HandCoins, label: t.navAffiliates, privileged: true },
   { path: "/venue-schedule", icon: CalendarRange, label: t.venueScheduleTitle || "לוח אולמות", venueOwner: true },
   { path: "/my-venues", icon: Building2, label: t.myVenuesManage, venueOwnerOnly: true },
   { path: "/event-requests", icon: CalendarHeart, label: t.eventRequests, privileged: true },
@@ -212,6 +215,11 @@ export default function AppLayout() {
             if (item.venueOwner && !isPrivileged && !ownsVenue) return false;
             if (item.venueOwnerOnly && !ownsVenue) return false;
             if (item.providerOwner && !user?.owns_provider) return false;
+            // Affiliate program: "My referrals" once approved (or paused),
+            // "Become a partner" for everyone else but the team.
+            const isAffiliate = user?.affiliate_status === "active" || user?.affiliate_status === "inactive";
+            if (item.affiliate && !isAffiliate) return false;
+            if (item.notAffiliate && (isAffiliate || isPrivileged)) return false;
             return true;
           }).map((item) =>
           <Link
