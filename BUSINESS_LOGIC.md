@@ -134,6 +134,9 @@ once the API underneath it is stable.
 | Delete providers / provider categories | ✅ | ❌ | ❌ | ❌ |
 | Review self-listed businesses (approve / reject, `/manage-providers` → Requests) | ✅ | ✅ | ❌ | ❌ |
 | List your own business (`/my-business`) — hidden until approved; edit/remove your own | ✅ | ✅ | ✅ | ✅ |
+| Affiliate program (`/affiliates`): add/approve affiliates, approve commissions, monthly payout, excluded venues; an event's price and "paid" (payment card on the event page) | ✅ | ✅ | ❌ | ❌ |
+| Delete an affiliate (only one without commissions) | ✅ | ❌ | ❌ | ❌ |
+| Apply as an affiliate (`/become-partner`); once approved, see own referrals (`/my-referrals`) | — | — | ✅ | ✅ |
 
 Enforced via a `require_role(*roles)` FastAPI dependency, and per-row checks
 (`owner_phones`/`manager_phones` membership) inside route handlers where the
@@ -465,3 +468,18 @@ steps the app can't do for itself:
 Both IAM grants take effect immediately, no redeploy needed. Without step 1
 (bucket doesn't exist) or a transient GCS failure, `POST /api/uploads`
 still degrades to a clean `503` rather than a raw exception.
+
+## Affiliate program
+
+`backend/app/routers/affiliates.py`, migration 0033. Outside partners refer
+customers with a code (`daawatey.com/r/<code>`, or typed on the event request
+form). A referral ties the customer's **phone** to the affiliate; the first
+referral of a phone wins. When the team marks an event paid (payment card on
+EventDetails), the referral of one of the event's `owner_phones` earns a
+commission if: it's the customer's first paid event (later ones pay
+`repeat_pct`, default 0), the event was created within 60 days of the referral,
+it isn't a self-referral, and neither the affiliate (`excluded`, shareholders)
+nor the venue (`affiliate_excluded`) is excluded. Commissions go pending →
+approved → paid; the monthly payout pays everyone with at least 100 approved.
+A customer who came by WhatsApp gets the code attached on the payment card.
+

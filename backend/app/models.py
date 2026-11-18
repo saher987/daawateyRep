@@ -21,6 +21,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    Numeric,
     String,
     Text,
     UniqueConstraint,
@@ -221,6 +222,11 @@ class Venue(Base):
     owner_phones: Mapped[list[str]] = mapped_column(
         ARRAY(String), nullable=False, default=list
     )
+    # A shareholder's venue: events held here never earn an affiliate
+    # commission (shareholders' agreement; affiliates.evaluate_commission).
+    affiliate_excluded: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow
     )
@@ -317,6 +323,12 @@ class Event(Base):
     seating_locked_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Affiliate program (affiliates.py, the payment card on EventDetails):
+    # what the customer pays for this event, and when the team marked it
+    # paid. Payment itself happens outside the app; marking it paid is what
+    # creates the referring affiliate's commission.
+    price: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_by_uid: Mapped[str] = mapped_column(String, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow
@@ -597,6 +609,9 @@ class EventRequest(Base):
         default=EventRequestStatus.pending,
     )
     admin_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The affiliate code typed (or filled from a /r/<code> link) on
+    # RequestEventDialog — kept as typed, even when it matched no affiliate.
+    referral_code: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow
     )
@@ -844,3 +859,97 @@ class AuditLog(Base):
     user_agent: Mapped[str | None] = mapped_column(String, nullable=True)
     # Same id as the request's Cloud Logging line, to go from one to the other.
     request_id: Mapped[str | None] = mapped_column(String, nullable=True)
+
+
+class Affiliate(Base):
+    """An outside partner (wedding planner, photographer, ...) who refers
+    customers with a personal code and earns a commission on their first
+    paid event (affiliates.py). Added by the team (Affiliates page) or by
+    the partner applying from BecomePartner, then approved."""
+
+    __tablename__ = "affiliates"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    # Stored normalized (972...), unique: one affiliate per person. Their
+    # "My referrals" page finds them by the signed-in user's phone.
+    phone: Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True)
+    kind: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Upper-case letters and digits, what goes in daawatey.com/r/<code>.
+    code: Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True)
+    # Percent of the event price: first paid event / any later one.
+    commission_pct: Mapped[int] = mapped_column(Integer, nullable=False, default=20)
+    repeat_pct: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # pending (applied, waiting for the team) / active / inactive / rejected.
+    status: Mapped[str] = mapped_column(String, nullable=False, default="active")
+    # A shareholder or partner: tracked, but never paid a commission.
+    excluded: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # What the applicant wrote on BecomePartner ("how will you refer us").
+    application_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    accepted_terms_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+
+class Referral(Base):
+    """Customer (by phone) -> the affiliate who referred them. One row per
+    phone: the first referral wins, so affiliates can't take each other's
+    customers. Created from a /r/<code> link (after sign-in), the code on
+    RequestEventDialog, or by the team on an event's payment card."""
+
+    __tablename__ = "referrals"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    affiliate_id: Mapped[str] = mapped_column(
+        ForeignKey("affiliates.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # Normalized (972...), the same form as Event.owner_phones.
+    phone: Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True)
+    name: Mapped[str | None] = mapped_column(String, nullable=True)
+    # link / request_form / admin
+    source: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow
+    )
+
+
+class AffiliateCommission(Base):
+    """What an affiliate earns for one paid event. Created when the team
+    marks the event paid and every rule passes (affiliates.evaluate_commission);
+    pending -> approved -> paid (monthly payout), or rejected."""
+
+    __tablename__ = "affiliate_commissions"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    affiliate_id: Mapped[str] = mapped_column(
+        ForeignKey("affiliates.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    referral_id: Mapped[str | None] = mapped_column(
+        ForeignKey("referrals.id", ondelete="SET NULL"), nullable=True
+    )
+    # SET NULL, not CASCADE: a commission already paid stays on the books
+    # after its event is deleted; event_title keeps it readable.
+    event_id: Mapped[str | None] = mapped_column(
+        ForeignKey("events.id", ondelete="SET NULL"), nullable=True, unique=True
+    )
+    event_title: Mapped[str] = mapped_column(String, nullable=False)
+    event_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    customer_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    event_price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    pct: Mapped[int] = mapped_column(Integer, nullable=False)
+    amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    is_first: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # pending / approved / rejected / paid
+    status: Mapped[str] = mapped_column(String, nullable=False, default="pending", index=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    payout_reference: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow
+    )

@@ -682,6 +682,31 @@ const importsApi = {
   },
 }
 
+// Affiliate program — backend app/routers/affiliates.py.
+const affiliatesApi = {
+  byCode: (code) => request(`/api/affiliates/code/${encodeURIComponent(code)}`, { auth: false }),
+  claim: (code) => request('/api/referrals/claim', { method: 'POST', body: { code } }),
+  mine: () => request('/api/my-affiliate'),
+  apply: (data) => request('/api/affiliate-applications', { method: 'POST', body: data }),
+  list: () => request('/api/manage/affiliates'),
+  create: (data) => request('/api/manage/affiliates', { method: 'POST', body: data }),
+  update: (id, data) => request(`/api/manage/affiliates/${id}`, { method: 'PUT', body: data }),
+  review: (id, action, sendSms = true) =>
+    request(`/api/manage/affiliates/${id}/review`, { method: 'POST', body: { action, send_sms: sendSms } }),
+  delete: (id) => request(`/api/manage/affiliates/${id}`, { method: 'DELETE' }),
+  commissions: () => request('/api/manage/affiliate-commissions'),
+  decide: (id, action, note) =>
+    request(`/api/manage/affiliate-commissions/${id}/decision`, { method: 'POST', body: { action, note } }),
+  payout: (data) => request('/api/manage/affiliate-payouts', { method: 'POST', body: data }),
+  setVenueExcluded: (venueId, excluded) =>
+    request(`/api/manage/venues/${venueId}/affiliate-excluded`, {
+      method: 'PUT',
+      body: { affiliate_excluded: excluded },
+    }),
+  eventPayment: (eventId) => request(`/api/events/${eventId}/payment`),
+  updateEventPayment: (eventId, data) => request(`/api/events/${eventId}/payment`, { method: 'PUT', body: data }),
+}
+
 export const base44 = {
   auth: authApi,
   users: usersNamespaceApi,
@@ -703,6 +728,7 @@ export const base44 = {
   app: appApi,
   myInvitations: myInvitationsApi,
   providers: providersApi,
+  affiliates: affiliatesApi,
   // Admin only — see backend app/routers/audit_log.py.
   auditLog: {
     list: (params) => request('/api/audit-log', { params }),

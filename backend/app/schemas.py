@@ -43,6 +43,10 @@ class MeResponse(BaseModel):
     # Submitted at least one business to the providers directory — drives
     # the "My business" menu item.
     owns_provider: bool = False
+    # The signed-in user's affiliate row, by phone (pending / active /
+    # inactive / rejected), or None — drives the "My referrals" and
+    # "Become a partner" menu items.
+    affiliate_status: str | None = None
 
 
 class UserOut(BaseModel):
@@ -214,6 +218,9 @@ class EventOut(BaseModel):
     checkin_enabled: bool = False
     seating_published: bool = False
     seating_locked_at: datetime | None = None
+    # Affiliate program: set on the payment card (PUT /events/{id}/payment).
+    price: float | None = None
+    paid_at: datetime | None = None
     created_at: datetime
 
 
@@ -545,6 +552,8 @@ class EventRequestCreate(BaseModel):
     # allowed empty (see the edge-case suite) doesn't extend to this one.
     requester_phone: str = Field(min_length=1)
     requester_email: str | None = None
+    # Affiliate code from a /r/<code> link or typed in (RequestEventDialog).
+    referral_code: str | None = Field(default=None, max_length=32)
 
 
 class EventRequestUpdate(BaseModel):
@@ -563,6 +572,7 @@ class EventRequestOut(BaseModel):
     requester_email: str | None
     status: EventRequestStatus
     admin_notes: str | None
+    referral_code: str | None = None
     created_at: datetime
 
 
@@ -603,6 +613,7 @@ class VenueOut(BaseModel):
     image_url: str | None
     notes: str | None
     owner_phones: list[str]
+    affiliate_excluded: bool = False
 
 
 class OtpSendRequest(BaseModel):
@@ -1137,3 +1148,185 @@ class ImportedInviteeSendItem(BaseModel):
 
 class ImportedInviteeSendResult(BaseModel):
     results: list[ImportedInviteeSendItem]
+
+
+# --- Affiliate program (app/routers/affiliates.py) ---
+
+AffiliateStatus = Literal["pending", "active", "inactive", "rejected"]
+CommissionStatus = Literal["pending", "approved", "rejected", "paid"]
+
+
+class AffiliatePublicOut(BaseModel):
+    """GET /api/affiliates/code/{code}: just enough for the "you came
+    through ..." banner on RequestEventDialog and the /r/<code> page."""
+
+    code: str
+    name: str
+    kind: str | None
+
+
+class AffiliateCreate(BaseModel):
+    """POST /api/manage/affiliates (Affiliates page, "Add affiliate")."""
+
+    name: str = Field(min_length=1, max_length=120)
+    phone: str = Field(min_length=6, max_length=32)
+    kind: str | None = Field(default=None, max_length=60)
+    # Empty: made from the name (affiliates._make_code).
+    code: str | None = Field(default=None, max_length=16)
+    commission_pct: int = Field(default=20, ge=0, le=100)
+    repeat_pct: int = Field(default=0, ge=0, le=100)
+    excluded: bool = False
+    send_sms: bool = True
+
+
+class AffiliateUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    kind: str | None = Field(default=None, max_length=60)
+    code: str | None = Field(default=None, max_length=16)
+    commission_pct: int | None = Field(default=None, ge=0, le=100)
+    repeat_pct: int | None = Field(default=None, ge=0, le=100)
+    excluded: bool | None = None
+    status: AffiliateStatus | None = None
+
+
+class AffiliateReview(BaseModel):
+    action: Literal["approve", "reject"]
+    send_sms: bool = True
+
+
+class AffiliateApplication(BaseModel):
+    """POST /api/affiliate-applications (BecomePartner page)."""
+
+    name: str = Field(min_length=1, max_length=120)
+    kind: str | None = Field(default=None, max_length=60)
+    code: str | None = Field(default=None, max_length=16)
+    note: str | None = Field(default=None, max_length=1000)
+    accepted_terms: bool
+
+
+class AffiliateOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    name: str
+    phone: str
+    kind: str | None
+    code: str
+    commission_pct: int
+    repeat_pct: int
+    status: str
+    excluded: bool
+    application_note: str | None
+    approved_at: datetime | None
+    created_at: datetime
+    # Filled by the endpoints, not columns.
+    customers: int = 0
+    paid_events: int = 0
+    pending_amount: float = 0
+    approved_amount: float = 0
+    paid_amount: float = 0
+    sms_sent: bool | None = None
+
+
+class CommissionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    affiliate_id: str
+    affiliate_name: str | None = None
+    affiliate_code: str | None = None
+    event_id: str | None
+    event_title: str
+    event_date: datetime | None
+    customer_name: str | None
+    event_price: float
+    pct: int
+    amount: float
+    is_first: bool
+    status: str
+    note: str | None
+    decided_at: datetime | None
+    paid_at: datetime | None
+    payout_reference: str | None
+    created_at: datetime
+
+
+class CommissionDecision(BaseModel):
+    action: Literal["approve", "reject"]
+    note: str | None = Field(default=None, max_length=500)
+
+
+class PayoutRequest(BaseModel):
+    """POST /api/manage/affiliate-payouts. No ids: every affiliate whose
+    approved total reaches the minimum payout."""
+
+    affiliate_ids: list[str] | None = None
+    reference: str | None = Field(default=None, max_length=120)
+
+
+class PayoutResult(BaseModel):
+    affiliates: int
+    commissions: int
+    total: float
+
+
+class ReferralClaim(BaseModel):
+    code: str = Field(min_length=1, max_length=32)
+
+
+class ReferralClaimOut(BaseModel):
+    # created / exists (already referred, first one wins) / no_phone /
+    # invalid (unknown or inactive code) / self (the affiliate's own phone)
+    result: Literal["created", "exists", "no_phone", "invalid", "self"]
+
+
+class MyReferralOut(BaseModel):
+    """One customer on the affiliate's "My referrals" page. First name
+    only: the affiliate sees who came, not their phone."""
+
+    name: str | None
+    created_at: datetime
+    event_title: str | None = None
+    event_date: datetime | None = None
+    commission_status: str | None = None
+    amount: float | None = None
+
+
+class MyAffiliateOut(BaseModel):
+    affiliate: AffiliateOut
+    link: str
+    referrals: list[MyReferralOut]
+    min_payout: float
+    window_days: int
+
+
+class PaymentCheck(BaseModel):
+    key: str
+    ok: bool
+
+
+class EventPaymentOut(BaseModel):
+    """GET/PUT /api/events/{id}/payment (the payment card on EventDetails)."""
+
+    price: float | None
+    paid_at: datetime | None
+    referral_code: str | None = None
+    referral_name: str | None = None
+    referral_source: str | None = None
+    referral_at: datetime | None = None
+    commission: CommissionOut | None = None
+    # Why no commission was created on the last mark-paid, when none was.
+    commission_skipped: str | None = None
+    checks: list[PaymentCheck] = []
+
+
+class EventPaymentUpdate(BaseModel):
+    price: float | None = Field(default=None, ge=0)
+    paid: bool | None = None
+    # Attach a referral to the event's owner phone(s) when there is none
+    # yet (the customer came by WhatsApp and told us who sent them).
+    referral_code: str | None = Field(default=None, max_length=32)
+
+
+class VenueAffiliateExcluded(BaseModel):
+    affiliate_excluded: bool
