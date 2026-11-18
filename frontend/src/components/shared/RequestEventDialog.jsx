@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { CalendarPlus, CheckCircle2, Gift, Phone } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { getReferralCode } from "@/lib/referral";
+import { AFFILIATES_ENABLED } from "@/lib/affiliates";
 
 // Admin phone displayed after submission — update as needed
 const ADMIN_PHONE = "0545351842";
@@ -31,7 +32,7 @@ export default function RequestEventDialog({ open, onOpenChange, user }) {
   const { data: referrer, isError: unknownCode } = useQuery({
     queryKey: ["affiliate-code", cleanCode],
     queryFn: () => base44.affiliates.byCode(cleanCode),
-    enabled: open && cleanCode.length >= 3,
+    enabled: AFFILIATES_ENABLED && open && cleanCode.length >= 3,
     retry: false,
   });
   const [loading, setLoading] = useState(false);
@@ -47,7 +48,7 @@ export default function RequestEventDialog({ open, onOpenChange, user }) {
         requester_name: [user?.first_name, user?.last_name].filter(Boolean).join(" ") || user?.full_name || "",
         requester_email: user?.email || "",
         requester_phone: phone.trim(),
-        referral_code: cleanCode || null,
+        referral_code: AFFILIATES_ENABLED ? cleanCode || null : null,
         status: "pending",
       });
       // Notify admins/managers via notification
@@ -137,6 +138,7 @@ export default function RequestEventDialog({ open, onOpenChange, user }) {
                 required
               />
             </div>
+            {AFFILIATES_ENABLED && (
             <div className="space-y-2">
               <Label htmlFor="request-referral-code">
                 {t.affReferralCodeLabel} <span className="font-normal text-muted-foreground">{t.affOptional}</span>
@@ -160,6 +162,7 @@ export default function RequestEventDialog({ open, onOpenChange, user }) {
                 <p className="text-xs text-muted-foreground">{t.affReferralCodeUnknown}</p>
               )}
             </div>
+            )}
             <Button
               className="w-full h-11 rounded-xl gap-2"
               onClick={handleSubmit}

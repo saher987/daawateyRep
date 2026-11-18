@@ -17,6 +17,7 @@ import UpdateAvailableBanner from "@/components/shared/UpdateAvailableBanner";
 import useNavigationDirection from "@/hooks/useNavigationDirection";
 import { useT } from "@/lib/i18n";
 import AppVersion from "@/components/shared/AppVersion";
+import { AFFILIATES_ENABLED } from "@/lib/affiliates";
 
 function useNavItems() {
   const t = useT();
@@ -52,7 +53,7 @@ function useNavItems() {
   { path: "/users", icon: ShieldCheck, label: t.users, privileged: true },
   { path: "/venues", icon: MapPin, label: t.venues, privileged: true },
   { path: "/manage-providers", icon: Store, label: t.manageProviders, privileged: true },
-  { path: "/affiliates", icon: HandCoins, label: t.navAffiliates, privileged: true },
+  { path: "/affiliates", icon: HandCoins, label: t.navAffiliates, privileged: true, affiliateProgram: true },
   { path: "/venue-schedule", icon: CalendarRange, label: t.venueScheduleTitle || "לוח אולמות", venueOwner: true },
   { path: "/my-venues", icon: Building2, label: t.myVenuesManage, venueOwnerOnly: true },
   { path: "/event-requests", icon: CalendarHeart, label: t.eventRequests, privileged: true },
@@ -220,6 +221,7 @@ export default function AppLayout() {
             const isAffiliate = user?.affiliate_status === "active" || user?.affiliate_status === "inactive";
             if (item.affiliate && !isAffiliate) return false;
             if (item.notAffiliate && (isAffiliate || isPrivileged)) return false;
+            if ((item.affiliate || item.notAffiliate || item.affiliateProgram) && !AFFILIATES_ENABLED) return false;
             return true;
           }).map((item) =>
           <Link

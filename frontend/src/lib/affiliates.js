@@ -1,3 +1,9 @@
+// The affiliate program's screens are switched off until the owner starts
+// the program: the menu items (AppLayout), the payment card on
+// EventDetails and the referral code on RequestEventDialog. The backend
+// and the pages stay as they are; set this to true to bring them back.
+export const AFFILIATES_ENABLED = false;
+
 // Shared by the affiliate pages (Affiliates, MyReferrals, BecomePartner)
 // and the payment card on EventDetails.
 
