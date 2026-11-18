@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>Daawatey ads</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<!--
+  Source for the Facebook/Instagram image ads in the media kit's "Ad plan".
+  Render with render.js: ads.html?ad=A&fmt=sq (1080x1080 feed) or fmt=story
+  (1080x1920 Stories/Reels). Ad letters match the WhatsApp pre-filled message
+  ("شفت إعلانكم (A)") so each chat can be traced to its ad.
+-->
+<style>
+  :root {
+    --bg1: #123a42; --bg2: #08191e;
+    --gold: #c9a24a; --gold-d: #8f6a22; --gold-l: #ecd593;
+    --ivory: #fbf6ea; --ink: #13343b; --muted: #6b5a3a;
+    --green: #2f8f5b; --red: #b4533f; --grey: #8a8f8f;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1080px; height: 1080px; overflow: hidden; position: relative;
+    background: radial-gradient(ellipse at 30% 40%, var(--bg1), var(--bg2) 80%);
+    font-family: "Tajawal", sans-serif; color: var(--ivory);
+  }
+  body.story { height: 1920px; }
+  .pattern { position: absolute; inset: 0; opacity: .07; }
+  .frame { position: absolute; inset: 28px; border: 2px solid rgba(201,162,74,.55); border-radius: 6px; pointer-events: none; }
+  .frame::after { content: ""; position: absolute; inset: 10px; border: 1px solid rgba(201,162,74,.25); }
+
+  /* ---------- layout: square ---------- */
+  .wrap { position: absolute; inset: 0; display: grid; }
+  body.sq .wrap { grid-template-columns: 1fr 420px; column-gap: 20px; padding: 70px 80px 70px 60px; align-items: center; }
+  body.story .wrap { grid-template-rows: auto 1fr auto; padding: 230px 90px 270px; justify-items: center; text-align: center; }
+
+  .brand { display: flex; align-items: center; gap: 16px; }
+  .brand img { width: 64px; height: 64px; }
+  .brand b { font-family: "Reem Kufi"; font-weight: 700; font-size: 40px; color: var(--gold-l); }
+  .brand span { font-size: 22px; color: rgba(251,246,234,.6); display: block; margin-top: -4px; letter-spacing: .5px; }
+  body.story .brand { justify-content: center; }
+
+  .kicker { margin-top: 44px; font-size: 28px; color: var(--gold); font-weight: 500; }
+  h1 { font-family: "Reem Kufi"; font-weight: 700; font-size: 74px; line-height: 1.18; margin-top: 10px; }
+  h1 em { font-style: normal; background: linear-gradient(180deg, #e8cd7e, #b88a30); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .sub { margin-top: 24px; font-size: 31px; line-height: 1.55; color: rgba(251,246,234,.82); max-width: 520px; }
+  body.story h1 { font-size: 92px; }
+  body.story .sub { font-size: 36px; max-width: 860px; margin-inline: auto; }
+
+  .cta { margin-top: 40px; display: inline-flex; align-items: center; gap: 14px;
+    background: linear-gradient(180deg, #e2c26f, #b88a30); color: var(--ink);
+    font-weight: 800; font-size: 32px; padding: 18px 34px; border-radius: 999px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+  .cta svg { width: 38px; height: 38px; }
+  .site { margin-top: 18px; font-size: 24px; color: rgba(251,246,234,.55); letter-spacing: 1px; direction: ltr; }
+  body.story .cta { font-size: 40px; padding: 24px 48px; }
+  body.story .site { font-size: 30px; }
+
+  /* ---------- phone ---------- */
+  .stage { display: flex; justify-content: center; align-items: center; position: relative; }
+  .glow { position: absolute; width: 520px; height: 520px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(201,162,74,.28), transparent 65%); }
+  .phone { position: relative; width: 400px; height: 820px; border-radius: 58px; padding: 14px;
+    background: linear-gradient(145deg, #2a2a2a, #0b0b0b); box-shadow: 0 30px 80px rgba(0,0,0,.6), inset 0 0 0 2px #3b3b3b; }
+  body.sq .phone { zoom: .98; }
+  body.story .phone { zoom: .9; }
+  body.story .stage { margin: 30px 0; }
+  /* the venue ad has the longest text; a smaller phone keeps its button above the Stories bottom safe zone */
+  body.story.ad-V .phone { zoom: .74; }
+  body.story.ad-V .stage { margin: 16px 0; }
+  .screen { width: 100%; height: 100%; border-radius: 46px; overflow: hidden; background: var(--ivory); color: var(--ink); position: relative; display: flex; flex-direction: column; }
+  .notch { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: 120px; height: 30px; background: #0b0b0b; border-radius: 20px; z-index: 3; }
+  .bar { height: 54px; flex: none; }
+
+  /* WhatsApp-like chat (generic, no third-party logo) */
+  .chat-head { background: #0f4c45; color: #fff; display: flex; align-items: center; gap: 12px; padding: 50px 18px 14px; }
+  .chat-head .av { width: 44px; height: 44px; border-radius: 50%; background: #111 url(logo.png) center/cover; }
+  .chat-head b { font-size: 21px; } .chat-head small { display: block; font-size: 15px; opacity: .75; }
+  .chat { flex: 1; background: #e9e1d4; padding: 18px 14px; display: flex; flex-direction: column; gap: 12px; }
+  .bubble { background: #fff; border-radius: 16px 4px 16px 16px; padding: 12px 14px; font-size: 19px; line-height: 1.5; max-width: 92%; box-shadow: 0 1px 1px rgba(0,0,0,.08); }
+  .bubble .time { font-size: 13px; color: #8a8a8a; text-align: left; margin-top: 4px; }
+  .card { background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 1px 1px rgba(0,0,0,.08); max-width: 92%; }
+  .card .inv { height: 220px; background: radial-gradient(ellipse at 50% 30%, #fffaf0, #f1e6cc); border-bottom: 3px solid var(--gold);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  .inv small { font-family: "Amiri"; font-size: 17px; color: var(--muted); }
+  .inv .names { font-family: "Aref Ruqaa"; font-weight: 700; font-size: 50px; line-height: 1.1;
+    background: linear-gradient(180deg, #a77d2c, #e2c26f 45%, #8f6a22); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .inv .date { font-family: "Amiri"; font-weight: 700; font-size: 18px; margin-top: 4px; }
+  .card .row { display: flex; gap: 10px; padding: 12px; }
+  .btn { flex: 1; text-align: center; border-radius: 12px; padding: 10px 0; font-weight: 700; font-size: 19px; }
+  .btn.yes { background: var(--green); color: #fff; box-shadow: 0 0 0 4px rgba(47,143,91,.25); }
+  .btn.no { background: #f1ece2; color: var(--muted); }
+  .tap-unused { position: absolute; width: 64px; height: 64px; border-radius: 50%; border: 4px solid rgba(201,162,74,.9); background: rgba(201,162,74,.25); }
+
+  /* app screens */
+  .app-head { padding: 54px 22px 12px; }
+  .app-head small { color: var(--muted); font-size: 17px; }
+  .app-head h3 { font-family: "Reem Kufi"; font-size: 28px; margin-top: 2px; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; padding: 8px 18px; }
+  .stat { background: #fff; border-radius: 16px; padding: 14px 6px; text-align: center; box-shadow: 0 2px 8px rgba(19,52,59,.08); }
+  .stat b { display: block; font-family: "Reem Kufi"; font-size: 40px; line-height: 1.1; }
+  .stat span { font-size: 16px; color: var(--muted); }
+  .g b { color: var(--green); } .r b { color: var(--red); } .p b { color: var(--grey); }
+  .progress { margin: 14px 18px 6px; height: 16px; border-radius: 99px; background: #e6dfd0; overflow: hidden; display: flex; }
+  .progress i { display: block; height: 100%; }
+  .list { padding: 8px 18px; display: flex; flex-direction: column; gap: 8px; }
+  .li { background: #fff; border-radius: 14px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; font-size: 18px; }
+  .chip { font-size: 15px; font-weight: 700; padding: 4px 10px; border-radius: 99px; }
+  .chip.g { background: #e1f1e8; color: var(--green); } .chip.r { background: #f6e3de; color: var(--red); } .chip.p { background: #ecece8; color: #6d7171; }
+  .remind { margin: 10px 18px; background: var(--ink); color: var(--gold-l); border-radius: 14px; padding: 14px; font-size: 18px; text-align: center; font-weight: 700; }
+
+  .table-hero { margin: 4px 18px; background: radial-gradient(ellipse at 50% 30%, #fffaf0, #f1e6cc); border: 2px solid var(--gold); border-radius: 22px; text-align: center; padding: 18px 10px; }
+  .table-hero small { font-size: 18px; color: var(--muted); }
+  .table-hero b { display: block; font-family: "Reem Kufi"; font-size: 96px; line-height: 1; color: var(--ink); }
+  .plan { position: relative; margin: 14px 18px; height: 250px; background: #fff; border-radius: 18px; box-shadow: 0 2px 8px rgba(19,52,59,.08); }
+  .plan .stagebar { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); width: 160px; height: 26px; border-radius: 8px; background: var(--ink); color: var(--gold-l); font-size: 14px; text-align: center; line-height: 26px; }
+  .t { position: absolute; width: 46px; height: 46px; border-radius: 50%; background: #efe8d8; border: 2px solid #d9cba6; font-size: 15px; font-weight: 700; display: grid; place-items: center; color: var(--muted); }
+  .t.me { background: var(--gold); border-color: var(--gold-d); color: #fff; box-shadow: 0 0 0 7px rgba(201,162,74,.3); }
+  .qr { margin: 6px auto; width: 120px; height: 120px; background: #fff; padding: 8px; border-radius: 12px; }
+
+  .counter { margin: 10px 18px; background: var(--ink); border-radius: 24px; color: var(--ivory); text-align: center; padding: 26px 10px; }
+  .counter small { font-size: 19px; color: var(--gold-l); }
+  .counter b { display: block; font-family: "Reem Kufi"; font-size: 104px; line-height: 1.05; }
+  .counter span { font-size: 22px; opacity: .8; }
+  .ring { margin: 12px auto 0; width: 220px; height: 14px; background: rgba(255,255,255,.15); border-radius: 99px; overflow: hidden; }
+  .ring i { display: block; height: 100%; width: 82%; background: linear-gradient(90deg, #e2c26f, #b88a30); }
+  .scan { margin: 8px 18px; background: #fff; border-radius: 14px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; font-size: 18px; }
+
+  .badge { position: absolute; background: var(--ivory); color: var(--ink); border-radius: 18px; padding: 12px 18px; font-weight: 800; font-size: 22px;
+    box-shadow: 0 14px 34px rgba(0,0,0,.45); display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+  .badge i { width: 14px; height: 14px; border-radius: 50%; background: var(--green); display: inline-block; }
+  .ribbon { display: inline-block; margin-top: 26px; border: 2px solid var(--gold); color: var(--gold-l); border-radius: 12px; padding: 10px 20px; font-size: 28px; font-weight: 700; }
+  body.story .ribbon { font-size: 36px; }
+</style>
+</head>
+<body>
+<svg class="pattern" width="100%" height="100%"><defs><pattern id="p" width="120" height="120" patternUnits="userSpaceOnUse">
+  <g fill="none" stroke="#c9a24a" stroke-width="1.5" transform="translate(60 60)">
+    <rect x="-26" y="-26" width="52" height="52"/><rect x="-26" y="-26" width="52" height="52" transform="rotate(45)"/><circle r="10"/>
+  </g></pattern></defs><rect width="100%" height="100%" fill="url(#p)"/></svg>
+<div class="frame"></div>
+<div class="wrap" id="wrap"></div>
+
+<script>
+const q = new URLSearchParams(location.search);
+const AD = q.get("ad") || "A", FMT = q.get("fmt") || "sq";
+document.body.classList.add(FMT, "ad-" + AD);
+
+// generic chat-bubble icon (not a third-party logo)
+const chatIcon = `<svg viewBox="0 0 24 24" fill="#13343b"><path d="M12 2a10 10 0 0 0-8.7 14.9L2 22l5.3-1.3A10 10 0 1 0 12 2zm5 13.6c-.2.6-1.2 1.2-1.7 1.2-.4.1-1 .1-1.6-.1-.4-.1-.9-.3-1.5-.6-2.6-1.1-4.3-3.8-4.4-4-.1-.2-1.1-1.4-1.1-2.7 0-1.3.7-1.9.9-2.2.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.3 0 .5l-.3.5-.4.4c-.1.1-.3.3-.1.6.2.3.7 1.2 1.6 1.9 1.1.9 2 1.2 2.3 1.4.3.1.4.1.6-.1l.8-1c.2-.3.4-.2.6-.1l1.9.9c.3.1.5.2.5.3.1.2.1.7-.1 1.4z"/></svg>`;
+
+const brand = `<div class="brand"><img src="logo.png"><div><b>دعوتي</b><span>daawatey</span></div></div>`;
+const cta = (t) => `<div><div class="cta">${chatIcon}${t}</div><div class="site">daawatey.com</div></div>`;
+
+const ADS = {
+  A: {
+    kicker: "أعراس · خطوبة · حنّاء",
+    h1: `دعوة <em>باسم</em><br>كل ضيف`,
+    sub: "تصل بالواتساب، والضيف يردّ بضغطة. بلا تحميل ولا تسجيل.",
+    cta: "راسلونا بالواتساب",
+    phone: `
+      <div class="chat-head"><div class="av"></div><div><b>دعوتي</b><small>دعوة زفاف</small></div></div>
+      <div class="chat">
+        <div class="bubble">حضرة <b>عائلة خليل</b> الكرام 🌿<br>يسعدنا دعوتكم لمشاركتنا فرحة زفاف أحمد وسارة<div class="time">20:14</div></div>
+        <div class="card">
+          <div class="inv"><small>بحضوركم تكتمل فرحتنا</small><div class="names">أحمد و سارة</div><div class="date">الجمعة 12.12 · 20:00</div></div>
+          <div class="row"><div class="btn no">أعتذر</div><div class="btn yes">سأحضر ✓</div></div>
+        </div>
+        <div class="bubble">📍 قاعة اللؤلؤة · الناصرة<br><span style="color:#0f7c6c;font-weight:700">اضغطوا للطريق إلى القاعة</span><div class="time">20:14</div></div>
+      </div>`,
+    extra: `<div class="badge" style="bottom:120px; right:-10px"><i></i>تم تأكيد الحضور</div>`,
+  },
+  B: {
+    kicker: "تأكيد الحضور",
+    h1: `بلا ما تتصل<br>بـ<em>400</em> ضيف`,
+    sub: "نحن منبعت الدعوات، منذكّر اللي ما ردّوا، وإنت بتشوف الأرقام من تلفونك.",
+    cta: "راسلونا بالواتساب",
+    phone: `
+      <div class="app-head"><small>عرس أحمد وسارة · 400 مدعو</small><h3>تأكيد الحضور</h3></div>
+      <div class="stats">
+        <div class="stat g"><b>312</b><span>أكّدوا</span></div>
+        <div class="stat r"><b>41</b><span>اعتذروا</span></div>
+        <div class="stat p"><b>47</b><span>لم يردّوا</span></div>
+      </div>
+      <div class="progress"><i style="width:78%;background:#2f8f5b"></i><i style="width:10%;background:#b4533f"></i></div>
+      <div class="list">
+        <div class="li">عائلة خليل <span class="chip g">سأحضر · 5</span></div>
+        <div class="li">سامي ونور <span class="chip g">سأحضر · 2</span></div>
+        <div class="li">عائلة حسن <span class="chip r">أعتذر</span></div>
+        <div class="li">أبو رامي <span class="chip p">لم يرد</span></div>
+      </div>
+      <div class="remind">أُرسل تذكير إلى 47 ضيفاً ✓</div>`,
+    extra: `<div class="badge" style="bottom:110px; left:-40px"><i></i>+12 تأكيد اليوم</div>`,
+  },
+  C: {
+    kicker: "ترتيب الطاولات",
+    h1: `كل ضيف<br>بيعرف <em>طاولته</em>`,
+    sub: "مخطط القاعة بإيدك، ومسح عند الباب ليلة الفرح.",
+    cta: "راسلونا بالواتساب",
+    phone: `
+      <div class="app-head"><small>أهلاً عائلة خليل</small><h3>عرس أحمد وسارة</h3></div>
+      <div class="table-hero"><small>طاولتكم رقم</small><b>12</b></div>
+      <div class="plan"><div class="stagebar">المنصّة</div>
+        ${[[30,60],[105,60],[180,60],[255,60],[30,130],[105,130],[180,130],[255,130],[30,195],[105,195],[180,195],[255,195]]
+          .map(([x,y],i)=>`<div class="t ${i===6?'me':''}" style="right:${x}px;top:${y}px">${i+6}</div>`).join("")}
+      </div>
+      <div style="text-align:center;font-size:16px;color:#6b5a3a">امسحوا عند الباب</div>
+      <svg class="qr" viewBox="0 0 21 21" shape-rendering="crispEdges">${qr()}</svg>`,
+    extra: `<div class="badge" style="top:62px; left:-40px"><i></i>القاعة · الطاولة 12</div>`,
+  },
+  V: {
+    kicker: "لأصحاب القاعات",
+    h1: `ضيوف قاعتك<br>بيوصلوا <em>عارفين</em><br>طاولتهم`,
+    sub: "دعوات بالواتساب، ترتيب طاولات، ومسح عند الباب. خدمة إضافية لزبائنك، بلا تعب عليك.",
+    ribbon: "أول مناسبة بقاعتك مجاناً",
+    cta: "عندي قاعة، بدّي أعرف أكتر",
+    phone: `
+      <div class="app-head"><small>قاعة اللؤلؤة · الليلة</small><h3>عرس أحمد وسارة</h3></div>
+      <div class="counter"><small>وصلوا حتى الآن</small><b>286</b><span>من 350 مؤكَّد</span><div class="ring"><i></i></div></div>
+      <div class="scan">عائلة خليل · 5 <span class="chip g">وصلوا · طاولة 12</span></div>
+      <div class="scan">سامي ونور · 2 <span class="chip g">وصلوا · طاولة 4</span></div>
+      <div class="scan">عائلة نصّار · 6 <span class="chip p">في الطريق</span></div>`,
+    extra: `<div class="badge" style="bottom:90px; left:-40px"><i></i>مسح عند الباب ✓</div>`,
+  },
+};
+
+// deterministic fake QR-looking grid (decorative only)
+function qr() {
+  let s = "", seed = 7;
+  const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  const finder = (x, y) => `<rect x="${x}" y="${y}" width="7" height="7" fill="#13343b"/><rect x="${x+1}" y="${y+1}" width="5" height="5" fill="#fff"/><rect x="${x+2}" y="${y+2}" width="3" height="3" fill="#13343b"/>`;
+  for (let y = 0; y < 21; y++) for (let x = 0; x < 21; x++) {
+    const inF = (x < 8 && y < 8) || (x > 12 && y < 8) || (x < 8 && y > 12);
+    if (!inF && rnd() > .5) s += `<rect x="${x}" y="${y}" width="1" height="1" fill="#13343b"/>`;
+  }
+  return s + finder(0,0) + finder(14,0) + finder(0,14);
+}
+
+const a = ADS[AD];
+const text = `<div>${brand}<div class="kicker">${a.kicker}</div><h1>${a.h1}</h1><div class="sub">${a.sub}</div>${a.ribbon ? `<div class="ribbon">${a.ribbon}</div>` : ""}</div>`;
+const stage = `<div class="stage"><div class="glow"></div><div class="phone"><div class="screen"><div class="notch"></div>${a.phone}</div>${a.tap ? `<div class="tap" style="${a.tap}"></div>` : ""}${a.extra || ""}</div></div>`;
+document.getElementById("wrap").innerHTML = FMT === "sq"
+  ? `<div>${text}${cta(a.cta)}</div>${stage}`
+  : `${text}${stage}${cta(a.cta)}`;
+</script>
+</body>
+</html>
