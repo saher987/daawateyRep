@@ -91,6 +91,13 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Picking guests from the phone's contacts (lib/contacts.js,
          @capacitor-community/contacts). Asked only when the user taps
-         "from contacts"; only the contacts they tick are uploaded. -->
+         "from contacts"; only the contacts they tick are uploaded.
+         WRITE_CONTACTS is never used, but the plugin's "contacts"
+         permission alias names it next to READ_CONTACTS, and Capacitor
+         rejects the whole permission request ("Missing the following
+         permissions in AndroidManifest.xml") when any of an alias's
+         permissions isn't declared here — so without it the prompt never
+         showed and the button only said «تعذّر فتح جهات الاتصال». -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.WRITE_CONTACTS" />
 </manifest>
