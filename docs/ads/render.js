@@ -10,7 +10,7 @@ const fs = require("fs");
   const dir = __dirname;
   fs.mkdirSync(path.join(dir, "out"), { recursive: true });
   const browser = await chromium.launch();
-  for (const ad of ["A", "B", "C", "V"]) {
+  for (const ad of ["A", "B", "C", "V", "P"]) {
     for (const [fmt, h, name] of [["sq", 1080, "feed"], ["story", 1920, "story"]]) {
       const page = await browser.newPage({ viewport: { width: 1080, height: h } });
       await page.goto(`file://${dir}/ads.html?ad=${ad}&fmt=${fmt}`);
