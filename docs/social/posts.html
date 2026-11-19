@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>Daawatey posts</title>
+<link rel="stylesheet" href="../ads/fonts/fonts.css">
+<!--
+  Organic Facebook/Instagram posts for the media kit's "Content calendar".
+  Render with render.js: posts.html?p=<id> at 1080x1350 (Instagram portrait),
+  or 1080x1920 for the Reel cover (p=4). Same teal/gold look as docs/ads.
+-->
+<style>
+  :root { --bg1:#123a42; --bg2:#08191e; --gold:#c9a24a; --gold-d:#8f6a22; --gold-l:#ecd593; --ivory:#fbf6ea; --ink:#13343b; --muted:#6b5a3a; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { width:1080px; height:1350px; overflow:hidden; position:relative; font-family:"Tajawal",sans-serif; color:var(--ivory);
+    background: radial-gradient(ellipse at 50% 35%, var(--bg1), var(--bg2) 80%); }
+  body.tall { height:1920px; }
+  body.light { background: radial-gradient(ellipse at 50% 30%, #fffaf0, #efe3c6 85%); color: var(--ink); }
+  .pattern { position:absolute; inset:0; opacity:.07; }
+  body.light .pattern { opacity:.12; }
+  .frame { position:absolute; inset:28px; border:2px solid rgba(201,162,74,.55); border-radius:6px; }
+  .frame::after { content:""; position:absolute; inset:10px; border:1px solid rgba(201,162,74,.25); }
+  .page { position:absolute; inset:0; padding:110px 100px; display:flex; flex-direction:column; align-items:center; text-align:center; }
+
+  .brand { display:flex; align-items:center; gap:14px; }
+  .brand img { width:58px; height:58px; }
+  .brand b { font-family:"Reem Kufi"; font-weight:700; font-size:36px; color:var(--gold-l); }
+  body.light .brand b { color: var(--gold-d); }
+  .foot { margin-top:auto; display:flex; flex-direction:column; align-items:center; gap:12px; }
+  .foot small { font-size:24px; opacity:.6; direction:ltr; letter-spacing:1px; }
+  .kicker { font-size:30px; color:var(--gold); font-weight:700; }
+  .ruqaa { font-family:"Aref Ruqaa"; font-weight:700; line-height:1.15;
+    background:linear-gradient(180deg,#e8cd7e,#b88a30); -webkit-background-clip:text; background-clip:text; color:transparent; padding: 0 20px; }
+  h1 { font-family:"Reem Kufi"; font-weight:700; font-size:84px; line-height:1.2; }
+  h1 em { font-style:normal; color:var(--gold); }
+  .lead { font-size:36px; line-height:1.6; opacity:.85; max-width:820px; }
+  .chips { display:flex; flex-direction:column; gap:18px; width:100%; max-width:720px; }
+  .chip { border:2px solid rgba(201,162,74,.6); border-radius:20px; padding:20px 28px; font-size:34px; font-weight:700;
+    display:flex; align-items:center; gap:18px; background:rgba(255,255,255,.04); }
+  .chip i { font-style:normal; width:52px; height:52px; border-radius:50%; background:var(--gold); color:var(--ink); display:grid; place-items:center; font-size:28px; flex:none; }
+  .wa { display:inline-flex; align-items:center; gap:12px; background:linear-gradient(180deg,#e2c26f,#b88a30); color:var(--ink);
+    font-weight:800; font-size:32px; padding:18px 38px; border-radius:999px; }
+
+  /* carousel */
+  .num { width:190px; height:190px; border-radius:50%; border:3px solid var(--gold); display:grid; place-items:center;
+    font-family:"Reem Kufi"; font-size:110px; color:var(--gold-l); background:rgba(201,162,74,.08); }
+  .tag { display:inline-block; border:2px solid var(--gold); color:var(--gold-l); border-radius:999px; padding:8px 26px; font-size:28px; font-weight:700; }
+  .dots { display:flex; gap:12px; justify-content:center; }
+  .dots span { width:14px; height:14px; border-radius:50%; background:rgba(201,162,74,.35); }
+  .dots span.on { background:var(--gold); width:40px; border-radius:99px; }
+  .swipe { font-size:30px; color:var(--gold-l); font-weight:700; }
+
+  /* tips (light) */
+  .tips { width:100%; display:flex; flex-direction:column; gap:30px; text-align:right; }
+  .tip { background:#fff; border-radius:24px; padding:24px 30px; box-shadow:0 6px 20px rgba(19,52,59,.08); display:flex; gap:22px; align-items:flex-start; }
+  .tip b.n { font-family:"Reem Kufi"; font-size:56px; color:var(--gold-d); line-height:1; flex:none; width:56px; text-align:center; }
+  .tip .x { font-size:38px; font-weight:800; }
+  .tip .x::before { content:"✗ "; color:#b4533f; }
+  .tip .ok { font-size:31px; color:#2f6b52; margin-top:6px; line-height:1.45; }
+  .tip .ok::before { content:"✓ "; font-weight:800; }
+
+  /* poll */
+  .opts { display:grid; grid-template-columns:1fr 1fr; gap:24px; width:100%; }
+  .opt { border-radius:26px; padding:34px 20px; background:rgba(255,255,255,.06); border:2px solid rgba(201,162,74,.55); }
+  .opt b { display:block; font-family:"Reem Kufi"; font-size:72px; color:var(--gold); line-height:1; }
+  .opt span { display:block; font-size:36px; font-weight:700; margin-top:12px; }
+</style>
+</head>
+<body>
+<svg class="pattern" width="100%" height="100%"><defs><pattern id="p" width="120" height="120" patternUnits="userSpaceOnUse">
+  <g fill="none" stroke="#c9a24a" stroke-width="1.5" transform="translate(60 60)">
+    <rect x="-26" y="-26" width="52" height="52"/><rect x="-26" y="-26" width="52" height="52" transform="rotate(45)"/><circle r="10"/>
+  </g></pattern></defs><rect width="100%" height="100%" fill="url(#p)"/></svg>
+<div class="frame"></div>
+<div class="page" id="page"></div>
+<script>
+const P = new URLSearchParams(location.search).get("p") || "1";
+const brand = `<div class="brand"><img src="../ads/logo.png"><b>دعوتي</b></div>`;
+const foot = (extra = "") => `<div class="foot">${extra}<small>daawatey.com</small></div>`;
+const wa = `<div class="wa">راسلونا بالواتساب</div>`;
+
+// Steps copied from the home page (i18n.jsx homeStep1–5) so the post and the site say the same thing.
+const STEPS = [
+  ["البداية", "تطلب مناسبتك", "راسلنا بالواتساب: نوع المناسبة، التاريخ والقاعة."],
+  ["التجهيز", "نبنيها كما تحب", "صفحة الدعوة، النص، الصورة واللغة، كلها على ذوقك."],
+  ["الدعوات", "ندعو ضيوفك", "دعوة شخصية لكل ضيف بالواتساب أو SMS، وتذكير لمن لم يرد."],
+  ["التنظيم", "نرتّب الطاولات", "مخطط القاعة، كل ضيف يعرف طاولته، ومسح عند الباب ليلة الفرح."],
+  ["بين يديك", "وأنت تتابع كل شيء", "من أكّد، من اعتذر، ومن وصل، لحظة بلحظة ومن هاتفك."],
+];
+const dots = (on) => `<div class="dots">${[0,1,2,3,4,5].map(i => `<span class="${i===on?'on':''}"></span>`).join("")}</div>`;
+
+const PAGES = {
+  "1": () => `${brand}
+    <div style="margin-top:120px" class="kicker">أعراس · خطوبة · حنّاء · وكل فرحة</div>
+    <div class="ruqaa" style="font-size:150px;margin-top:30px">الفرحة عليكم،</div>
+    <div style="font-family:'Aref Ruqaa';font-weight:700;font-size:110px;line-height:1.2">والتفاصيل علينا</div>
+    <div class="chips" style="margin-top:70px">
+      <div class="chip"><i>١</i>دعوة باسم كل ضيف، بالواتساب</div>
+      <div class="chip"><i>٢</i>تأكيد حضور بضغطة وحدة</div>
+      <div class="chip"><i>٣</i>ترتيب طاولات ومسح عند الباب</div>
+    </div>
+    ${foot(wa)}`,
+  "2-1": () => `${brand}
+    <div style="margin-top:200px" class="kicker">دعوتي خطوة بخطوة</div>
+    <h1 style="font-size:120px;margin-top:20px">كيف <em>بتشتغل</em><br>دعوتي؟</h1>
+    <div class="lead" style="margin-top:40px">خمس خطوات، ومعكم شخص حقيقي بكل وحدة</div>
+    <div class="foot"><div class="swipe">اسحبوا ←</div>${dots(0)}</div>`,
+  ...Object.fromEntries(STEPS.map(([tag, title, text], i) => [`2-${i+2}`, () => `${brand}
+    <div class="num" style="margin-top:190px">${i+1}</div>
+    <div class="tag" style="margin-top:50px">${tag}</div>
+    <h1 style="margin-top:36px;font-size:104px">${title}</h1>
+    <div class="lead" style="margin-top:30px;font-size:42px">${text}</div>
+    <div class="foot">${i === 4 ? wa : `<div class="swipe">اسحبوا ←</div>`}${dots(i+1)}</div>`])),
+  "3": () => { document.body.classList.add("light"); return `${brand}
+    <div class="kicker" style="margin-top:50px;color:var(--gold-d)">نصيحة لأصحاب الفرح</div>
+    <h1 style="font-size:76px;margin-top:10px">٤ غلطات بـ<em style="color:var(--gold-d)">قائمة المدعوين</em></h1>
+    <div class="tips" style="margin-top:44px">
+      <div class="tip"><b class="n">١</b><div><div class="x">تنسوا حدا مهم</div><div class="ok">راجعوا القائمة مع الأهل من الطرفين قبل ما تبعتوا</div></div></div>
+      <div class="tip"><b class="n">٢</b><div><div class="x">ما تعرفوا العدد الحقيقي</div><div class="ok">اطلبوا تأكيد حضور مع عدد الأشخاص بكل عيلة</div></div></div>
+      <div class="tip"><b class="n">٣</b><div><div class="x">تتصلوا بكل ضيف لحالكم</div><div class="ok">خلّوا التذكير يوصل لحاله للي ما ردّوا</div></div></div>
+      <div class="tip"><b class="n">٤</b><div><div class="x">ترتّبوا الطاولات بآخر يوم</div><div class="ok">ابدأوا لما توصل أغلب الردود، مش ليلة العرس</div></div></div>
+    </div>
+    ${foot(`<div style="font-size:28px;font-weight:700;color:var(--muted)">احفظوا البوست لوقت الحاجة 🔖</div>`)}`; },
+  "4": () => { document.body.classList.add("tall"); return `${brand}
+    <div style="margin-top:420px;font-size:180px">💌</div>
+    <h1 style="font-size:110px;margin-top:20px">هيك بتوصل<br>الدعوة <em>لضيوفكم</em></h1>
+    <div class="lead" style="margin-top:40px">بلا تحميل ولا تسجيل، ضغطة وحدة وبيأكّد</div>
+    ${foot()}`; },
+  "5": () => `${brand}
+    <div class="kicker" style="margin-top:90px">سؤال لأصحاب الفرح</div>
+    <h1 style="font-size:96px;margin-top:16px">شو <em>الأصعب</em><br>بتحضير العرس؟</h1>
+    <div class="opts" style="margin-top:70px">
+      <div class="opt"><b>A</b><span>قائمة المدعوين</span></div>
+      <div class="opt"><b>B</b><span>تأكيد الحضور</span></div>
+      <div class="opt"><b>C</b><span>ترتيب الطاولات</span></div>
+      <div class="opt"><b>D</b><span>كل إشي 😅</span></div>
+    </div>
+    ${foot(`<div style="font-size:34px;font-weight:700;color:var(--gold-l)">جاوبونا بحرف بالتعليقات 👇</div>`)}`,
+};
+document.getElementById("page").innerHTML = PAGES[P]();
+</script>
+</body>
+</html>
