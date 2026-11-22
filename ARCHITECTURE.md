@@ -136,10 +136,12 @@ secrets of its own for this). `deploy.yml` picks the right secret
 environment you deploy. Full setup steps (including the exact `gcloud`
 commands and the cross-project IAM grants) are in `BUSINESS_LOGIC.md` §5a.
 
-Pulseem (SMS) and Resend (email) stay real-send **only on prod** — staging
-has no equivalent API key secrets, so those integrations degrade gracefully
-(log + skip) there, guaranteeing a staging sign-in/test run can never text or
-email a real phone number or inbox.
+Staging otherwise mirrors prod (same secrets with a `-staging` suffix, same
+IAM grants, `scripts/setup-staging.sh`), so changes can be tried there
+before prod. Its SMS, WhatsApp and email go out for real, but only to the
+numbers and emails in `TEST_RECIPIENTS` (`app/integrations/test_recipients.py`);
+`deploy.yml` won't mount staging's Pulseem/Resend keys without it. Full
+steps: DEPLOYMENT.md, "Staging: same setup as prod".
 
 ## Audit log
 

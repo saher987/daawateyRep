@@ -74,9 +74,8 @@ Deferred work — not urgent, tracked here so it doesn't get lost.
     the old Google/Apple-only flow — deliberately held off until build 23
     (camera-crash fix only) clears Apple review; see the detailed plan
     under Mobile/Release above.
-  - **Staging IAM grant.** `backend-runtime@daawatey-staging` needs the
-    same `iam.serviceAccountTokenCreator` grant the first time this code
-    path is actually exercised there (not yet done — see BUSINESS_LOGIC.md §2a).
+  - **Staging IAM grant.** `iam.serviceAccountTokenCreator` for
+    `backend-runtime@daawatey-staging`: run `scripts/setup-staging.sh`.
   - **SMS Retriever API (native Android, true silent auto-read).** WebOTP
     likely doesn't work inside the native app's WebView (its origin isn't
     really `https://daawatey.com`) — deferred, needs a native Capacitor
@@ -105,9 +104,8 @@ Deferred work — not urgent, tracked here so it doesn't get lost.
     (documented in BUSINESS_LOGIC.md §2b), no redeploy needed.
 
   Still open:
-  - **Staging IAM grant.** `backend-runtime@daawatey-staging` needs the
-    same `roles/firebasecloudmessaging.admin` grant the first time push is
-    actually exercised there (not yet done — see BUSINESS_LOGIC.md §2b).
+  - **Staging IAM grant.** `roles/firebasecloudmessaging.admin` for
+    `backend-runtime@daawatey-staging`: run `scripts/setup-staging.sh`.
   - **iOS push.** Deferred along with iOS phone-OTP/Universal Links — see
     Mobile/Release above.
 

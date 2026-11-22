@@ -64,6 +64,11 @@ def send_sms(phone: str, text: str, reference: str) -> bool:
     if not api_key:
         logger.warning("PULSEEM_API_KEY not set — SMS to %s not sent: %s", phone, text)
         return False
+    # Imported here, not at the top: test_recipients imports this module.
+    from app.integrations.test_recipients import phone_blocked
+
+    if phone_blocked(phone, "SMS"):
+        return False
 
     try:
         response = httpx.post(
