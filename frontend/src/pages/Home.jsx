@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { motion, MotionConfig } from "framer-motion";
-import { Check, Download, Headphones, MessageCircle, Star, UserRound } from "lucide-react";
+import { animate, motion, MotionConfig, useInView } from "framer-motion";
+import { Check, Download, Headphones, MessageCircle, Sparkles, Star, UserRound, Users } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { usePublicLanguage, useT } from "@/lib/i18n";
 import { fmt } from "@/lib/seating";
@@ -20,6 +20,33 @@ function myEventsPath(role) {
   return "/my-event";
 }
 
+// Pre-wedding-season offer: 30% off booking with us. Hidden by itself from
+// this date on (local time), so nobody has to remember to take it down.
+// While it runs, the WhatsApp text mentions the discount so the team knows
+// which price to quote.
+const PROMO_ENDS = new Date(2027, 3, 1); // 1 April 2027
+const promoActive = () => new Date() < PROMO_ENDS;
+
+// "Invitees who used Daawatey" counter. Starts at 16,263 on 1 August 2026
+// and grows by 400–700 a week. Each week's step comes from a hash of the
+// week number, not Math.random(), so every visitor sees the same number
+// and it never goes down on reload.
+const COUNTER_START = 16263;
+const COUNTER_FROM = new Date(2026, 7, 1); // 1 August 2026
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+function weekStep(week) {
+  let h = Math.imul(week ^ 0x9e3779b9, 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+  h ^= h >>> 16;
+  return 400 + ((h >>> 0) % 301);
+}
+function inviteesCount(now = new Date()) {
+  const weeks = Math.max(0, Math.floor((now - COUNTER_FROM) / WEEK_MS));
+  let total = COUNTER_START;
+  for (let w = 1; w <= weeks; w++) total += weekStep(w);
+  return total;
+}
+
 const STEPS = [1, 2, 3, 4, 5];
 // Step numbers in the digits used in Israel (1, 2, 3…), in both languages.
 const STEP_NUMERALS = ["1", "2", "3", "4", "5"];
@@ -34,6 +61,15 @@ const REVIEWS = [
     stars: 5,
     quote:
       "عنجد تجربة رائعة من كل النواحي! أكتر إشي ميّزهم هو المعاملة الحلوة والراقية، وسهولة التواصل معهم، وسرعتهم بالرد على أي سؤال أو طلب. كانوا دايمًا متعاونين ومهتمين بأدق التفاصيل، وساعدوني كتير بتنظيم معازيم العرس. شكرًا من القلب على الخدمة الرائعة، وبنصح فيهم بكل محبة!",
+  },
+  {
+    // No names image for this one: the card shows the name in the display
+    // font instead.
+    id: "ikram",
+    couple: "إكرام",
+    author: "عائلة جريس",
+    stars: 5,
+    quote: "خدمة ممتازة ودعم رائع. كانوا متواجدين دايمًا وسريعين بكل إشي.",
   },
 ];
 
@@ -59,7 +95,9 @@ const reveal = (delay = 0) => ({
 export default function Home() {
   const t = useT();
   const { user, isAuthenticated } = useAuth();
-  const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(t.homeWhatsappText)}`;
+  const promo = promoActive();
+  const whatsappText = promo ? t.homeWhatsappTextPromo : t.homeWhatsappText;
+  const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(whatsappText)}`;
   const display = "home-display font-bold";
 
   return (
@@ -90,6 +128,27 @@ export default function Home() {
             <motion.p {...rise(0.3)} className="max-w-xl text-base sm:text-[17px] leading-8 text-[#D5D8DE]">
               {t.homeLead}
             </motion.p>
+            {promo && (
+              <motion.a
+                {...rise(0.38)}
+                href={whatsappUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="group w-full max-w-md flex items-center gap-3.5 rounded-[22px] border border-[#E2C68F]/50 bg-[#E2C68F]/10 px-4 py-3 text-start hover:bg-[#E2C68F]/15"
+              >
+                <span className={`${display} shrink-0 w-16 h-16 rounded-full bg-[#E2C68F] text-[#171C26] flex flex-col items-center justify-center leading-none`}>
+                  <span className="text-[24px]" dir="ltr">30%</span>
+                </span>
+                <span className="flex-1 flex flex-col gap-0.5">
+                  <span className="flex items-center gap-1.5 text-xs font-bold text-[#E2C68F]">
+                    <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+                    {t.homePromoKicker}
+                  </span>
+                  <strong className="text-[17px] text-white">{t.homePromoTitle}</strong>
+                  <span className="text-[13px] text-[#D5D8DE]">{t.homePromoText}</span>
+                </span>
+              </motion.a>
+            )}
             <motion.div {...rise(0.45)} className="w-full sm:w-auto flex flex-col sm:flex-row flex-wrap justify-center gap-3 mt-1">
               <a
                 href={whatsappUrl}
@@ -124,6 +183,8 @@ export default function Home() {
             </motion.div>
           </div>
         </section>
+
+        <InviteesCounter t={t} display={display} />
 
         <section id="how" className="max-w-6xl mx-auto px-5 pt-14 pb-6 scroll-mt-16">
           <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
@@ -220,8 +281,14 @@ export default function Home() {
                 {...reveal()}
                 className="bg-white border border-[#EFE7DA] rounded-[28px] overflow-hidden shadow-[0_12px_40px_rgba(140,100,34,0.08)]"
               >
-                <div className="bg-[#F5F2E9] px-6 pt-5 pb-3 flex justify-center">
-                  <img src={r.namesImage} alt={r.couple} className="h-16 sm:h-20 w-auto" loading="lazy" />
+                <div className="bg-[#F5F2E9] px-6 pt-5 pb-3 flex justify-center items-center min-h-[88px] sm:min-h-[104px]">
+                  {r.namesImage ? (
+                    <img src={r.namesImage} alt={r.couple} className="h-16 sm:h-20 w-auto" loading="lazy" />
+                  ) : (
+                    <span dir="rtl" lang="ar" className={`${display} text-[34px] sm:text-[40px] text-[#5E4216]`}>
+                      {r.couple}
+                    </span>
+                  )}
                 </div>
                 <div className="px-6 sm:px-8 pt-4 pb-7 flex flex-col items-center text-center gap-3">
                   <div className="flex gap-1" role="img" aria-label={fmt(t.homeReviewStars, { n: r.stars })}>
@@ -310,6 +377,47 @@ export default function Home() {
         </footer>
       </div>
     </MotionConfig>
+  );
+}
+
+// Sits under the hero. Counts up from 0 the first time it scrolls into
+// view; with reduced motion it just shows the number.
+function InviteesCounter({ t, display }) {
+  const target = React.useMemo(() => inviteesCount(), []);
+  const ref = React.useRef(null);
+  const inView = useInView(ref, { once: true, margin: "-40px" });
+  const [shown, setShown] = React.useState(0);
+  React.useEffect(() => {
+    if (!inView) return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      setShown(target);
+      return;
+    }
+    const controls = animate(0, target, {
+      duration: 1.8,
+      ease: [0.2, 0.7, 0.2, 1],
+      onUpdate: (v) => setShown(Math.round(v)),
+    });
+    return () => controls.stop();
+  }, [inView, target]);
+  return (
+    <section className="max-w-6xl mx-auto px-5 -mt-7 relative z-10">
+      <div
+        ref={ref}
+        className="mx-auto max-w-xl flex items-center gap-4 rounded-[24px] bg-white border border-[#EFE7DA] px-5 py-4 shadow-[0_12px_40px_rgba(140,100,34,0.12)]"
+      >
+        <span className="shrink-0 w-12 h-12 rounded-full bg-[#F3E8D3] flex items-center justify-center">
+          <Users className="w-6 h-6 text-[#8C6422]" aria-hidden="true" />
+        </span>
+        <span className="flex-1 flex flex-col">
+          <span className={`${display} text-[32px] sm:text-[38px] leading-tight text-[#171C26] tabular-nums`}>
+            <span dir="ltr">+{shown.toLocaleString("en-US")}</span>
+          </span>
+          <span className="text-sm text-[#4A4F59]">{t.homeCounterLabel}</span>
+          <span className="text-xs text-[#8C6422] font-bold">{t.homeCounterNote}</span>
+        </span>
+      </div>
+    </section>
   );
 }
 
