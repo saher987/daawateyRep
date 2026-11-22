@@ -27,12 +27,13 @@ function myEventsPath(role) {
 const PROMO_ENDS = new Date(2027, 3, 1); // 1 April 2027
 const promoActive = () => new Date() < PROMO_ENDS;
 
-// "Invitees who used Daawatey" counter. Starts at 16,263 on 1 August 2026
-// and grows by 400–700 a week. Each week's step comes from a hash of the
+// "Invitees who used Daawatey (since August 2026)" counter. It was 16,238
+// on 22 November 2026, the owner's real figure that day, and grows by
+// 400–700 a week from then. Each week's step comes from a hash of the
 // week number, not Math.random(), so every visitor sees the same number
 // and it never goes down on reload.
-const COUNTER_START = 16263;
-const COUNTER_FROM = new Date(2026, 7, 1); // 1 August 2026
+const COUNTER_START = 16238;
+const COUNTER_FROM = new Date(2026, 10, 22); // 22 November 2026
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 function weekStep(week) {
   let h = Math.imul(week ^ 0x9e3779b9, 0x85ebca6b);
