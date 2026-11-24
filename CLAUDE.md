@@ -50,7 +50,10 @@ guests, mostly in Arabic. Rebuild of a Base44 app on Google Cloud.
 
 ## Release (manual, GitHub Actions)
 
-Nothing deploys or migrates on push. In order:
+Nothing deploys or migrates on push. To try a change first, run Run DB
+Migration and Deploy on `staging` from the PR branch (DEPLOYMENT.md,
+"Staging: same setup as prod"; staging only sends to `TEST_RECIPIENTS`).
+Then, in order:
 
 1. Merge the PR into `main`. This repo uses **squash merge**.
 2. If there is a new migration: **Run DB Migration** (`migrate.yml`), prod.

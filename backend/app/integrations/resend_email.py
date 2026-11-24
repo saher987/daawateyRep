@@ -11,6 +11,8 @@ import os
 
 import httpx
 
+from app.integrations.test_recipients import email_blocked
+
 logger = logging.getLogger(__name__)
 
 _SEND_URL = "https://api.resend.com/emails"
@@ -20,6 +22,8 @@ def send_email(to: str, subject: str, html: str, reply_to: str | None = None) ->
     api_key = os.environ.get("RESEND_API_KEY")
     if not api_key:
         logger.warning("RESEND_API_KEY not set — email to %s not sent: %s", to, subject)
+        return False
+    if email_blocked(to):
         return False
 
     # RESEND_FROM_EMAIL must be a *bare* address (no "Display Name <...>"

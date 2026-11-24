@@ -131,66 +131,56 @@ jobs:
           if [ -n "${{ secrets.WHATSAPP_TEMPLATE_LANG }}" ]; then
             FLAGS="$FLAGS##WHATSAPP_TEMPLATE_LANG=${{ secrets.WHATSAPP_TEMPLATE_LANG }}"
           fi
+          # TEST_RECIPIENTS (app/integrations/test_recipients.py): staging
+          # only. Limits every SMS/WhatsApp/email to these phones/emails.
+          if [ -n "${{ secrets.TEST_RECIPIENTS }}" ]; then
+            FLAGS="$FLAGS##TEST_RECIPIENTS=${{ secrets.TEST_RECIPIENTS }}"
+          fi
           if [ -n "${{ secrets.CLOUDSQL_CONNECTION_NAME }}" ]; then
-            # prod's secret lives in the same project it's deploying into,
-            # so the short "name:latest" form works. Staging's Cloud Run
-            # service runs as daawatey-staging but its DATABASE_URL secret
-            # lives in daawatey-prod (see the SECRETS_PROJECT comment
-            # above) — a cross-project reference needs gcloud's full
-            # resource-path form instead: projects/PROJECT_NUMBER/secrets/
-            # NAME:VERSION. Two things caught live across the first two
-            # staging deploy attempts: it's always :VERSION (colon), never
-            # /versions/VERSION — "No secret version specified" is what you
-            # get for the latter, even on a full path — and cross-project
-            # resolution specifically wants the numeric project *number*
-            # (1046309287701, daawatey-prod's — visible in any IAM policy
-            # dump for the project), not the "daawatey-prod" project ID
-            # string, which errors "not a valid secret name" despite
-            # otherwise-correct syntax.
-            if [ "${{ inputs.environment }}" = "prod" ]; then
-              DB_SECRET_REF="database-url:latest"
-            else
-              DB_SECRET_REF="projects/1046309287701/secrets/database-url-staging:latest"
-            fi
+            # Every Secret Manager secret lives in daawatey-prod (see the
+            # SECRETS_PROJECT comment above); staging's copy of a secret is
+            # the same name with "-staging" on the end. prod's are in the
+            # project it deploys into, so the short "name:latest" form works.
+            # Staging's are cross-project, which needs gcloud's full form:
+            # projects/PROJECT_NUMBER/secrets/NAME:VERSION. Two things caught
+            # live across the first two staging deploy attempts: it's always
+            # :VERSION (colon), never /versions/VERSION ("No secret version
+            # specified"), and cross-project resolution wants the numeric
+            # project *number* (1046309287701, daawatey-prod's), not the
+            # "daawatey-prod" ID, which errors "not a valid secret name".
+            secret_ref() {
+              if [ "${{ inputs.environment }}" = "prod" ]; then
+                echo "$1:latest"
+              else
+                echo "projects/1046309287701/secrets/$1-staging:latest"
+              fi
+            }
             # One single --set-secrets flag, not one per secret: gcloud
             # treats a repeated --set-secrets as last-one-wins on the whole
-            # deploy, not additive — two separate flags here would have
-            # silently dropped DATABASE_URL the moment the prod-only
-            # Pulseem/Resend branch below also fired. Built up as one
-            # comma-separated list instead.
-            SECRETS_FLAG="DATABASE_URL=$DB_SECRET_REF"
+            # deploy, not additive — two separate flags here would silently
+            # drop DATABASE_URL. Built up as one comma-separated list.
+            SECRETS_FLAG="DATABASE_URL=$(secret_ref database-url)"
 
-            # Pulseem (SMS) / Resend (email) stay real-send only on prod —
-            # same-project secrets, short form is fine here too. Staging
-            # intentionally has no pulseem-api-key-staging/
-            # resend-api-key-staging secrets — app/integrations/pulseem.py
-            # and resend_email.py already degrade gracefully (log + skip)
-            # when their key isn't set, which is exactly the point here:
-            # testing on staging must never text or email a real phone
-            # number/inbox. Reusing prod's real keys on staging would do
-            # exactly that, silently.
-            if [ "${{ inputs.environment }}" = "prod" ]; then
-              SECRETS_FLAG="$SECRETS_FLAG,PULSEEM_API_KEY=pulseem-api-key:latest,RESEND_API_KEY=resend-api-key:latest"
+            # Pulseem (SMS) / Resend (email): always on prod. On staging
+            # only once TEST_RECIPIENTS is set, so staging can never text or
+            # email a real guest whose number ended up in its test data.
+            # Without them (the old staging setup) sends are logged and
+            # skipped, and phone-OTP login can't work there. Create
+            # pulseem-api-key-staging / resend-api-key-staging first: a
+            # missing Secret Manager secret fails the deploy.
+            if [ "${{ inputs.environment }}" = "prod" ] || [ -n "${{ secrets.TEST_RECIPIENTS }}" ]; then
+              SECRETS_FLAG="$SECRETS_FLAG,PULSEEM_API_KEY=$(secret_ref pulseem-api-key),RESEND_API_KEY=$(secret_ref resend-api-key)"
             fi
 
             # WhatsApp's token only gets mounted once WHATSAPP_PHONE_NUMBER_ID
-            # is set for this environment — referencing a Secret Manager
-            # secret that doesn't exist yet would fail the whole deploy.
-            # Unlike Pulseem/Resend, staging can opt in too (its own
-            # whatsapp-token-staging secret, cross-project like
-            # database-url-staging) — pair it with WHATSAPP_TEST_PHONES
-            # there so staging can only message your own test numbers.
+            # is set for this environment, and the webhook's signature key
+            # (routers/whatsapp_webhook.py) once WHATSAPP_WEBHOOK_VERIFY_TOKEN
+            # is: a Secret Manager secret that doesn't exist yet would fail
+            # the whole deploy.
             if [ -n "${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}" ]; then
-              if [ "${{ inputs.environment }}" = "prod" ]; then
-                SECRETS_FLAG="$SECRETS_FLAG,WHATSAPP_TOKEN=whatsapp-token:latest"
-                # The webhook's signature key (routers/whatsapp_webhook.py),
-                # mounted once the webhook is set up — same reason as above:
-                # a missing Secret Manager secret would fail the deploy.
-                if [ -n "${{ secrets.WHATSAPP_WEBHOOK_VERIFY_TOKEN }}" ]; then
-                  SECRETS_FLAG="$SECRETS_FLAG,WHATSAPP_APP_SECRET=whatsapp-app-secret:latest"
-                fi
-              else
-                SECRETS_FLAG="$SECRETS_FLAG,WHATSAPP_TOKEN=projects/1046309287701/secrets/whatsapp-token-staging:latest"
+              SECRETS_FLAG="$SECRETS_FLAG,WHATSAPP_TOKEN=$(secret_ref whatsapp-token)"
+              if [ -n "${{ secrets.WHATSAPP_WEBHOOK_VERIFY_TOKEN }}" ]; then
+                SECRETS_FLAG="$SECRETS_FLAG,WHATSAPP_APP_SECRET=$(secret_ref whatsapp-app-secret)"
               fi
             fi
 

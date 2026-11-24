@@ -54,6 +54,7 @@ import re
 import httpx
 
 from app.integrations.pulseem import to_international_phone
+from app.integrations.test_recipients import phone_blocked
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +128,8 @@ def send_whatsapp_template(
         logger.warning(
             "WHATSAPP_TOKEN/WHATSAPP_PHONE_NUMBER_ID not set — WhatsApp message to %s not sent", phone
         )
+        return False
+    if phone_blocked(phone, "WhatsApp message"):
         return False
 
     env_var, default_name = _TEMPLATES[template_key]

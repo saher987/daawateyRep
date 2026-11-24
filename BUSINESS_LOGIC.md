@@ -263,12 +263,7 @@ Without it: `TokenSignError: ... Permission 'iam.serviceAccounts.signBlob'
 denied`, logged server-side but — same as the Cloud SQL case — surfaced to
 the browser as a bare "Failed to fetch" (the 500 goes out without CORS
 headers), not a permission error. Takes effect immediately, no redeploy
-needed. **Staging needs the equivalent grant on
-`backend-runtime@daawatey-staging.iam.gserviceaccount.com`** the first time
-phone-OTP login is actually exercised there — not yet done as of this
-writing, since staging testing of this feature was skipped in favor of
-testing for real against prod (see the "no real SMS on staging" reasoning
-elsewhere in this doc).
+needed. Staging's equivalent grant is in `scripts/setup-staging.sh`.
 
 ### 2b. Firebase Cloud Messaging (push notifications): a third instance of the same pattern
 
@@ -295,9 +290,7 @@ Without it: FCM rejects every send with `Permission
 '//cloudresourcemanager.googleapis.com/projects/daawatey-prod'` — caught and
 logged (`send_push_to_user` never raises, by design), not surfaced to the
 client at all, unlike #2/#2a above. Takes effect immediately, no redeploy
-needed. **Staging needs the equivalent grant on
-`backend-runtime@daawatey-staging.iam.gserviceaccount.com`** the first time
-push is actually exercised there — not yet done as of this writing.
+needed. Staging's equivalent grant is in `scripts/setup-staging.sh`.
 
 ### 3. Secrets: Google Secret Manager, not GitHub
 
@@ -416,11 +409,11 @@ gcloud secrets add-iam-policy-binding database-url-staging \
 `deploy.yml` picks the right database name (`database-url` vs
 `database-url-staging`) automatically based on which environment you
 choose when running the Deploy workflow — no separate GitHub secret
-needed for that. Pulseem/Resend stay real-send **only on prod**: staging
-deliberately has no `pulseem-api-key-staging`/`resend-api-key-staging`
-secrets, so `app/integrations/pulseem.py`/`resend_email.py`'s existing
-degrade-gracefully behavior (log + skip, no crash) means testing on
-staging can never text or email a real phone number/inbox.
+needed for that. Pulseem/Resend/WhatsApp keys on staging are copies of
+prod's (`pulseem-api-key-staging` etc., created by
+`scripts/setup-staging.sh --with-keys`) and are mounted only when
+`TEST_RECIPIENTS` is set, which limits every staging send to those numbers
+and emails. See DEPLOYMENT.md, "Staging: same setup as prod".
 
 ### 6. File uploads (Core.UploadFile): enable Firebase Storage + grant write access
 

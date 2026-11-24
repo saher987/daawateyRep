@@ -42,7 +42,7 @@ path uses that project number, service account emails use
 `@daawatey-prod.iam.gserviceaccount.com`, Firebase values from the prod web
 app config).
 
-### 4. Database + invitation-delivery secrets (`prod` only)
+### 4. Database + invitation-delivery secrets (both environments)
 
 Not needed until you've run the Cloud SQL setup in `BUSINESS_LOGIC.md`'s
 "Infra you need to provision" section. **The actual sensitive values —
@@ -55,7 +55,7 @@ config, `gcloud run services describe`, or a deploy's audit log — unlike
 in plaintext in an audit log while debugging this before the switch. See
 BUSINESS_LOGIC.md for the `gcloud secrets create` / IAM-grant commands.
 
-Only these go in GitHub, `prod` environment — genuinely just identifiers,
+Only these go in GitHub, per environment — genuinely just identifiers,
 safe as plain secrets (or even hardcoded, kept as secrets here mainly for
 symmetry with everything else in this table):
 
@@ -74,10 +74,10 @@ whole deploy with `unrecognized arguments: <noreply@daawatey.com>` (this
 happened for real — see git history). The "Daawatey" display name is
 applied in code (`resend_email.py`) instead, where a space is safe.
 
-Leaving these unset (e.g. on `staging`, which has none of this
-provisioned) is a deliberate no-op — `deploy.yml` only adds
+Leaving these unset is a deliberate no-op — `deploy.yml` only adds
 `--add-cloudsql-instances`/`--set-secrets` when `CLOUDSQL_CONNECTION_NAME`
-is actually set. `app/integrations/pulseem.py` and `resend_email.py` also
+is actually set. Staging's values and its extra `TEST_RECIPIENTS` are in
+"Staging: same setup as prod" below. `app/integrations/pulseem.py` and `resend_email.py` also
 independently log a warning and skip sending rather than failing the
 request if their key isn't reachable for any reason.
 
@@ -176,6 +176,60 @@ thank-you doesn't skip them next time.
 The webhook must be connected to the WhatsApp Business Account itself, not
 only configured in the App Dashboard: `POST /<WABA ID>/subscribed_apps` with
 the token (the WABA ID is the `asset_id` in WhatsApp Manager URLs).
+
+## Staging: same setup as prod
+
+Staging runs the same code with the same settings as prod, so a change can
+be deployed and tried there first. Differences that remain on purpose:
+
+- **Its own database** (`daawatey_staging` on prod's instance), Firebase
+  Auth users, Storage bucket and URLs.
+- **`TEST_RECIPIENTS`** (staging only, never on prod): comma-separated
+  phones and emails, no spaces, e.g. `0501234567,0527654321,me@gmail.com`.
+  Every SMS, WhatsApp message and email from staging goes only to these;
+  anyone else is logged (`not in TEST_RECIPIENTS`) and skipped. `deploy.yml`
+  mounts staging's Pulseem/Resend keys only when it's set. Put your own
+  phone in it, or phone-OTP login can't send you a code.
+- Phones and the store apps always talk to prod. Staging is web only.
+
+### One-time setup
+
+1. **Firebase Storage:** Firebase Console → `daawatey-staging` → Build →
+   Storage → Get started (skip if done).
+2. **GitHub → Settings → Environments → `staging`:** add `TEST_RECIPIENTS`,
+   and the same keys prod has, with staging's values:
+
+   | Secret | Staging value |
+   |---|---|
+   | `CLOUDSQL_CONNECTION_NAME` | `daawatey-prod:us-central1:daawatey-db` (same instance) |
+   | `APP_URL` | staging's frontend URL. **Required:** unset falls back to `https://daawatey.com`, so staging's invitation links would open prod |
+   | `ALLOWED_ORIGINS` | `https://<staging frontend URL>,https://localhost,capacitor://localhost` |
+   | `RESEND_FROM_EMAIL` | `noreply@daawatey.com` |
+   | `INVITATION_CHANNEL`, `WHATSAPP_*` | same as prod, to test the same channel. `WHATSAPP_WEBHOOK_VERIFY_TOKEN` only if you also point a Meta webhook at staging's backend |
+
+3. **Cloud Shell, as owner:** `bash scripts/setup-staging.sh --with-keys`.
+   It adds the IAM grants staging was missing (phone-OTP token signing,
+   push, uploads, Cloud SQL) and copies prod's Pulseem/Resend/WhatsApp
+   keys into `*-staging` secrets (same accounts, so sends from staging are
+   billed like prod's — `TEST_RECIPIENTS` keeps that to your own numbers).
+   Re-running it is safe. Without `--with-keys` it only does the grants.
+   Do this **after** step 2's `WHATSAPP_PHONE_NUMBER_ID`/`TEST_RECIPIENTS`
+   are set but **before** the next deploy: a secret `deploy.yml` asks for
+   that doesn't exist yet fails the deploy.
+4. **Run DB Migration → `staging`**, then **Deploy → `staging`**.
+5. Check: sign in with your phone (code arrives by SMS), create an event,
+   upload an image, invite yourself, send a reminder/thank-you.
+
+### Trying a change on staging before prod
+
+1. Push the branch. In **Actions → Run DB Migration** and **Deploy**, pick
+   the branch in "Use workflow from" and choose `staging`.
+2. Test on staging's URL.
+3. Merge the PR, then migrate (if any) and deploy `prod` from `main`.
+
+A migration run on staging from a branch stays applied to staging's
+database. If that migration file changes before merge, staging's database
+has to be fixed by hand, so settle a migration before running it there.
 
 ## Bootstrapping `ALLOWED_ORIGINS` (first deploy only)
 
