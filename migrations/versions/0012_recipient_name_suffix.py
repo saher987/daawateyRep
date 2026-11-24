@@ -22,7 +22,11 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column("invitation_recipients", sa.Column("name_suffix", sa.String(), nullable=True))
+    # Guarded like 0004: 0001 creates columns straight from app/models.py
+    # on any database bootstrapped after this column was added there.
+    existing_columns = {col["name"] for col in sa.inspect(op.get_bind()).get_columns("invitation_recipients")}
+    if "name_suffix" not in existing_columns:
+        op.add_column("invitation_recipients", sa.Column("name_suffix", sa.String(), nullable=True))
 
 
 def downgrade() -> None:

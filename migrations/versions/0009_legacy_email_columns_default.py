@@ -20,6 +20,7 @@ so this never affected reads/listing, only inserts.
 
 from typing import Sequence, Union
 
+import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
@@ -29,13 +30,21 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _legacy_columns(bind):
+    """Only the columns that exist: a database built from scratch (0001
+    creates today's models, which no longer have them — e.g. staging's
+    first full migration) has none, so there's nothing to default."""
+    inspector = sa.inspect(bind)
+    for table, column in (("venues", "owner_emails"), ("events", "owner_emails"), ("events", "manager_emails")):
+        if column in {c["name"] for c in inspector.get_columns(table)}:
+            yield table, column
+
+
 def upgrade() -> None:
-    op.alter_column("venues", "owner_emails", server_default="{}")
-    op.alter_column("events", "owner_emails", server_default="{}")
-    op.alter_column("events", "manager_emails", server_default="{}")
+    for table, column in _legacy_columns(op.get_bind()):
+        op.alter_column(table, column, server_default="{}")
 
 
 def downgrade() -> None:
-    op.alter_column("venues", "owner_emails", server_default=None)
-    op.alter_column("events", "owner_emails", server_default=None)
-    op.alter_column("events", "manager_emails", server_default=None)
+    for table, column in _legacy_columns(op.get_bind()):
+        op.alter_column(table, column, server_default=None)
